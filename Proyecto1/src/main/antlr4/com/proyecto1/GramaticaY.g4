@@ -4,18 +4,16 @@ options {
     tokenVocab = LenguajeLexer;
 }
 
-@header { package com.proyecto1; }
-
 programa
-    : seccionEstructuras? seccionFunciones? EOF                               #programaDef
+    : seccionEstructuras? seccionFunciones? EOF                          #programaDef
     ;
 
 seccionEstructuras
-    : SEC_ESTRUCTURAS DOSPUNTOS NEWLINE INDENT definicionEstructura+ DEDENT   #seccionEstructurasDef
+    : SEC_ESTRUCTURAS NEWLINE definicionEstructura+                      #seccionEstructurasDef
     ;
 
 seccionFunciones
-    : SEC_FUNCIONES DOSPUNTOS NEWLINE INDENT definicionFuncion+ DEDENT        #seccionFuncionesDef
+    : SEC_FUNCIONES NEWLINE definicionFuncion+                           #seccionFuncionesDef
     ;
 
 /** ESTRUCTURAS **/
@@ -23,9 +21,8 @@ definicionEstructura
     : ESTRUCTURA ID DOSPUNTOS NEWLINE INDENT campoEstructura+ DEDENT      #estructuraDef
     ;
 
-
 campoEstructura
-    : tipo ID (CORIZQ ENTERO_LIT CORDER)? NEWLINE                        #campoDef
+    : tipo ID (CORIZQ ENTERO_LIT CORDER)* NEWLINE                        #campoDef
     ;
 
 /** FUNCIONES **/
@@ -97,7 +94,7 @@ instruccion
 
 // "tipo ID", "entero miEntero" o "entero miEntero = 5"
 declaracionVariable
-    : tipo ID (ASIGNAR expresion)?                                       #declVarDef
+    : tipo ID (CORIZQ ENTERO_LIT CORDER)* (ASIGNAR expresion)?           #declVarDef
     ;
 
 operadorAsignacion
@@ -105,14 +102,12 @@ operadorAsignacion
     ;
 
 asignacion
-    : ID (CORIZQ expresion CORDER)* PUNTO ID operadorAsignacion expresion #asigCampoDef
-    | ID (CORIZQ expresion CORDER)*          operadorAsignacion expresion #asigSimpleDef
+    : ID (PUNTO ID | CORIZQ expresion CORDER)* operadorAsignacion expresion #asigDef
     ;
 
 argumentos
     : expresion (COMA expresion)*                                       #argumentosDef
     ;
-
 
 // ----- Condicionales -----
 // usan bloque simple debido a que NO tiene dos puntos antes de iniciar el bloque
@@ -131,13 +126,13 @@ instruccionElegir
     ;
 
 casoElegir
-    : CASO literal bloque                                             #casoDef
+    : CASO literal bloque                                                #casoDef
     ;
 
 literal
-    : ENTERO_LIT                                                      #litEntero
-    | CARACTER_LIT                                                    #litCaracter
-    | CADENA_LIT                                                      #litCadena
+    : ENTERO_LIT                                                         #litEntero
+    | CARACTER_LIT                                                       #litCaracter
+    | CADENA_LIT                                                         #litCadena
     ;
 
 // ----- Ciclos -----
@@ -145,8 +140,9 @@ literal
 instruccionPara
     : PARA LPAREN (declaracionVariable | asignacion)? PUNTOYCOMA
              expresion? PUNTOYCOMA
-             (asignacion | expresion)? RPAREN bloque             #cicloParaDef
+             (asignacion | expresion)? RPAREN bloque                     #cicloParaDef
     ;
+
 // mientras(contador < 5) hacer
 // usan bloque simple debido a que NO tiene dos puntos antes de iniciar el bloque
 instruccionMientras
@@ -160,9 +156,8 @@ mientras(intentos < 10)
 usan bloque debido a que SI tiene dos puntos antes de iniciar el bloque
 **/
 instruccionHacerMientras
-    : HACER bloque MIENTRAS expresion NEWLINE                            #cicloHacerMientrasDef
+    : HACER bloque MIENTRAS LPAREN expresion RPAREN NEWLINE              #cicloHacerMientrasDef
     ;
-
 
 // ----- EXPRESIONES -----
 // Punto de entrada; nivel 1 de precedencia (más bajo): ||
@@ -193,9 +188,9 @@ expresionAditiva
     | expresionMultiplicativa                                           #expAditivaBase
     ;
 
-// Nivel 5: *, /
+// Nivel 5: *, /, %
 expresionMultiplicativa
-    : expresionMultiplicativa (MULT | DIV) expresionUnaria               #expMultiplicativaDef
+    : expresionMultiplicativa (MULT | DIV | MODULO) expresionUnaria      #expMultiplicativaDef
     | expresionUnaria                                                    #expMultiplicativaBase
     ;
 
