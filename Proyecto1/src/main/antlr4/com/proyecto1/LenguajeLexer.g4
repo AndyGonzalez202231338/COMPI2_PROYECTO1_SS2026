@@ -1,30 +1,19 @@
 lexer grammar LenguajeLexer;
 
-// Ajusta el paquete a la estructura de tu proyecto Maven/NetBeans
-@header {
-package com.proyecto1;
-}
-
-options {
-    // Clase base (escrita a mano) que implementa la pila de indentación
-    // y emite los tokens sintéticos INDENT / DEDENT.
-    superClass = LenguajeLexerBase;
-}
-
 tokens { INDENT, DEDENT }
 
 /** PALABRAS RESERVADAS **/
 ESTRUCTURA : 'estructura';
 ENTERO     : 'entero';
 FLOTANTE   : 'flotante';
-CARACTER   : 'caracter'; // letra
+CARACTER   : 'caracter';
 CADENA     : 'cadena';
 BOOL       : 'bool';
 VERDADERO  : 'verdadero';
 FALSO      : 'falso';
 
-DEFINIR    : 'definir'; //funcion si retorno o con retorno
-RETORNAR   : 'retornar'; // return
+DEFINIR    : 'definir';
+RETORNAR   : 'retornar';
 
 SI         : 'si';
 ENTONCES   : 'entonces';
@@ -47,7 +36,6 @@ LEER       : 'leer';
 // Secciones del programa
 SEC_ESTRUCTURAS : '%estructuras';
 SEC_FUNCIONES   : '%funciones';
-
 
 /** SÍMBOLOS **/
 DOSPUNTOS  : ':';
@@ -89,6 +77,7 @@ MAS        : '+';
 MENOS      : '-';
 MULT       : '*';
 DIV        : '/';
+MODULO     : '%';
 
 /** COMENTARIOS LINEA **/
 COMENTARIO_LINEA
@@ -110,7 +99,6 @@ CADENA_LIT   : '"' (ESCAPE | ~["\\\r\n])* '"';
 /** IDENTIFICADORES **/
 //  Letras, dígitos y guión bajo; no pueden iniciar con dígito.
 ID : LETRA (LETRA | DIGITO | '_')*;
-
 
 /** SALTO DE LÍNEA / INDENTACIÓN **/
 /** NEWLINE captura el salto de línea junto con los espacios/tabs
