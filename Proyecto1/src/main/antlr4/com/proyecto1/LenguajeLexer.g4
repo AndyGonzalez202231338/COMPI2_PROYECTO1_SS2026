@@ -65,6 +65,27 @@ PRINTLN   : 'println';
 PRINT     : 'print';
 READLN    : 'readln';
 
+/** PALABRAS RESERVADAS DE PIGLATIN **/
+IMPORT       : 'import';
+ESTO         : 'esto';
+SERIES       : 'series';
+NUMERUS      : 'numerus';
+DECIMALIS    : 'decimalis';
+TEXTUM       : 'textum';
+LITTERA      : 'littera';
+FALSUS       : 'falsus';
+VERUM        : 'verum';
+NOVUS        : 'novus';
+ALITER       : 'aliter';
+FINIS        : 'finis';
+DUM          : 'dum';
+FACERE       : 'facere';
+PER          : 'per';
+PERGE        : 'perge';
+INTERRUMPE   : 'interrumpe';
+MAIOR        : 'MAIOR';
+FIN_PRINCIPAL : 'FINIS';
+
 /** SÍMBOLOS **/
 DOSPUNTOS  : ':';
 PUNTOYCOMA : ';';
@@ -111,13 +132,20 @@ MODULO     : '%';
 MOD_ASIGNA : '%=';
 INTERROGACION : '?';
 
+/** EXTRA DEL PIGLATIN **/
+HASHHASH : '##';
+DOSMAYOR : '>>';
+DOSMENOR : '<<';
+
 /** COMENTARIOS LINEA **/
 COMENTARIO_LINEA
-    : '//' ~[\r\n]* -> channel(HIDDEN)
+    : '//' ~[\r\n]*
+      -> channel(HIDDEN)
     ;
 
 COMENTARIO_BLOQUE
-    : '/*' .*? '*/' -> channel(HIDDEN)
+    : '/*' .*? '*/'
+      -> channel(HIDDEN)
     ;
 
 
