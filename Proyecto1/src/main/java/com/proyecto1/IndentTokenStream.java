@@ -108,7 +108,7 @@ public class IndentTokenStream extends CommonTokenStream {
 
             if (tipo == Token.EOF) {
                 if (saltoPendiente && huboContenidoPrevio) {
-                    resultado.add(primerSaltoPendiente);
+                    resultado.add(crearToken(LenguajeLexer.NEWLINE, primerSaltoPendiente, "<NEWLINE>"));
                     cerrarOAbrirNiveles(pilaIndentacion, nivelEspaciosPendiente, actual, resultado);
                 }
                 while (pilaIndentacion.peek() != 0) {
@@ -133,7 +133,7 @@ public class IndentTokenStream extends CommonTokenStream {
             // Si el archivo aún no tuvo NINGÚN token real, cualquier salto
             // pendiente (comentario/línea en blanco iniciales) se descarta.
             if (saltoPendiente && huboContenidoPrevio) {
-                resultado.add(primerSaltoPendiente);
+                resultado.add(crearToken(LenguajeLexer.NEWLINE, primerSaltoPendiente, "<NEWLINE>"));
                 cerrarOAbrirNiveles(pilaIndentacion, nivelEspaciosPendiente, actual, resultado);
             }
             saltoPendiente = false;

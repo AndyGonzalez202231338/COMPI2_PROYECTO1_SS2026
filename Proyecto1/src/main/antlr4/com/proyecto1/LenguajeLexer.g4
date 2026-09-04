@@ -37,6 +37,34 @@ LEER       : 'leer';
 SEC_ESTRUCTURAS : '%estructuras';
 SEC_FUNCIONES   : '%funciones';
 
+/** PALABRAS RESERVADAS DE ZETARIANO **/
+PUBLIC    : 'public';
+CLASS     : 'class';
+VOID      : 'void';
+STRING    : 'String';
+INT       : 'int';
+DOUBLE    : 'double';
+CHAR      : 'char';
+BOOLEAN   : 'boolean';
+TRUE      : 'true';
+FALSE     : 'false';
+NULL      : 'null';
+NEW       : 'new';
+IF        : 'if';
+ELSE      : 'else';
+SWITCH    : 'switch';
+CASE      : 'case';
+DEFAULT   : 'default';
+BREAK     : 'break';
+CONTINUE  : 'continue';
+FOR       : 'for';
+WHILE     : 'while';
+DO        : 'do';
+RETURN    : 'return';
+PRINTLN   : 'println';
+PRINT     : 'print';
+READLN    : 'readln';
+
 /** SÍMBOLOS **/
 DOSPUNTOS  : ':';
 PUNTOYCOMA : ';';
@@ -79,6 +107,10 @@ MULT       : '*';
 DIV        : '/';
 MODULO     : '%';
 
+/** OPERADORES EXTRA DEL ZETARIANO **/
+MOD_ASIGNA : '%=';
+INTERROGACION : '?';
+
 /** COMENTARIOS LINEA **/
 COMENTARIO_LINEA
     : '//' ~[\r\n]* -> channel(HIDDEN)
@@ -105,7 +137,7 @@ ID : LETRA (LETRA | DIGITO | '_')*;
  *  que lo siguen; LenguajeLexerBase usa ese texto para calcular
  *  el nivel de indentación y emitir INDENT/DEDENT.
 **/
-NEWLINE : ('\r'? '\n' | '\r');
+NEWLINE : ('\r'? '\n' | '\r') -> channel(HIDDEN);
 
 /** Espacios y tabs -- tanto los que abren una línea (indentación)
  * como los que separan tokens dentro de una línea -- van al canal
