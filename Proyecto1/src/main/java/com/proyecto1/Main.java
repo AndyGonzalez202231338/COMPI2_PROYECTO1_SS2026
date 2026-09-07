@@ -7,23 +7,21 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        String archivo = "/home/andy/Descargas/deepz.z";
-        // String archivo = "/home/andy/Descargas/Demo.z";
+        String archivo = "/home/andy/Descargas/prueba.pig";
 
         CharStream input = CharStreams.fromFileName(archivo);
 
         LenguajeLexer lexer = new LenguajeLexer(input);
 
-        // Zetariano NO es sensible a indentación, así que NO se usa
-        // IndentTokenStream aquí (eso es solo para Y?). Un
-        // CommonTokenStream normal alcanza: NEWLINE y ESPACIO ya
-        // están en canal oculto dentro de LenguajeLexer.g4.
+        // Pig Latin tampoco es sensible a indentación (igual que
+        // Zetariano): NO se usa IndentTokenStream aquí, un
+        // CommonTokenStream normal alcanza.
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        GramaticaZ parser = new GramaticaZ(tokens);
+        GramaticaPigLatin parser = new GramaticaPigLatin(tokens);
 
-        // El punto de entrada de Zetariano es "compilationUnit",
-        // no "programa" (ese es el de Y?).
-        ParseTree arbol = parser.compilationUnit();
+        // El punto de entrada de Pig Latin es "programa"
+        // (igual de nombre que el de Y?, pero es OTRA clase/gramática).
+        ParseTree arbol = parser.programa();
 
         System.out.println(arbol.toStringTree(parser));
     }

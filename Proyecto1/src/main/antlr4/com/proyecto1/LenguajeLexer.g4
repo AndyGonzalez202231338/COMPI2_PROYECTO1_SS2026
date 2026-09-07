@@ -83,6 +83,7 @@ FACERE       : 'facere';
 PER          : 'per';
 PERGE        : 'perge';
 INTERRUMPE   : 'interrumpe';
+VARIABILES   : 'VARIABILES';
 MAIOR        : 'MAIOR';
 FIN_PRINCIPAL : 'FINIS';
 
@@ -148,6 +149,9 @@ COMENTARIO_BLOQUE
       -> channel(HIDDEN)
     ;
 
+COMENTARIO_BLOQUE_PIG
+    : '##' .*? '##' -> channel(HIDDEN)
+    ;
 
 /** LITERALES **/
 
