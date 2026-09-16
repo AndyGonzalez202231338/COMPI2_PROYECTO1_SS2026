@@ -42,6 +42,12 @@
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-maven-plugin</artifactId>
                 <version>${antlr.version}</version>
+                <configuration>
+                    <sourceDirectory>${basedir}/src/main/antlr4</sourceDirectory>
+                    <outputDirectory>${project.build.directory}/generated-sources/antlr4</outputDirectory>
+                    <visitor>true</visitor>
+                    <treatWarningsAsErrors>false</treatWarningsAsErrors>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
