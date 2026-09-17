@@ -1,21 +1,21 @@
 package com.proyecto1.semantico.ast.y;
 
-/**
- * {@code instruccionPara} (#cicloParaDef): "para(init; cond; act): cuerpo". Tanto
- * "init" como "act" pueden faltar (los "?" de la gramática), y cuando están presentes
- * "init" es una {@link DeclaracionVariable} o una {@link Asignacion}, y "act" es una
- * {@link Asignacion} o cualquier {@link ExpresionY} (p. ej. "i++") — por eso ambos se
- * guardan como {@code InstruccionY} genérico en vez de un tipo más estrecho.
- */
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 public final class Para extends NodoY implements InstruccionY {
 
-    private final InstruccionY inicializacion; // DeclaracionVariable | Asignacion | null
-    private final ExpresionY condicion;         // null si se omitió
-    private final InstruccionY actualizacion;   // Asignacion | ExpresionStmt | null
+    private final InstruccionY inicializacion;
+    private final ExpresionY condicion;
+    private final InstruccionY actualizacion;
     private final Bloque cuerpo;
 
     public Para(InstruccionY inicializacion, ExpresionY condicion, InstruccionY actualizacion,
-                 Bloque cuerpo, int linea, int columna) {
+                Bloque cuerpo, int linea, int columna) {
         super(linea, columna);
         this.inicializacion = inicializacion;
         this.condicion = condicion;
@@ -23,19 +23,31 @@ public final class Para extends NodoY implements InstruccionY {
         this.cuerpo = cuerpo;
     }
 
-    public InstruccionY getInicializacion() {
-        return inicializacion;
-    }
+    public InstruccionY getInicializacion() { return inicializacion; }
+    public ExpresionY getCondicion() { return condicion; }
+    public InstruccionY getActualizacion() { return actualizacion; }
+    public Bloque getCuerpo() { return cuerpo; }
 
-    public ExpresionY getCondicion() {
-        return condicion;
-    }
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        // El "para" introduce su propio ámbito (la variable de init vive solo ahí)
+        AmbitoBloque ambCiclo = new AmbitoBloque(ambito, true); // esCiclo = true
 
-    public InstruccionY getActualizacion() {
-        return actualizacion;
-    }
+        if (inicializacion != null) inicializacion.verificar(ambCiclo, errores);
 
-    public Bloque getCuerpo() {
-        return cuerpo;
+        if (condicion != null) {
+            Tipo tc = condicion.verificar(ambCiclo, errores);
+            if (!Tipos.esBooleano(tc))
+                errores.reportar(condicion.getLinea(), condicion.getColumna(),
+                        "La condición del 'para' debe ser bool, se recibió " + tc.nombre());
+        }
+
+        if (actualizacion != null) actualizacion.verificar(ambCiclo, errores);
+
+        // El cuerpo tiene su propio sub-ámbito (hijo del de ciclo)
+        AmbitoBloque ambCuerpo = new AmbitoBloque(ambCiclo, false);
+        cuerpo.verificar(ambCuerpo, errores);
+
+        return TipoPrimitivo.VOID;
     }
 }
