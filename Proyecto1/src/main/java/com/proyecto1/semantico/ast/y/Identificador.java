@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
+import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+
 /** Un identificador usado como expresión (#primariaIdentificador): variable, o base de "obj.campo" / "arr[i]" / "f(...)". */
 public final class Identificador extends NodoY implements ExpresionY {
 
@@ -12,5 +19,18 @@ public final class Identificador extends NodoY implements ExpresionY {
 
     public String getNombre() {
         return nombre;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Simbolo s = ambito.resolver(nombre);
+        if (s == null) {
+            errores.reportar(linea, columna, "Variable no declarada: '" + nombre + "'");
+            return TipoPrimitivo.DESCONOCIDO;
+        }
+        if (!s.isInicializado() && s.getCategoria() == CategoriaSimbolo.VARIABLE) {
+            errores.reportar(linea, columna, "Variable '" + nombre + "' usada sin inicializar");
+        }
+        return s.getTipo();
     }
 }

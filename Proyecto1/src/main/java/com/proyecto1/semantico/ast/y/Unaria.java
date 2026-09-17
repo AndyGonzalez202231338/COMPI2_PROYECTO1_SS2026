@@ -1,5 +1,11 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 /**
  * Operación unaria, prefija o postfija: !, - (negación aritmética), ++, --. Cubre
  * #expUnariaPrefijaDef (prefijo=true) y la parte opcional de #expPostfijaDef
@@ -28,5 +34,25 @@ public final class Unaria extends NodoY implements ExpresionY {
 
     public boolean isPrefijo() {
         return prefijo;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Tipo t = operando.verificar(ambito, errores);
+        switch (operador) {
+            case "!":
+                if (!Tipos.esBooleano(t))
+                    errores.reportar(linea, columna, "'!' requiere bool, se recibió " + t.nombre());
+                return TipoPrimitivo.BOOL;
+            case "-":
+                if (!t.esNumerico() && !t.esDesconocido())
+                    errores.reportar(linea, columna, "'-' requiere numérico, se recibió " + t.nombre());
+                return t;
+            case "++": case "--":
+                if (!Tipos.admiteIncrementoDecremento(t))
+                    errores.reportar(linea, columna, "'" + operador + "' requiere numérico, se recibió " + t.nombre());
+                return t;
+        }
+        return TipoPrimitivo.DESCONOCIDO;
     }
 }

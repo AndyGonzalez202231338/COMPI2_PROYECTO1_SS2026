@@ -1,5 +1,13 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
+import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoEstructura;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+
 /**
  * Representa la regla {@code tipo} de la gramática ({@code tipoEntero, tipoFlotante,
  * tipoCaracter, tipoCadena, tipoBool, tipoEstructura}). Es una referencia SINTÁCTICA
@@ -29,6 +37,26 @@ public final class NodoTipoRef extends NodoY {
     }
     public boolean isEsPrimitivo() {
         return esPrimitivo;
+    }
+
+    public Tipo resolver(Ambito ambito, ManejadorErrores errores) {
+        if (esPrimitivo) {
+            return switch (nombre) {
+                case "entero"   -> TipoPrimitivo.ENTERO;
+                case "flotante" -> TipoPrimitivo.FLOTANTE;
+                case "caracter" -> TipoPrimitivo.CARACTER;
+                case "cadena"   -> TipoPrimitivo.CADENA;
+                case "bool"     -> TipoPrimitivo.BOOL;
+                default -> TipoPrimitivo.DESCONOCIDO;
+            };
+        }
+        // Es un nombre de estructura: buscar en el ámbito global
+        Simbolo s = ambito.ambitoGlobal().resolverLocal(nombre);
+        if (s == null || s.getCategoria() != CategoriaSimbolo.ESTRUCTURA) {
+            errores.reportar(linea, columna, "Tipo desconocido: '" + nombre + "'");
+            return TipoPrimitivo.DESCONOCIDO;
+        }
+        return new TipoEstructura(s);
     }
 
     @Override

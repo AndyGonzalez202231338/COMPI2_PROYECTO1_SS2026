@@ -1,5 +1,11 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+
 import java.util.List;
 
 /**
@@ -23,5 +29,12 @@ public final class Si extends NodoY implements InstruccionY {
 
     public Bloque getContrario() {
         return contrario;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        if (!(ambito instanceof AmbitoBloque ab) || !ab.dentroDeAlgunCiclo())
+            errores.reportar(linea, columna, "'continuar' solo puede usarse dentro de un ciclo");
+        return TipoPrimitivo.VOID;
     }
 }

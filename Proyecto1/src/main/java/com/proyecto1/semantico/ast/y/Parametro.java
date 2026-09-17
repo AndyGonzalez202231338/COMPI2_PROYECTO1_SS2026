@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.y;
-
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
+import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoArreglo;
+import com.proyecto1.semantico.tipos.TipoEstructura;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
 /**
  * Un {@code parametro}. Las tres alternativas de la gramática (#parametroPrimitivo,
  * #parametroArreglo, #parametroEstructura) se representan con esta única clase + su
@@ -39,4 +46,20 @@ public final class Parametro extends NodoY {
     public NodoTipoRef getTipo() { return tipo; }
     public String getNombreTipoEstructura() { return nombreTipoEstructura; }
     public String getNombre() { return nombre; }
+
+    public Tipo resolverTipo(Ambito ambito, ManejadorErrores errores) {
+        return switch (categoria) {
+            case PRIMITIVO -> tipo.resolver(ambito, errores);
+            case ARREGLO   -> new TipoArreglo(tipo.resolver(ambito, errores));
+            case ESTRUCTURA -> {
+                Simbolo s = ambito.ambitoGlobal().resolverLocal(nombreTipoEstructura);
+                if (s == null || s.getCategoria() != CategoriaSimbolo.ESTRUCTURA) {
+                    errores.reportar(linea, columna,
+                            "Estructura desconocida: '" + nombreTipoEstructura + "'");
+                    yield TipoPrimitivo.DESCONOCIDO;
+                }
+                yield new TipoEstructura(s);
+            }
+        };
+    }
 }
