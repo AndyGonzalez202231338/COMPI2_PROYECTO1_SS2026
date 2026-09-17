@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.AmbitoClase;
+import com.proyecto1.semantico.tabla.AmbitoFuncion;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
+import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tipos.Tipo;
+
 import java.util.List;
 
 /**
@@ -43,5 +50,24 @@ public final class Metodo extends NodoZ {
 
     public Bloque getCuerpo() {
         return cuerpo;
+    }
+
+    public void verificar(AmbitoClase ambClase, ManejadorErrores errores) {
+        Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(nombre);
+        AmbitoFuncion amb = new AmbitoFuncion(ambClase, simbolo);
+
+        for (Parametro p : parametros) {
+            Tipo t = p.resolverTipo(amb, errores);
+            Simbolo sp = new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO, t, p.getLinea(), p.getColumna());
+            if (!amb.declarar(sp))
+                errores.reportar(p.getLinea(), p.getColumna(), "Parámetro duplicado: '" + p.getNombre() + "'");
+            simbolo.agregarParametro(sp);
+        }
+
+        cuerpo.verificar(amb, errores);
+
+        if (!esVoid() && !amb.isTuvoRetorno())
+            errores.reportar(linea, columna,
+                    "El método '" + nombre + "' debe retornar un valor de tipo " + amb.getTipoRetorno().nombre());
     }
 }

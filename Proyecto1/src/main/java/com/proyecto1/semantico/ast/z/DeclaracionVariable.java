@@ -1,5 +1,13 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
+import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 /**
  * La regla compartida {@code declaracion} (#declaracionDef): "tipo ID (= expresion)?".
  * Se usa tanto como instrucción suelta (#declarationStatement -> #stmtDeclaracion)
@@ -27,5 +35,24 @@ public final class DeclaracionVariable extends NodoZ implements InstruccionZ {
 
     public ExpresionZ getInicializador() {
         return inicializador;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Tipo t = tipo.resolver(ambito, errores);
+        Simbolo s = new Simbolo(nombre, CategoriaSimbolo.VARIABLE, t, linea, columna);
+
+        if (!ambito.declarar(s)) {
+            errores.reportar(linea, columna, "Variable ya declarada en este ámbito: '" + nombre + "'");
+            return TipoPrimitivo.DESCONOCIDO;
+        }
+        if (inicializador != null) {
+            Tipo tInit = inicializador.verificar(ambito, errores);
+            if (!Tipos.esAsignable(t, tInit))
+                errores.reportar(linea, columna,
+                        "Inicialización incompatible: " + tInit.nombre() + " → " + t.nombre());
+            s.marcarInicializado();
+        }
+        return TipoPrimitivo.VOID;
     }
 }

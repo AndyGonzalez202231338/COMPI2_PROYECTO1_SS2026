@@ -1,5 +1,9 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+
 /**
  * Una expresión usada como instrucción suelta (#expressionStatementDef -> #stmtExpresion),
  * p. ej. "x = 5;", "obj.metodo();" o "contador++;" — cualquier {@link ExpresionZ}
@@ -16,5 +20,10 @@ public final class ExpresionStmt extends NodoZ implements InstruccionZ {
 
     public ExpresionZ getExpresion() {
         return expresion;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        return expresion.verificar(ambito, errores);
     }
 }
