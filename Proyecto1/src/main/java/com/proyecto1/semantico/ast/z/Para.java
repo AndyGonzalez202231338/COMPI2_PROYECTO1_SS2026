@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 import java.util.List;
 
 /**
@@ -48,5 +55,28 @@ public final class Para extends NodoZ implements InstruccionZ {
 
     public InstruccionZ getCuerpo() {
         return cuerpo;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        AmbitoBloque ambCiclo = new AmbitoBloque(ambito, true);
+
+        if (inicializacionDeclaracion != null)
+            inicializacionDeclaracion.verificar(ambCiclo, errores);
+        if (inicializacionExpresiones != null)
+            for (ExpresionZ e : inicializacionExpresiones) e.verificar(ambCiclo, errores);
+
+        if (condicion != null) {
+            Tipo tc = condicion.verificar(ambCiclo, errores);
+            if (!Tipos.esBooleano(tc))
+                errores.reportar(condicion.getLinea(), condicion.getColumna(),
+                        "Condición del 'for' debe ser bool");
+        }
+        if (actualizacion != null)
+            for (ExpresionZ e : actualizacion) e.verificar(ambCiclo, errores);
+
+        AmbitoBloque ambCuerpo = new AmbitoBloque(ambCiclo, false);
+        cuerpo.verificar(ambCuerpo, errores);
+        return TipoPrimitivo.VOID;
     }
 }

@@ -1,4 +1,8 @@
 package com.proyecto1.semantico.ast.z;
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
  * Un literal (#primarioEntero, #primarioFlotante, #primarioCaracter, #primarioCadena,
@@ -23,5 +27,17 @@ public final class Literal extends NodoZ implements ExpresionZ {
 
     public CategoriaLiteral getCategoria() {
         return categoria;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        return switch (categoria) {
+            case ENTERO    -> TipoPrimitivo.ENTERO;
+            case FLOTANTE  -> TipoPrimitivo.FLOTANTE;
+            case CARACTER  -> TipoPrimitivo.CARACTER;
+            case CADENA    -> TipoPrimitivo.CADENA;
+            case BOOLEANO  -> TipoPrimitivo.BOOL;
+            case NULO      -> TipoPrimitivo.NULO;
+        };
     }
 }

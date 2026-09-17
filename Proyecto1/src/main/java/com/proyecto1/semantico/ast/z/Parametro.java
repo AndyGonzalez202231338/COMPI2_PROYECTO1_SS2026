@@ -1,4 +1,7 @@
 package com.proyecto1.semantico.ast.z;
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
 
 /**
  * Un {@code formalParameter} (#formalParameterDef): "tipo ID". Más simple que el
@@ -25,4 +28,9 @@ public final class Parametro extends NodoZ {
     public String getNombre() {
         return nombre;
     }
+
+    public Tipo resolverTipo(Ambito ambito, ManejadorErrores errores) {
+        return tipo.resolver(ambito, errores);
+    }
+
 }

@@ -1,5 +1,10 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoArreglo;
+
 import java.util.List;
 
 /**
@@ -32,5 +37,13 @@ public final class NuevoArregloConInicializador extends NodoZ implements Expresi
 
     public List<ExpresionZ> getElementos() {
         return elementos;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Tipo base = tipoElemento.resolver(ambito, errores);
+        for (ExpresionZ e : elementos) e.verificar(ambito, errores);
+        for (int i = 0; i < dimensiones; i++) base = new TipoArreglo(base);
+        return base;
     }
 }

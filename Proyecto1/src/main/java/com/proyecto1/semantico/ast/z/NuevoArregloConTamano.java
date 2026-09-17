@@ -1,5 +1,11 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoArreglo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 import java.util.List;
 
 /**
@@ -31,5 +37,19 @@ public final class NuevoArregloConTamano extends NodoZ implements ExpresionZ {
 
     public int getDimensiones() {
         return tamanos.size();
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Tipo base = tipoElemento.resolver(ambito, errores);
+        for (ExpresionZ tam : tamanos) {
+            Tipo tTam = tam.verificar(ambito, errores);
+            if (!Tipos.esIndiceValido(tTam))
+                errores.reportar(tam.getLinea(), tam.getColumna(),
+                        "Tamaño de arreglo debe ser entero, se recibió " + tTam.nombre());
+        }
+        // Envolver tantas veces como dimensiones
+        for (int i = 0; i < tamanos.size(); i++) base = new TipoArreglo(base);
+        return base;
     }
 }

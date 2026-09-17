@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 /**
  * {@code ifStatement} (#ifStatementDef): "if (cond) entonces (else contrario)?".
  * A diferencia del {@code Si} de Y? (que junta todas las ramas "sino" en una lista
@@ -32,5 +39,22 @@ public final class Si extends NodoZ implements InstruccionZ {
 
     public InstruccionZ getContrario() {
         return contrario;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Tipo tc = condicion.verificar(ambito, errores);
+        if (!Tipos.esBooleano(tc))
+            errores.reportar(condicion.getLinea(), condicion.getColumna(),
+                    "Condición del 'if' debe ser bool, se recibió " + tc.nombre());
+
+        AmbitoBloque ambSi = new AmbitoBloque(ambito, false);
+        entonces.verificar(ambSi, errores);
+
+        if (contrario != null) {
+            AmbitoBloque ambNo = new AmbitoBloque(ambito, false);
+            contrario.verificar(ambNo, errores);
+        }
+        return TipoPrimitivo.VOID;
     }
 }
