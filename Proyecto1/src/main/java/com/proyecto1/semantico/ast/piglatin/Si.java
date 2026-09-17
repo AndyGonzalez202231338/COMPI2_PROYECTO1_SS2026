@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 import java.util.List;
 
 /**
@@ -25,5 +32,22 @@ public final class Si extends NodoPigLatin implements InstruccionPigLatin {
 
     public Bloque getContrario() {
         return contrario;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        for (RamaSi rama : ramas) {
+            Tipo tc = rama.getCondicion().verificar(ambito, errores);
+            if (!Tipos.esBooleano(tc))
+                errores.reportar(rama.getCondicion().getLinea(), rama.getCondicion().getColumna(),
+                        "Condición del 'si' debe ser bool");
+            AmbitoBloque amb = new AmbitoBloque(ambito, false);
+            rama.getCuerpo().verificar(amb, errores);
+        }
+        if (contrario != null) {
+            AmbitoBloque amb = new AmbitoBloque(ambito, false);
+            contrario.verificar(amb, errores);
+        }
+        return TipoPrimitivo.VOID;
     }
 }

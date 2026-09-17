@@ -1,5 +1,11 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 /**
  * {@code expresionAsignacion} (#expresionAsignacionDef), cuando trae operador:
  * {@code expresionCondicional op= expresionAsignacion}. A diferencia de la asignación
@@ -31,5 +37,26 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
 
     public ExpresionPigLatin getValor() {
         return valor;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Tipo tIzq = objetivo.verificar(ambito, errores);
+        Tipo tDer = valor.verificar(ambito, errores);
+
+        if (!operador.equals("=")) {
+            Tipo r = Tipos.resultadoAritmetico(tIzq, tDer, operador.equals("+="));
+            if (r == null)
+                errores.reportar(linea, columna, "Operador '" + operador + "' no válido");
+        } else if (!Tipos.esAsignable(tIzq, tDer)) {
+            errores.reportar(linea, columna,
+                    "No se puede asignar " + tDer.nombre() + " a " + tIzq.nombre());
+        }
+
+        if (objetivo instanceof Identificador id) {
+            Simbolo s = ambito.resolver(id.getNombre());
+            if (s != null) s.marcarInicializado();
+        }
+        return tIzq;
     }
 }

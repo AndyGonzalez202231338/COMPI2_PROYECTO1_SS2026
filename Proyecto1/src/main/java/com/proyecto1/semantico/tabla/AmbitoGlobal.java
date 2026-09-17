@@ -11,6 +11,11 @@ public class AmbitoGlobal extends Ambito {
         super(null);
     }
 
+    /** Para PigLatin: el global del .pig tiene como padre el global combinado de los imports. */
+    public AmbitoGlobal(Ambito padre) {
+        super(padre);
+    }
+
     @Override
     public String descripcion() {
         return "ámbito global";
