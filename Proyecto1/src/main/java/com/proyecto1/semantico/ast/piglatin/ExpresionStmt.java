@@ -1,5 +1,9 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+
 /**
  * {@code expresion ;} (#expresionSentenciaDef): una expresión usada como instrucción
  * suelta. Cubre asignaciones ({@code x = 5;}), llamadas ({@code metodo();}) y llamadas
@@ -17,5 +21,10 @@ public final class ExpresionStmt extends NodoPigLatin implements InstruccionPigL
 
     public ExpresionPigLatin getExpresion() {
         return expresion;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        return expresion.verificar(ambito, errores);
     }
 }

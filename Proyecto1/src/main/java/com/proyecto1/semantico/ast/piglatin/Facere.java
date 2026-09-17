@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 /**
  * {@code sentenciaFacere} (#sentenciaFacereDef): {@code facere bloque dum (cond);}.
  * Equivale al {@code HacerMientras} de Y: el cuerpo se ejecuta al menos una vez y la
@@ -24,5 +31,16 @@ public final class Facere extends NodoPigLatin implements InstruccionPigLatin {
 
     public ExpresionPigLatin getCondicion() {
         return condicion;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        AmbitoBloque amb = new AmbitoBloque(ambito, true);
+        cuerpo.verificar(amb, errores);
+        Tipo tc = condicion.verificar(ambito, errores);
+        if (!Tipos.esBooleano(tc))
+            errores.reportar(condicion.getLinea(), condicion.getColumna(),
+                    "Condición del 'facere' debe ser bool");
+        return TipoPrimitivo.VOID;
     }
 }

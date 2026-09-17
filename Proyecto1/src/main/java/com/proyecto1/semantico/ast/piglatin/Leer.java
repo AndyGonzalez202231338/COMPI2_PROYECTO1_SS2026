@@ -1,5 +1,11 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+
 /**
  * {@code ID? << } (#sentenciaLeerDef): lectura de entrada estándar. A diferencia del
  * {@code Leer} de Y (que es una EXPRESIÓN, {@code leer()}), en PigLatin es una
@@ -19,5 +25,17 @@ public final class Leer extends NodoPigLatin implements InstruccionPigLatin {
 
     public String getVariable() {
         return variable;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        if (variable != null) {
+            Simbolo s = ambito.resolver(variable);
+            if (s == null)
+                errores.reportar(linea, columna, "Variable no declarada: '" + variable + "'");
+            else
+                s.marcarInicializado();
+        }
+        return TipoPrimitivo.VOID;
     }
 }

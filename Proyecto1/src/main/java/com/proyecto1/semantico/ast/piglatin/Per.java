@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 /**
  * {@code sentenciaPer} (#sentenciaPerDef): {@code per (init; cond?; act?) bloque}.
  * Equivale al {@code Para} de Y, con dos diferencias fieles a la gramática:
@@ -46,5 +53,22 @@ public final class Per extends NodoPigLatin implements InstruccionPigLatin {
 
     public Bloque getCuerpo() {
         return cuerpo;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        AmbitoBloque ambCiclo = new AmbitoBloque(ambito, true);
+        if (inicializacion != null) inicializacion.verificar(ambCiclo, errores);
+        if (condicion != null) {
+            Tipo tc = condicion.verificar(ambCiclo, errores);
+            if (!Tipos.esBooleano(tc))
+                errores.reportar(condicion.getLinea(), condicion.getColumna(),
+                        "Condición del 'per' debe ser bool");
+        }
+        if (actualizacion != null) actualizacion.verificar(ambCiclo, errores);
+
+        AmbitoBloque ambCuerpo = new AmbitoBloque(ambCiclo, false);
+        cuerpo.verificar(ambCuerpo, errores);
+        return TipoPrimitivo.VOID;
     }
 }

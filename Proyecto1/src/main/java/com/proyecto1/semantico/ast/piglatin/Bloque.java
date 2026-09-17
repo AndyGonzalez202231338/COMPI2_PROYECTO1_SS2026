@@ -1,5 +1,11 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.AmbitoBloque;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+
 import java.util.List;
 
 /**
@@ -20,5 +26,12 @@ public final class Bloque extends NodoPigLatin implements InstruccionPigLatin {
 
     public List<InstruccionPigLatin> getInstrucciones() {
         return instrucciones;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        AmbitoBloque amb = new AmbitoBloque(ambito, false);
+        for (InstruccionPigLatin i : instrucciones) i.verificar(amb, errores);
+        return TipoPrimitivo.VOID;
     }
 }

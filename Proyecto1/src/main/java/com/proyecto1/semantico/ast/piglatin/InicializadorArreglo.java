@@ -1,5 +1,12 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoArreglo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
+
 import java.util.List;
 
 /**
@@ -24,5 +31,19 @@ public final class InicializadorArreglo extends NodoPigLatin implements Expresio
 
     public List<ExpresionPigLatin> getElementos() {
         return elementos;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        Tipo tipoElem = null;
+        for (ExpresionPigLatin e : elementos) {
+            Tipo t = e.verificar(ambito, errores);
+            if (tipoElem == null) tipoElem = t;
+            else if (!Tipos.esAsignable(tipoElem, t) && !Tipos.esAsignable(t, tipoElem))
+                errores.reportar(e.getLinea(), e.getColumna(),
+                        "Elemento incompatible: " + t.nombre() + " vs " + tipoElem.nombre());
+        }
+        if (tipoElem == null) tipoElem = TipoPrimitivo.DESCONOCIDO;
+        return new TipoArreglo(tipoElem);
     }
 }

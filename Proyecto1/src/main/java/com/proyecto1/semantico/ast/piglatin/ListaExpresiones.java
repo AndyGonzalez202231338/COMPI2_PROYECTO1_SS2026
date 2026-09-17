@@ -1,5 +1,10 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
+
 import java.util.List;
 
 /**
@@ -21,5 +26,11 @@ public final class ListaExpresiones extends NodoPigLatin implements InstruccionP
 
     public List<ExpresionPigLatin> getExpresiones() {
         return expresiones;
+    }
+
+    @Override
+    public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
+        for (ExpresionPigLatin e : expresiones) e.verificar(ambito, errores);
+        return TipoPrimitivo.VOID;
     }
 }
