@@ -3,23 +3,14 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.HBox?>
 
-<!--
-    Contenido de UNA pestana del editor: gutter de numeracion de lineas
-    (areaNumeros) a la izquierda + area de codigo (areaCodigo) a la
-    derecha. Se instancia una vez por cada archivo abierto mediante
-    EditorController.crearPestana(...).
-
-    Controlador: com.proyecto1.ui.controller.EditorController
--->
 <HBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.proyecto1.ui.controller.EditorController"
       styleClass="contenedor-editor">
 
     <TextArea fx:id="areaNumeros" styleClass="editor-numeros"
               editable="false" focusTraversable="false" mouseTransparent="true"
-              wrapText="false" prefWidth="46.0" />
+              wrapText="false" prefWidth="52.0" />
 
     <TextArea fx:id="areaCodigo" styleClass="editor-codigo"
               wrapText="false" HBox.hgrow="ALWAYS" />
-
 </HBox>
