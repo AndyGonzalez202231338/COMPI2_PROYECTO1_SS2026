@@ -172,3 +172,46 @@
 .split-pane-divider {
     -fx-background-color: -color-borde;
 }
+
+/* ===================== EDITOR DE CODIGO (PESTANAS) ===================== */
+
+.contenedor-editor {
+    -fx-background-color: -color-editor-fondo;
+}
+
+.editor-codigo,
+.editor-numeros {
+    -fx-font-family: "Consolas", "JetBrains Mono", "Courier New", monospace;
+    -fx-font-size: 13px;
+}
+
+.editor-codigo {
+    -fx-control-inner-background: -color-editor-fondo;
+    -fx-text-fill: -color-editor-texto;
+    -fx-highlight-fill: -color-acento-suave;
+    -fx-highlight-text-fill: -color-editor-texto;
+}
+
+.editor-codigo .content {
+    -fx-background-color: -color-editor-fondo;
+}
+
+.editor-numeros {
+    -fx-control-inner-background: -color-gutter-fondo;
+    -fx-text-fill: -color-gutter-texto;
+    -fx-background-insets: 0;
+    -fx-text-alignment: right;
+}
+
+.editor-numeros .content {
+    -fx-background-color: -color-gutter-fondo;
+}
+
+/* El gutter de numeros no debe tener su propia barra de desplazamiento
+   visible: se sincroniza programaticamente con la del area de codigo. */
+.editor-numeros .scroll-bar:vertical,
+.editor-numeros .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
