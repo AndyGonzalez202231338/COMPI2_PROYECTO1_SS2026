@@ -167,7 +167,7 @@ public class ASTBuilderZ extends GramaticaZBaseVisitor<NodoAST> {
         String base = nombreTipoBase(ctx.tipoBase());
         boolean primitivo = esTipoBasePrimitivo(ctx.tipoBase());
         int dimensiones = ctx.CORIZQ().size();
-        return new NodoTipoRef(base, primitivo, dimensiones);
+        return new NodoTipoRef(base, primitivo, dimensiones, linea(ctx), columna(ctx));
     }
 
     /** tipoBase tiene 6 alternativas etiquetadas; devuelve el nombre textual del tipo. */
@@ -660,7 +660,8 @@ public class ASTBuilderZ extends GramaticaZBaseVisitor<NodoAST> {
         NodoTipoRef tipoElemento = new NodoTipoRef(
                 nombreTipoBase(ctx.tipoBase()),
                 esTipoBasePrimitivo(ctx.tipoBase()),
-                0);
+                0,
+                linea(ctx), columna(ctx));
         List<ExpresionZ> tamanos = new ArrayList<>();
         for (GramaticaZ.ExpressionContext e : ctx.expression()) tamanos.add(construirExpresion(e));
         return new NuevoArregloConTamano(tipoElemento, tamanos, linea(ctx), columna(ctx));
@@ -677,7 +678,8 @@ public class ASTBuilderZ extends GramaticaZBaseVisitor<NodoAST> {
         NodoTipoRef tipoElemento = new NodoTipoRef(
                 nombreTipoBase(ctx.tipoBase()),
                 esTipoBasePrimitivo(ctx.tipoBase()),
-                0);
+                0,
+                linea(ctx), columna(ctx));
         int dimensiones = ctx.CORIZQ().size();
         List<ExpresionZ> elementos = construirInitializerList(ctx.initializerList());
         return new NuevoArregloConInicializador(tipoElemento, dimensiones, elementos,

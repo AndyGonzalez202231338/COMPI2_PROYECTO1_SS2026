@@ -1,97 +1,173 @@
 /*
- * Tema OSCURO del IDE del compilador.
- *
- * Mantiene exactamente los mismos selectores que claro.css; solo cambian
- * los valores de las variables definidas en .root. Esto permite que
- * MainController alterne el tema reemplazando la hoja de estilos de la
- * escena sin reiniciar la aplicacion.
+ * Tema OSCURO "azul profundo" del IDE.
+ * Base slate/azul-noche con acento cyan brillante.
  */
 
 .root {
-    -color-fondo: #1e1f22;
-    -color-fondo-panel: #26282b;
-    -color-borde: #38393d;
-    -color-texto: #e6e6e6;
-    -color-texto-secundario: #9aa0a6;
-    -color-acento: #4fd1a5;
-    -color-acento-suave: #2f3b36;
-    -color-error: #ff6b68;
-    -color-advertencia: #f2b756;
-    -color-info: #e6e6e6;
-    -color-editor-fondo: #1c1d1f;
-    -color-editor-texto: #e6e6e6;
-    -color-gutter-fondo: #202124;
-    -color-gutter-texto: #6c7075;
-    -color-consola-fondo: #101214;
-    -color-consola-texto: #cfd3d6;
+    /* Fondos */
+    -color-fondo:              #0b1220;
+    -color-fondo-panel:        #131c2e;
+    -color-fondo-panel-alt:    #1a2436;
+    -color-fondo-elevado:      #1a2436;
+    -color-fondo-cabecera:     linear-gradient(to bottom, #131c2e 0%, #0f1729 100%);
 
+    /* Bordes */
+    -color-borde:              #24324a;
+    -color-borde-suave:        #1c2942;
+    -color-borde-acento:       #1e5f8a;
+
+    /* Texto */
+    -color-texto:              #e3edf7;
+    -color-texto-secundario:   #8ba1bd;
+    -color-texto-inverso:      #0b1220;
+
+    /* Acento cyan */
+    -color-acento:             #38bdf8;
+    -color-acento-oscuro:      #7dd3fc;
+    -color-acento-claro:       #0ea5e9;
+    -color-acento-suave:       #17304a;
+    -color-acento-muy-suave:   #14263c;
+
+    /* Estados */
+    -color-error:              #fb7185;
+    -color-advertencia:        #fbbf24;
+    -color-exito:              #34d399;
+
+    /* Editor */
+    -color-editor-fondo:       #0f172a;
+    -color-editor-texto:       #e3edf7;
+    -color-gutter-fondo:       #0c1526;
+    -color-gutter-texto:       #4b6688;
+    -color-consola-fondo:      #070c15;
+    -color-consola-texto:      #a5d8ff;
+    -color-consola-acento:     #38bdf8;
+
+    /* Base JavaFX */
     -fx-base: -color-fondo;
     -fx-background: -color-fondo;
     -fx-control-inner-background: -color-fondo-panel;
     -fx-text-fill: -color-texto;
-    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-family: "Segoe UI", "Inter", "Arial", sans-serif;
+    -fx-font-size: 13px;
 }
 
-.label {
-    -fx-text-fill: -color-texto;
-}
+/* ===================== TIPOGRAFIA ===================== */
 
-.texto-secundario {
-    -fx-text-fill: -color-texto-secundario;
-    -fx-font-style: italic;
-}
-
-.titulo-panel {
+.label                 { -fx-text-fill: -color-texto; }
+.texto-secundario      { -fx-text-fill: -color-texto-secundario; -fx-font-style: italic; }
+.titulo-panel          {
     -fx-font-weight: bold;
-    -fx-text-fill: -color-texto;
+    -fx-text-fill: -color-acento;
+    -fx-font-size: 12px;
 }
 
-/* ===================== MENU Y TOOLBAR ===================== */
+/* ===================== MENU BAR ===================== */
 
 .menu-bar {
-    -fx-background-color: -color-fondo-panel;
+    -fx-background-color: -color-fondo-cabecera;
     -fx-border-color: transparent transparent -color-borde transparent;
     -fx-border-width: 0 0 1 0;
+    -fx-padding: 3 6 3 6;
+}
+.menu-bar .label { -fx-text-fill: -color-texto; }
+
+.menu-bar > .container > .menu-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6px;
+    -fx-padding: 5 10 5 10;
+}
+.menu-bar > .container > .menu-button:hover,
+.menu-bar > .container > .menu-button:showing {
+    -fx-background-color: -color-acento-suave;
+}
+.menu-bar > .container > .menu-button:hover .label,
+.menu-bar > .container > .menu-button:showing .label {
+    -fx-text-fill: -color-acento;
 }
 
-.menu-bar .label {
-    -fx-text-fill: -color-texto;
+/* ===================== MENU CONTEXTUAL ===================== */
+
+.context-menu {
+    -fx-background-color: -color-fondo-elevado;
+    -fx-border-color: -color-borde;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.25), 14, 0, 0, 4);
+    -fx-padding: 5 0 5 0;
 }
+.menu-item            { -fx-padding: 6 16 6 16; }
+.menu-item .label     { -fx-text-fill: -color-texto; }
+.menu-item:focused    { -fx-background-color: -color-acento-suave; }
+.menu-item:focused .label { -fx-text-fill: -color-acento; }
+
+.separator:horizontal .line {
+    -fx-border-color: -color-borde-suave transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ===================== TOOLBAR ===================== */
 
 .tool-bar {
-    -fx-background-color: -color-fondo-panel;
+    -fx-background-color: -color-fondo-cabecera;
     -fx-border-color: transparent transparent -color-borde transparent;
     -fx-border-width: 0 0 1 0;
-    -fx-spacing: 4px;
+    -fx-padding: 8 10 8 10;
+    -fx-spacing: 6px;
 }
+.tool-bar .button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-texto;
+    -fx-background-radius: 8px;
+    -fx-border-color: transparent;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1;
+    -fx-padding: 6 12 6 12;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+.tool-bar .button:hover {
+    -fx-background-color: -color-acento-muy-suave;
+    -fx-border-color: -color-borde-acento;
+    -fx-text-fill: -color-acento;
+}
+.tool-bar .button:pressed {
+    -fx-background-color: -color-acento-suave;
+    -fx-border-color: -color-acento;
+}
+.tool-bar .separator:vertical .line {
+    -fx-border-color: transparent -color-borde transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+/* ===================== BOTON GENERICO ===================== */
 
 .button {
     -fx-background-color: transparent;
     -fx-text-fill: -color-texto;
-    -fx-background-radius: 4px;
-    -fx-padding: 5px 10px;
+    -fx-background-radius: 8px;
+    -fx-padding: 6 14 6 14;
+    -fx-cursor: hand;
 }
-
-.button:hover {
+.button:hover   {
     -fx-background-color: -color-acento-suave;
+    -fx-text-fill: -color-acento;
 }
-
-.button:pressed {
-    -fx-background-color: derive(-color-acento-suave, 10%);
-}
+.button:pressed { -fx-background-color: derive(-color-acento-suave, 10%); }
 
 /* ===================== ARBOL DE TRABAJO ===================== */
 
 .titled-pane > .title {
-    -fx-background-color: -color-fondo-panel;
+    -fx-background-color: -color-fondo-cabecera;
     -fx-border-color: transparent transparent -color-borde transparent;
     -fx-border-width: 0 0 1 0;
+    -fx-padding: 8 10 8 10;
 }
-
 .titled-pane > .title > .text {
-    -fx-fill: -color-texto;
+    -fx-fill: -color-acento;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
 }
-
 .titled-pane > .content {
     -fx-background-color: -color-fondo-panel;
     -fx-border-color: transparent;
@@ -100,118 +176,174 @@
 .tree-view {
     -fx-background-color: -color-fondo-panel;
     -fx-control-inner-background: -color-fondo-panel;
+    -fx-border-color: transparent;
+    -fx-padding: 6 0 6 0;
 }
-
 .tree-cell {
     -fx-text-fill: -color-texto;
     -fx-background-color: transparent;
+    -fx-padding: 4 10 4 4;
+    -fx-cell-size: 24px;
+    -fx-background-radius: 6px;
 }
-
+.tree-cell:hover    {
+    -fx-background-color: -color-acento-muy-suave;
+}
 .tree-cell:selected {
     -fx-background-color: -color-acento-suave;
-    -fx-text-fill: -color-texto;
+    -fx-text-fill: -color-acento;
+    -fx-font-weight: bold;
+}
+.tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: -color-texto-secundario;
 }
 
-/* ===================== EDITOR (TABPANE) ===================== */
+/* ===================== TABPANE ===================== */
 
 .tab-pane {
     -fx-background-color: -color-fondo;
+    -fx-tab-min-height: 32px;
+    -fx-tab-max-height: 32px;
 }
-
-.tab-pane .tab-header-area .tab-header-background {
-    -fx-background-color: -color-fondo-panel;
-}
-
-.tab {
+.tab-pane > .tab-header-area { -fx-padding: 6 6 0 6; }
+.tab-pane > .tab-header-area > .tab-header-background {
     -fx-background-color: -color-fondo;
-    -fx-background-radius: 4px 4px 0 0;
+    -fx-border-color: transparent transparent -color-borde transparent;
+    -fx-border-width: 0 0 1 0;
 }
-
-.tab:selected {
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8 8 0 0;
+    -fx-border-color: transparent;
+    -fx-border-width: 2 0 0 0;
+    -fx-border-radius: 8 8 0 0;
+    -fx-padding: 6 14 6 14;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: -color-acento-muy-suave;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected {
     -fx-background-color: -color-editor-fondo;
     -fx-border-color: -color-acento transparent transparent transparent;
-    -fx-border-width: 2px 0 0 0;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -color-texto-secundario;
+    -fx-font-size: 12px;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -color-acento;
+    -fx-font-weight: bold;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-close-button {
+    -fx-background-color: -color-texto-secundario;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-close-button:hover {
+    -fx-background-color: -color-error;
 }
 
-.tab .tab-label {
-    -fx-text-fill: -color-texto;
-}
+/* Placeholder del TabPane cuando no hay pestanas */
+.tab-pane > .tab-content-area { -fx-background-color: -color-fondo; }
+.tab-pane .placeholder .label { -fx-text-fill: -color-texto-secundario; }
 
-/* ===================== CONSOLA DE SALIDA ===================== */
+/* ===================== CONSOLA ===================== */
 
 .consola-salida {
     -fx-control-inner-background: -color-consola-fondo;
     -fx-text-fill: -color-consola-texto;
     -fx-font-family: "Consolas", "JetBrains Mono", "Courier New", monospace;
     -fx-font-size: 12px;
+    -fx-border-color: -color-borde;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-background-insets: 0;
+    -fx-padding: 4;
 }
-
 .consola-salida .content {
+    -fx-background-color: -color-consola-fondo;
+    -fx-background-radius: 6;
+}
+.consola-salida .scroll-pane,
+.consola-salida .scroll-pane .viewport {
     -fx-background-color: -color-consola-fondo;
 }
 
 /* ===================== BARRA DE ESTADO ===================== */
 
 .barra-estado {
-    -fx-background-color: -color-fondo-panel;
-    -fx-border-color: -color-borde transparent transparent transparent;
-    -fx-border-width: 1 0 0 0;
+    -fx-background-color: linear-gradient(to right, #131c2e 0%, #0b1220 100%);
+    -fx-border-color: -color-acento transparent transparent transparent;
+    -fx-border-width: 2 0 0 0;
+    -fx-padding: 6 14 6 14;
+    -fx-spacing: 16px;
+    -fx-alignment: center-left;
 }
-
 .barra-estado .label {
     -fx-text-fill: -color-texto-secundario;
     -fx-font-size: 11px;
 }
+.barra-estado .separator:vertical .line {
+    -fx-border-color: transparent -color-borde transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
 
 /* ===================== SPLIT PANE ===================== */
 
-.split-pane {
-    -fx-background-color: -color-fondo;
+.split-pane { -fx-background-color: -color-fondo; -fx-padding: 0; }
+.split-pane > .split-pane-divider {
+    -fx-background-color: -color-borde-suave;
+    -fx-padding: 0 1.5 0 1.5;
+}
+.split-pane > .split-pane-divider:hover {
+    -fx-background-color: -color-acento;
 }
 
-.split-pane-divider {
-    -fx-background-color: -color-borde;
-}
+/* ===================== EDITOR DE CODIGO ===================== */
 
-/* ===================== EDITOR DE CODIGO (PESTANAS) ===================== */
-
-.contenedor-editor {
-    -fx-background-color: -color-editor-fondo;
-}
+.contenedor-editor { -fx-background-color: -color-editor-fondo; }
 
 .editor-codigo,
 .editor-numeros {
     -fx-font-family: "Consolas", "JetBrains Mono", "Courier New", monospace;
     -fx-font-size: 13px;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
 }
-
 .editor-codigo {
     -fx-control-inner-background: -color-editor-fondo;
     -fx-text-fill: -color-editor-texto;
     -fx-highlight-fill: -color-acento-suave;
-    -fx-highlight-text-fill: -color-editor-texto;
+    -fx-highlight-text-fill: -color-acento;
+    -fx-padding: 8 10 8 10;
 }
-
-.editor-codigo .content {
-    -fx-background-color: -color-editor-fondo;
-}
+.editor-codigo .content { -fx-background-color: -color-editor-fondo; }
+.editor-codigo:focused  { -fx-border-color: -color-acento-claro; }
 
 .editor-numeros {
     -fx-control-inner-background: -color-gutter-fondo;
     -fx-text-fill: -color-gutter-texto;
-    -fx-background-insets: 0;
-    -fx-text-alignment: right;
+    -fx-padding: 8 8 8 6;
+    -fx-border-color: transparent -color-borde-suave transparent transparent;
+    -fx-border-width: 0 1 0 0;
 }
-
-.editor-numeros .content {
-    -fx-background-color: -color-gutter-fondo;
-}
-
-/* El gutter de numeros no debe tener su propia barra de desplazamiento
-   visible: se sincroniza programaticamente con la del area de codigo. */
+.editor-numeros .content { -fx-background-color: -color-gutter-fondo; }
 .editor-numeros .scroll-bar:vertical,
 .editor-numeros .scroll-bar:horizontal {
     -fx-opacity: 0;
     -fx-pref-width: 0;
     -fx-pref-height: 0;
 }
+
+/* ===================== SCROLLBARS ===================== */
+
+.scroll-bar { -fx-background-color: transparent; }
+.scroll-bar .track { -fx-background-color: transparent; -fx-border-color: transparent; }
+.scroll-bar .thumb {
+    -fx-background-color: -color-acento-suave;
+    -fx-background-radius: 8px;
+}
+.scroll-bar .thumb:hover { -fx-background-color: -color-acento; }
+.scroll-bar:vertical .thumb { -fx-pref-width: 8px; }
+.scroll-bar:horizontal .thumb { -fx-pref-height: 8px; }
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button { -fx-background-color: transparent; -fx-padding: 0; }
