@@ -1,15 +1,16 @@
 package com.proyecto1.ui.controller;
 
-import com.proyecto1.ui.MainApp;
 import com.proyecto1.ui.modelo.ArchivoUI;
-import com.proyecto1.ui.modelo.ProyectoUI;
 import com.proyecto1.ui.servicio.GestorArchivos;
 import com.proyecto1.ui.util.Notificaciones;
+import javafx.beans.binding.Bindings;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
-import javafx.scene.Scene;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -33,48 +34,20 @@ import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
+
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
-/**
- * Controlador de la ventana principal del IDE.
- * <p>
- * Este controlador coordina los tres componentes visuales principales
- * del frontend:
- * </p>
- * <ul>
- *   <li>{@link ArbolController}: gestor de archivos y carpetas propio del
- *       IDE (arbol de trabajo).</li>
- *   <li>{@link EditorController}: una instancia por cada pestana abierta
- *       en {@code panelPestanas}.</li>
- *   <li>La consola de salida, el menu/toolbar y la barra de estado,
- *       propios de esta clase.</li>
- * </ul>
- * <p>
- * {@code MainController} implementa {@link ArbolController.EscuchaArbol}
- * y {@link EditorController.EscuchaEditor} para enterarse de los eventos
- * de ambos (doble clic en un archivo del arbol, cambios de texto o de
- * cursor en el editor) y reaccionar actualizando la barra de estado, el
- * titulo de la ventana y la consola.
- * </p>
- * <p>
- * Las acciones del menu "Ejecutar" (Analizar, Compilar, Ejecutar ultimo
- * analisis) siguen siendo placeholders: la conexion con el backend del
- * compilador se realizara en una fase posterior.
- * </p>
- *
- * @author Proyecto1
- */
+/** Controlador principal del IDE. Coordina arbol, editor, consola y menus. */
 public class MainController implements ArbolController.EscuchaArbol, EditorController.EscuchaEditor {
-
-    // ---------- Referencias inyectadas desde main.fxml ----------
 
     @FXML private BorderPane raizPrincipal;
     @FXML private MenuBar barraMenu;
@@ -86,8 +59,10 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
 
     @FXML private TitledPane panelArbol;
     @FXML private TreeView<Object> arbolTrabajo;
+    @FXML private VBox panelArbolVacio;
 
     @FXML private TabPane panelPestanas;
+    @FXML private VBox panelBienvenida;
 
     @FXML private VBox contenedorConsola;
     @FXML private TextArea consolaSalida;
@@ -109,469 +84,288 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
     @FXML private Button btnBuscar;
     @FXML private Button btnAnalizar;
     @FXML private Button btnEjecutar;
-    @FXML private Button btnTema;
 
-    /** Controlador del arbol de trabajo, creado en {@link #initialize()}. */
     private ArbolController arbolController;
 
-    /** Proyecto (carpeta raiz) actualmente abierto, si lo hay. */
-    private final ProyectoUI proyectoActual = new ProyectoUI();
-
-    /** Recuerda si el tema activo es el oscuro, para el boton "alternar tema". */
-    private boolean temaOscuroActivo = false;
-
     private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final FileChooser.ExtensionFilter FILTRO_LENGUAJES =
+            new FileChooser.ExtensionFilter("Archivos soportados (*.y, *.z, *.pig)", "*.y", "*.z", "*.pig");
+    private static final FileChooser.ExtensionFilter FILTRO_TODOS =
+            new FileChooser.ExtensionFilter("Todos los archivos", "*.*");
 
-    /** Filtro de extensiones para los dialogos de abrir/guardar archivo. */
-    private static final FileChooser.ExtensionFilter FILTRO_LENGUAJES = new FileChooser.ExtensionFilter(
-            "Archivos soportados (*.y, *.z, *.pig)", "*.y", "*.z", "*.pig");
-    private static final FileChooser.ExtensionFilter FILTRO_TODOS = new FileChooser.ExtensionFilter(
-            "Todos los archivos", "*.*");
-
-    /**
-     * Metodo de inicializacion invocado automaticamente por JavaFX luego
-     * de inyectar todos los campos {@code @FXML}.
-     */
     @FXML
     private void initialize() {
         arbolController = new ArbolController(arbolTrabajo, this);
 
-        // Al cambiar de pestana se debe reflejar en la barra de estado y
-        // en el titulo de la ventana (Fase 5).
         panelPestanas.getSelectionModel().selectedItemProperty()
-                .addListener((obs, pestanaVieja, pestanaNueva) ->
-                        actualizarBarraEstado(EditorController.desdeTab(pestanaNueva)));
+                .addListener((obs, vieja, nueva) ->
+                        actualizarBarraEstado(EditorController.desdeTab(nueva)));
+
+        // El overlay de bienvenida se ve cuando no hay pestanas abiertas.
+        panelBienvenida.visibleProperty().bind(Bindings.isEmpty(panelPestanas.getTabs()));
+
+        // El overlay del arbol se ve cuando no hay NINGUN proyecto abierto.
+        panelArbolVacio.visibleProperty().bind(Bindings.isEmpty(arbolController.getProyectos()));
+
+        configurarMenuWorkspace();
 
         actualizarBarraEstado(null);
-        escribirInfo("IDE iniciado. Utilice \"Archivo > Abrir carpeta\" para comenzar a trabajar.");
-    }
-
-    // ======================================================================
-    // MENU VER
-    // ======================================================================
-
-    @FXML
-    private void accionAlternarArbol() {
-        boolean mostrar = miMostrarArbol.isSelected();
-        panelArbol.setVisible(mostrar);
-        panelArbol.setManaged(mostrar);
-    }
-
-    @FXML
-    private void accionAlternarConsola() {
-        boolean mostrar = miMostrarConsola.isSelected();
-        contenedorConsola.setVisible(mostrar);
-        contenedorConsola.setManaged(mostrar);
-    }
-
-    @FXML
-    private void accionAlternarPanelErrores() {
-        boolean mostrar = miMostrarPanelErrores.isSelected();
-        panelErrores.setVisible(mostrar);
-        panelErrores.setManaged(mostrar);
-    }
-
-    @FXML
-    private void accionTemaClaro() {
-        aplicarTema(MainApp.TEMA_CLARO);
-        temaOscuroActivo = false;
-    }
-
-    @FXML
-    private void accionTemaOscuro() {
-        aplicarTema(MainApp.TEMA_OSCURO);
-        temaOscuroActivo = true;
-    }
-
-    /** Accion del boton de la toolbar: alterna entre tema claro y oscuro. */
-    @FXML
-    private void accionAlternarTema() {
-        if (temaOscuroActivo) {
-            accionTemaClaro();
-        } else {
-            accionTemaOscuro();
-        }
+        escribirInfo("IDE iniciado. Cree un proyecto nuevo o abra una carpeta para comenzar.");
     }
 
     /**
-     * Reemplaza la hoja de estilos activa de la escena por la indicada,
-     * sin reiniciar la aplicacion.
+     * Menu contextual del arbol cuando se hace clic derecho sobre el FONDO
+     * (fuera de cualquier celda). Las celdas tienen su propio menu contextual
+     * definido en ArbolController; JavaFX le da prioridad al menu de la celda
+     * cuando el clic cae sobre una.
      *
-     * @param nombreArchivoCss nombre del archivo CSS ("claro.css" u "oscuro.css")
+     * Con este menu puedes agregar proyectos en cualquier momento, aunque ya
+     * tengas varios abiertos.
      */
-    private void aplicarTema(String nombreArchivoCss) {
-        Scene escena = raizPrincipal.getScene();
-        if (escena == null) {
-            return;
-        }
-        URL urlCss = Objects.requireNonNull(
-                getClass().getResource(nombreArchivoCss),
-                "No se encontro la hoja de estilos: " + nombreArchivoCss);
-        escena.getStylesheets().setAll(urlCss.toExternalForm());
-        escribirInfo("Tema aplicado: " + nombreArchivoCss);
+    private void configurarMenuWorkspace() {
+        MenuItem itemNuevoProyecto = new MenuItem("Nuevo proyecto...");
+        itemNuevoProyecto.setOnAction(e -> accionNuevoProyecto());
+
+        MenuItem itemAbrirCarpeta = new MenuItem("Abrir carpeta...");
+        itemAbrirCarpeta.setOnAction(e -> accionAbrirCarpeta());
+
+        ContextMenu menu = new ContextMenu(
+                itemNuevoProyecto,
+                new SeparatorMenuItem(),
+                itemAbrirCarpeta);
+
+        arbolTrabajo.setContextMenu(menu);
     }
 
-    // ======================================================================
-    // MENU EJECUTAR (placeholders - conexion en fase posterior)
-    // ======================================================================
+    // ==================== MENU VER ====================
 
-    @FXML
-    private void accionAnalizarArchivoActual() {
-        escribirAdvertencia("Analizar archivo actual: pendiente de conexion con el backend.");
+    @FXML private void accionAlternarArbol() {
+        boolean v = miMostrarArbol.isSelected();
+        panelArbol.setVisible(v); panelArbol.setManaged(v);
+    }
+    @FXML private void accionAlternarConsola() {
+        boolean v = miMostrarConsola.isSelected();
+        contenedorConsola.setVisible(v); contenedorConsola.setManaged(v);
+    }
+    @FXML private void accionAlternarPanelErrores() {
+        boolean v = miMostrarPanelErrores.isSelected();
+        panelErrores.setVisible(v); panelErrores.setManaged(v);
+    }
+
+    // ==================== MENU EJECUTAR (placeholders) ====================
+
+    @FXML private void accionAnalizarArchivoActual() {
+        escribirAdvertencia("Analizar: pendiente de conexion con el backend.");
+        Notificaciones.mostrarFuncionPendiente(obtenerVentana());
+    }
+    @FXML private void accionCompilarProyecto() {
+        escribirAdvertencia("Compilar: pendiente de conexion con el backend.");
+        Notificaciones.mostrarFuncionPendiente(obtenerVentana());
+    }
+    @FXML private void accionEjecutarUltimoAnalisis() {
+        escribirAdvertencia("Ejecutar: pendiente de conexion con el backend.");
         Notificaciones.mostrarFuncionPendiente(obtenerVentana());
     }
 
-    @FXML
-    private void accionCompilarProyecto() {
-        escribirAdvertencia("Compilar todo el proyecto: pendiente de conexion con el backend.");
-        Notificaciones.mostrarFuncionPendiente(obtenerVentana());
-    }
+    // ==================== MENU AYUDA ====================
 
-    @FXML
-    private void accionEjecutarUltimoAnalisis() {
-        escribirAdvertencia("Ejecutar ultimo analisis: pendiente de conexion con el backend.");
-        Notificaciones.mostrarFuncionPendiente(obtenerVentana());
-    }
-
-    // ======================================================================
-    // MENU AYUDA
-    // ======================================================================
-
-    @FXML
-    private void accionAcercaDe() {
-        Notificaciones.mostrarInformacion(
-                "Acerca de",
+    @FXML private void accionAcercaDe() {
+        Notificaciones.mostrarInformacion("Acerca de",
                 "Compilador - Proyecto 1\n"
                         + "IDE para los lenguajes Y?, Zetariano y PigLatin.\n"
-                        + "Proyecto de Compiladores 2 - Fase de interfaz grafica.");
+                        + "Proyecto de Compiladores 2.");
+    }
+    @FXML private void accionManualUsuario() {
+        Notificaciones.mostrarInformacion("Manual de usuario",
+                "Manual pendiente de redaccion.");
     }
 
-    @FXML
-    private void accionManualUsuario() {
-        Notificaciones.mostrarInformacion(
-                "Manual de usuario",
-                "Manual de usuario pendiente de redaccion.\n"
-                        + "Aqui se explicara como crear proyectos, editar archivos "
-                        + "y ejecutar el analisis una vez conectado el backend.");
+    @FXML private void accionSalir() {
+        Stage v = obtenerVentana();
+        if (v == null) return;
+        if (cerrarTodasLasPestanas()) v.close();
     }
 
-    @FXML
-    private void accionSalir() {
-        Stage ventana = obtenerVentana();
-        if (ventana == null) {
-            return;
-        }
-        if (cerrarTodasLasPestanas()) {
-            ventana.close();
-        }
-    }
+    // ==================== MENU ARCHIVO ====================
 
-    // ======================================================================
-    // MENU ARCHIVO
-    // ======================================================================
-
-    @FXML
-    private void accionNuevoArchivo() {
-        FileChooser dialogo = new FileChooser();
-        dialogo.setTitle("Nuevo archivo");
-        dialogo.setInitialDirectory(carpetaInicialParaDialogos());
-        dialogo.getExtensionFilters().setAll(FILTRO_LENGUAJES, FILTRO_TODOS);
-        dialogo.setInitialFileName("nuevo.y");
-
-        File archivo = dialogo.showSaveDialog(obtenerVentana());
-        if (archivo == null) {
-            return;
-        }
+    @FXML private void accionNuevoArchivo() {
+        FileChooser d = new FileChooser();
+        d.setTitle("Nuevo archivo");
+        d.setInitialDirectory(carpetaInicial());
+        d.getExtensionFilters().setAll(FILTRO_LENGUAJES, FILTRO_TODOS);
+        d.setInitialFileName("nuevo.y");
+        File archivo = d.showSaveDialog(obtenerVentana());
+        if (archivo == null) return;
         try {
             GestorArchivos.crearArchivo(archivo, "");
             escribirInfo("Archivo creado: " + archivo.getAbsolutePath());
             arbolController.refrescarTodo();
             abrirArchivoEnEditor(archivo);
         } catch (IOException ex) {
-            escribirError("No se pudo crear el archivo: " + ex.getMessage());
+            escribirError("No se pudo crear: " + ex.getMessage());
             Notificaciones.mostrarError("Nuevo archivo", ex.getMessage());
         }
     }
 
     @FXML
     private void accionNuevoProyecto() {
-        DirectoryChooser dialogoCarpeta = new DirectoryChooser();
-        dialogoCarpeta.setTitle("Elegir ubicacion para el nuevo proyecto");
-        dialogoCarpeta.setInitialDirectory(carpetaInicialParaDialogos());
-        File carpetaPadre = dialogoCarpeta.showDialog(obtenerVentana());
-        if (carpetaPadre == null) {
-            return;
-        }
+        DirectoryChooser dc = new DirectoryChooser();
+        dc.setTitle("Elegir ubicacion para el nuevo proyecto");
+        dc.setInitialDirectory(carpetaInicial());
+        File padre = dc.showDialog(obtenerVentana());
+        if (padre == null) return;
 
         Optional<String> nombre = Notificaciones.pedirTexto(
-                "Nuevo proyecto/carpeta", "Nombre de la carpeta del nuevo proyecto:", "proyecto_nuevo");
+                "Nuevo proyecto",
+                "Nombre de la carpeta del nuevo proyecto:",
+                "proyecto_nuevo");
         nombre.ifPresent(n -> {
-            File nuevaCarpeta = new File(carpetaPadre, n);
+            File nueva = new File(padre, n);
             try {
-                GestorArchivos.crearCarpeta(nuevaCarpeta);
-                escribirInfo("Proyecto creado: " + nuevaCarpeta.getAbsolutePath());
-                abrirCarpetaComoRaiz(nuevaCarpeta);
+                GestorArchivos.crearCarpeta(nueva);
+                escribirInfo("Proyecto creado: " + nueva.getAbsolutePath());
+                agregarProyecto(nueva);
             } catch (IOException ex) {
-                escribirError("No se pudo crear el proyecto: " + ex.getMessage());
-                Notificaciones.mostrarError("Nuevo proyecto/carpeta", ex.getMessage());
+                escribirError("No se pudo crear: " + ex.getMessage());
+                Notificaciones.mostrarError("Nuevo proyecto", ex.getMessage());
             }
         });
     }
 
-    @FXML
-    private void accionAbrirArchivo() {
-        FileChooser dialogo = new FileChooser();
-        dialogo.setTitle("Abrir archivo");
-        dialogo.setInitialDirectory(carpetaInicialParaDialogos());
-        dialogo.getExtensionFilters().setAll(FILTRO_LENGUAJES, FILTRO_TODOS);
-
-        File archivo = dialogo.showOpenDialog(obtenerVentana());
-        if (archivo != null) {
-            abrirArchivoEnEditor(archivo);
-        }
+    @FXML private void accionAbrirArchivo() {
+        FileChooser d = new FileChooser();
+        d.setTitle("Abrir archivo");
+        d.setInitialDirectory(carpetaInicial());
+        d.getExtensionFilters().setAll(FILTRO_LENGUAJES, FILTRO_TODOS);
+        File archivo = d.showOpenDialog(obtenerVentana());
+        if (archivo != null) abrirArchivoEnEditor(archivo);
     }
 
     @FXML
     private void accionAbrirCarpeta() {
-        DirectoryChooser dialogo = new DirectoryChooser();
-        dialogo.setTitle("Abrir carpeta de proyecto");
-        dialogo.setInitialDirectory(carpetaInicialParaDialogos());
-        File carpeta = dialogo.showDialog(obtenerVentana());
-        if (carpeta != null) {
-            abrirCarpetaComoRaiz(carpeta);
-        }
+        DirectoryChooser dc = new DirectoryChooser();
+        dc.setTitle("Abrir carpeta de proyecto");
+        dc.setInitialDirectory(carpetaInicial());
+        File carpeta = dc.showDialog(obtenerVentana());
+        if (carpeta != null) agregarProyecto(carpeta);
     }
 
-    /** Centraliza el "abrir carpeta como raiz", usado por el menu y por "Nuevo proyecto". */
-    private void abrirCarpetaComoRaiz(File carpeta) {
-        arbolController.abrirCarpetaRaiz(carpeta);
-        proyectoActual.setCarpetaRaiz(carpeta);
-        panelArbol.setText("Arbol de trabajo - " + carpeta.getName());
+    /** Agrega una carpeta como proyecto al workspace (no reemplaza los existentes). */
+    private void agregarProyecto(File carpeta) {
+        arbolController.agregarProyecto(carpeta);
     }
 
-    @FXML
-    private void accionGuardar() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor == null) {
-            escribirAdvertencia("No hay ningun archivo abierto para guardar.");
-            return;
-        }
-        try {
-            editor.guardar();
-        } catch (IOException ex) {
-            escribirError("No se pudo guardar el archivo: " + ex.getMessage());
+    @FXML private void accionGuardar() {
+        EditorController ed = obtenerEditorActivo();
+        if (ed == null) { escribirAdvertencia("No hay archivo abierto."); return; }
+        try { ed.guardar(); }
+        catch (IOException ex) {
+            escribirError("No se pudo guardar: " + ex.getMessage());
             Notificaciones.mostrarError("Guardar", ex.getMessage());
         }
     }
 
-    @FXML
-    private void accionGuardarComo() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor == null) {
-            escribirAdvertencia("No hay ningun archivo abierto para guardar.");
-            return;
-        }
-        FileChooser dialogo = new FileChooser();
-        dialogo.setTitle("Guardar como");
-        dialogo.setInitialDirectory(carpetaInicialParaDialogos());
-        dialogo.setInitialFileName(editor.getArchivoUI().getNombre());
-        dialogo.getExtensionFilters().setAll(FILTRO_LENGUAJES, FILTRO_TODOS);
-
-        File destino = dialogo.showSaveDialog(obtenerVentana());
-        if (destino == null) {
-            return;
-        }
-        try {
-            editor.guardarComo(destino);
-            arbolController.refrescarTodo();
-        } catch (IOException ex) {
-            escribirError("No se pudo guardar el archivo: " + ex.getMessage());
+    @FXML private void accionGuardarComo() {
+        EditorController ed = obtenerEditorActivo();
+        if (ed == null) { escribirAdvertencia("No hay archivo abierto."); return; }
+        FileChooser d = new FileChooser();
+        d.setTitle("Guardar como");
+        d.setInitialDirectory(carpetaInicial());
+        d.setInitialFileName(ed.getArchivoUI().getNombre());
+        d.getExtensionFilters().setAll(FILTRO_LENGUAJES, FILTRO_TODOS);
+        File destino = d.showSaveDialog(obtenerVentana());
+        if (destino == null) return;
+        try { ed.guardarComo(destino); arbolController.refrescarTodo(); }
+        catch (IOException ex) {
+            escribirError("No se pudo guardar: " + ex.getMessage());
             Notificaciones.mostrarError("Guardar como", ex.getMessage());
         }
     }
 
-    @FXML
-    private void accionCerrarPestanaActual() {
+    @FXML private void accionCerrarPestanaActual() {
         cerrarPestana(panelPestanas.getSelectionModel().getSelectedItem());
     }
 
-    /**
-     * Cierra la pestana indicada respetando el aviso de cambios sin
-     * guardar (dispara el mismo evento que produce el boton "x" de la
-     * pestana, ya manejado por {@code EditorController}).
-     *
-     * @param tab pestana a cerrar (si es {@code null}, no hace nada)
-     */
     private void cerrarPestana(Tab tab) {
-        if (tab == null) {
-            return;
-        }
-        Event evento = new Event(tab, tab, Tab.TAB_CLOSE_REQUEST_EVENT);
-        Event.fireEvent(tab, evento);
-        if (!evento.isConsumed()) {
-            panelPestanas.getTabs().remove(tab);
-        }
+        if (tab == null) return;
+        Event e = new Event(tab, tab, Tab.TAB_CLOSE_REQUEST_EVENT);
+        Event.fireEvent(tab, e);
+        if (!e.isConsumed()) panelPestanas.getTabs().remove(tab);
     }
 
-    /**
-     * Intenta cerrar todas las pestanas abiertas, preguntando por los
-     * cambios sin guardar en cada una. Se usa al salir de la aplicacion.
-     *
-     * @return {@code true} si todas las pestanas se pudieron cerrar (o no
-     *         tenian cambios pendientes); {@code false} si el usuario
-     *         cancelo el cierre de alguna
-     */
     private boolean cerrarTodasLasPestanas() {
-        List<Tab> pestanas = new ArrayList<>(panelPestanas.getTabs());
-        for (Tab tab : pestanas) {
-            EditorController editor = EditorController.desdeTab(tab);
-            if (editor != null && editor.isModificado()) {
-                Event evento = new Event(tab, tab, Tab.TAB_CLOSE_REQUEST_EVENT);
-                Event.fireEvent(tab, evento);
-                if (evento.isConsumed()) {
-                    return false;
-                }
+        List<Tab> copia = new ArrayList<>(panelPestanas.getTabs());
+        for (Tab t : copia) {
+            EditorController ed = EditorController.desdeTab(t);
+            if (ed != null && ed.isModificado()) {
+                Event e = new Event(t, t, Tab.TAB_CLOSE_REQUEST_EVENT);
+                Event.fireEvent(t, e);
+                if (e.isConsumed()) return false;
             }
         }
         return true;
     }
 
-    // ======================================================================
-    // MENU EDITAR (delegado a la pestana activa del editor)
-    // ======================================================================
+    // ==================== MENU EDITAR ====================
 
-    @FXML
-    private void accionDeshacer() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor != null) {
-            editor.deshacer();
-        }
-    }
+    @FXML private void accionDeshacer() { EditorController e = obtenerEditorActivo(); if (e != null) e.deshacer(); }
+    @FXML private void accionRehacer()  { EditorController e = obtenerEditorActivo(); if (e != null) e.rehacer(); }
+    @FXML private void accionCortar()   { EditorController e = obtenerEditorActivo(); if (e != null) e.cortar(); }
+    @FXML private void accionCopiar()   { EditorController e = obtenerEditorActivo(); if (e != null) e.copiar(); }
+    @FXML private void accionPegar()    { EditorController e = obtenerEditorActivo(); if (e != null) e.pegar(); }
+    @FXML private void accionSeleccionarTodo() { EditorController e = obtenerEditorActivo(); if (e != null) e.seleccionarTodo(); }
 
-    @FXML
-    private void accionRehacer() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor != null) {
-            editor.rehacer();
-        }
-    }
-
-    @FXML
-    private void accionCortar() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor != null) {
-            editor.cortar();
-        }
-    }
-
-    @FXML
-    private void accionCopiar() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor != null) {
-            editor.copiar();
-        }
-    }
-
-    @FXML
-    private void accionPegar() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor != null) {
-            editor.pegar();
-        }
-    }
-
-    @FXML
-    private void accionSeleccionarTodo() {
-        EditorController editor = obtenerEditorActivo();
-        if (editor != null) {
-            editor.seleccionarTodo();
-        }
-    }
-
-    /**
-     * Abre un dialogo basico (no modal) de Buscar/Reemplazar sobre la
-     * pestana de editor actualmente activa. Permite buscar la siguiente
-     * coincidencia (busqueda ciclica) y reemplazar todas las apariciones.
-     */
-    @FXML
-    private void accionBuscarReemplazar() {
+    @FXML private void accionBuscarReemplazar() {
         EditorController editor = obtenerEditorActivo();
         if (editor == null) {
-            escribirAdvertencia("Abra un archivo para poder buscar o reemplazar texto.");
+            escribirAdvertencia("Abra un archivo para buscar o reemplazar.");
             return;
         }
+        Dialog<Void> dlg = new Dialog<>();
+        dlg.setTitle("Buscar / Reemplazar");
+        dlg.initOwner(obtenerVentana());
+        dlg.initModality(Modality.NONE);
 
-        Dialog<Void> dialogo = new Dialog<>();
-        dialogo.setTitle("Buscar / Reemplazar");
-        dialogo.initOwner(obtenerVentana());
-        dialogo.initModality(Modality.NONE);
+        TextField cBuscar = new TextField(); cBuscar.setPromptText("Texto a buscar");
+        TextField cReempl = new TextField(); cReempl.setPromptText("Texto de reemplazo");
 
-        TextField campoBuscar = new TextField();
-        campoBuscar.setPromptText("Texto a buscar");
-        TextField campoReemplazar = new TextField();
-        campoReemplazar.setPromptText("Texto de reemplazo");
+        GridPane gp = new GridPane();
+        gp.setHgap(8); gp.setVgap(8); gp.setPadding(new Insets(12));
+        gp.add(new Label("Buscar:"), 0, 0);          gp.add(cBuscar, 1, 0);
+        gp.add(new Label("Reemplazar por:"), 0, 1);  gp.add(cReempl, 1, 1);
+        dlg.getDialogPane().setContent(gp);
 
-        GridPane panel = new GridPane();
-        panel.setHgap(8);
-        panel.setVgap(8);
-        panel.setPadding(new Insets(12));
-        panel.add(new Label("Buscar:"), 0, 0);
-        panel.add(campoBuscar, 1, 0);
-        panel.add(new Label("Reemplazar por:"), 0, 1);
-        panel.add(campoReemplazar, 1, 1);
-        dialogo.getDialogPane().setContent(panel);
+        ButtonType bSig = new ButtonType("Buscar siguiente", ButtonBar.ButtonData.OTHER);
+        ButtonType bTodo = new ButtonType("Reemplazar todo", ButtonBar.ButtonData.APPLY);
+        ButtonType bCerrar = new ButtonType("Cerrar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dlg.getDialogPane().getButtonTypes().setAll(bSig, bTodo, bCerrar);
 
-        ButtonType btnBuscarSiguiente = new ButtonType("Buscar siguiente", ButtonBar.ButtonData.OTHER);
-        ButtonType btnReemplazarTodo = new ButtonType("Reemplazar todo", ButtonBar.ButtonData.APPLY);
-        ButtonType btnCerrar = new ButtonType("Cerrar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        dialogo.getDialogPane().getButtonTypes().setAll(btnBuscarSiguiente, btnReemplazarTodo, btnCerrar);
-
-        // "Buscar siguiente" y "Reemplazar todo" no deben cerrar el dialogo,
-        // para poder repetir la busqueda o el reemplazo varias veces.
-        Button botonBuscar = (Button) dialogo.getDialogPane().lookupButton(btnBuscarSiguiente);
-        botonBuscar.addEventFilter(ActionEvent.ACTION, evento -> {
-            String texto = campoBuscar.getText();
-            boolean encontrado = editor.buscarSiguiente(texto);
-            if (!encontrado) {
-                escribirAdvertencia("No se encontraron coincidencias de \"" + texto + "\".");
-            }
-            evento.consume();
+        Button btnSig = (Button) dlg.getDialogPane().lookupButton(bSig);
+        btnSig.addEventFilter(ActionEvent.ACTION, ev -> {
+            if (!editor.buscarSiguiente(cBuscar.getText()))
+                escribirAdvertencia("Sin coincidencias de \"" + cBuscar.getText() + "\".");
+            ev.consume();
         });
-
-        Button botonReemplazar = (Button) dialogo.getDialogPane().lookupButton(btnReemplazarTodo);
-        botonReemplazar.addEventFilter(ActionEvent.ACTION, evento -> {
-            editor.buscarYReemplazar(campoBuscar.getText(), campoReemplazar.getText());
-            escribirInfo("Reemplazo de \"" + campoBuscar.getText() + "\" realizado en "
-                    + editor.getArchivoUI().getNombre() + ".");
-            evento.consume();
+        Button btnTodo = (Button) dlg.getDialogPane().lookupButton(bTodo);
+        btnTodo.addEventFilter(ActionEvent.ACTION, ev -> {
+            editor.buscarYReemplazar(cBuscar.getText(), cReempl.getText());
+            escribirInfo("Reemplazo realizado en " + editor.getArchivoUI().getNombre() + ".");
+            ev.consume();
         });
-
-        dialogo.show();
+        dlg.show();
     }
 
-    // ======================================================================
-    // INTEGRACION CON EL ARBOL DE TRABAJO (ArbolController.EscuchaArbol)
-    // ======================================================================
+    // ==================== EscuchaArbol ====================
 
-    @Override
-    public void archivoAbierto(File archivo) {
-        abrirArchivoEnEditor(archivo);
-    }
+    @Override public void archivoAbierto(File archivo) { abrirArchivoEnEditor(archivo); }
 
-    /**
-     * Abre un archivo en el editor: si ya existe una pestana para ese
-     * archivo, simplemente la selecciona; en caso contrario crea una
-     * pestana nueva.
-     *
-     * @param archivo archivo de disco a abrir
-     */
     private void abrirArchivoEnEditor(File archivo) {
-        for (Tab tab : panelPestanas.getTabs()) {
-            EditorController existente = EditorController.desdeTab(tab);
-            if (existente != null
-                    && existente.getArchivoUI().getArchivo().getAbsolutePath().equals(archivo.getAbsolutePath())) {
-                panelPestanas.getSelectionModel().select(tab);
-                existente.enfocar();
+        for (Tab t : panelPestanas.getTabs()) {
+            EditorController ed = EditorController.desdeTab(t);
+            if (ed != null && ed.getArchivoUI().getArchivo().getAbsolutePath()
+                    .equals(archivo.getAbsolutePath())) {
+                panelPestanas.getSelectionModel().select(t);
+                ed.enfocar();
                 return;
             }
         }
@@ -579,31 +373,18 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
             EditorController.crearPestana(archivo, panelPestanas, this);
             escribirInfo("Archivo abierto: " + archivo.getAbsolutePath());
         } catch (IOException ex) {
-            escribirError("No se pudo abrir el archivo: " + ex.getMessage());
+            escribirError("No se pudo abrir: " + ex.getMessage());
             Notificaciones.mostrarError("Abrir archivo", ex.getMessage());
         }
     }
 
-    // ======================================================================
-    // INTEGRACION CON EL EDITOR (EditorController.EscuchaEditor)
-    // ======================================================================
+    // ==================== EscuchaEditor ====================
 
-    @Override
-    public void estadoCambiado(EditorController editor) {
-        // Solo se refresca la barra de estado si el editor que cambio es
-        // el que esta actualmente visible; el titulo de su propia pestana
-        // ya lo actualiza el propio EditorController.
-        if (editor != null && editor.getTab() == panelPestanas.getSelectionModel().getSelectedItem()) {
+    @Override public void estadoCambiado(EditorController editor) {
+        if (editor != null && editor.getTab() == panelPestanas.getSelectionModel().getSelectedItem())
             actualizarBarraEstado(editor);
-        }
     }
 
-    /**
-     * Actualiza la barra de estado (ruta, cursor, lenguaje, modificado) y
-     * el titulo de la ventana en funcion de la pestana de editor activa.
-     *
-     * @param editor pestana activa, o {@code null} si no hay ninguna abierta
-     */
     private void actualizarBarraEstado(EditorController editor) {
         if (editor == null) {
             lblRutaActiva.setText("Sin archivo abierto");
@@ -613,101 +394,53 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
             actualizarTituloVentana(null);
             return;
         }
-        ArchivoUI archivoUI = editor.getArchivoUI();
-        int[] lineaYColumna = editor.getLineaYColumna();
-
-        lblRutaActiva.setText(archivoUI.getRutaAbsoluta());
-        lblPosicionCursor.setText("Linea " + lineaYColumna[0] + ", Columna " + lineaYColumna[1]);
-        lblLenguajeDetectado.setText("Lenguaje: " + archivoUI.getLenguaje().getNombreVisible());
+        ArchivoUI a = editor.getArchivoUI();
+        int[] lc = editor.getLineaYColumna();
+        lblRutaActiva.setText(a.getRutaAbsoluta());
+        lblPosicionCursor.setText("Linea " + lc[0] + ", Columna " + lc[1]);
+        lblLenguajeDetectado.setText("Lenguaje: " + a.getLenguaje().getNombreVisible());
         lblEstadoModificado.setText(editor.isModificado() ? "Modificado" : "");
-        actualizarTituloVentana(archivoUI);
+        actualizarTituloVentana(a);
     }
 
-    private void actualizarTituloVentana(ArchivoUI archivoUI) {
-        Stage ventana = obtenerVentana();
-        if (ventana == null) {
-            return;
-        }
-        if (archivoUI == null) {
-            ventana.setTitle("Compilador - Proyecto 1");
-        } else {
-            ventana.setTitle("Compilador - Proyecto 1 - " + archivoUI.getNombreParaMostrar());
-        }
+    private void actualizarTituloVentana(ArchivoUI a) {
+        Stage v = obtenerVentana();
+        if (v == null) return;
+        v.setTitle(a == null ? "Compilador - Proyecto 1"
+                : "Compilador - Proyecto 1 - " + a.getNombreParaMostrar());
     }
 
-    /** @return el controlador de la pestana de editor actualmente seleccionada, o {@code null} */
     private EditorController obtenerEditorActivo() {
         return EditorController.desdeTab(panelPestanas.getSelectionModel().getSelectedItem());
     }
 
-    // ======================================================================
-    // CONSOLA DE SALIDA
-    // ======================================================================
+    // ==================== Consola ====================
 
-    /** Escribe un mensaje informativo con marca de hora en la consola. */
-    @Override
-    public void mensajeInfo(String mensaje) {
-        escribirInfo(mensaje);
-    }
+    @Override public void mensajeInfo(String m)  { escribirInfo(m); }
+    @Override public void mensajeError(String m) { escribirError(m); }
 
-    /** Escribe un mensaje de error con marca de hora en la consola. */
-    @Override
-    public void mensajeError(String mensaje) {
-        escribirError(mensaje);
-    }
+    public void escribirInfo(String m)        { agregarLinea("INFO", m); }
+    public void escribirError(String m)       { agregarLinea("ERROR", m); }
+    public void escribirAdvertencia(String m) { agregarLinea("ADVERTENCIA", m); }
 
-    /** Escribe un mensaje informativo con marca de hora en la consola. */
-    public void escribirInfo(String mensaje) {
-        agregarLineaConsola("INFO", mensaje);
-    }
+    public void limpiar() { if (consolaSalida != null) consolaSalida.clear(); }
 
-    /** Escribe un mensaje de error con marca de hora en la consola. */
-    public void escribirError(String mensaje) {
-        agregarLineaConsola("ERROR", mensaje);
-    }
-
-    /** Escribe un mensaje de advertencia con marca de hora en la consola. */
-    public void escribirAdvertencia(String mensaje) {
-        agregarLineaConsola("ADVERTENCIA", mensaje);
-    }
-
-    /** Limpia todo el contenido de la consola. */
-    public void limpiar() {
-        if (consolaSalida != null) {
-            consolaSalida.clear();
-        }
-    }
-
-    private void agregarLineaConsola(String etiqueta, String mensaje) {
-        if (consolaSalida == null) {
-            return;
-        }
+    private void agregarLinea(String etiqueta, String mensaje) {
+        if (consolaSalida == null) return;
         String hora = LocalTime.now().format(FORMATO_HORA);
         consolaSalida.appendText("[" + hora + "] [" + etiqueta + "] " + mensaje + System.lineSeparator());
     }
 
-    // ======================================================================
-    // UTILIDADES INTERNAS
-    // ======================================================================
+    // ==================== Utilidades ====================
 
     private Stage obtenerVentana() {
-        if (raizPrincipal == null || raizPrincipal.getScene() == null) {
-            return null;
-        }
+        if (raizPrincipal == null || raizPrincipal.getScene() == null) return null;
         return (Stage) raizPrincipal.getScene().getWindow();
     }
 
-    /**
-     * Calcula la carpeta inicial mas util para los dialogos de
-     * abrir/guardar/nuevo: la raiz del proyecto abierto si existe, o la
-     * carpeta personal del usuario en caso contrario.
-     *
-     * @return una carpeta existente para usar como punto de partida
-     */
-    private File carpetaInicialParaDialogos() {
-        if (proyectoActual.hayProyectoAbierto()) {
-            return proyectoActual.getCarpetaRaiz();
-        }
+    private File carpetaInicial() {
+        File proy = arbolController.getProyectoSeleccionado();
+        if (proy != null) return proy;
         return new File(System.getProperty("user.home"));
     }
 }

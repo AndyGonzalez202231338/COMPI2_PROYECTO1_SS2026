@@ -7,11 +7,10 @@ import com.proyecto1.ui.util.Notificaciones;
 import javafx.collections.ObservableList;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
 import javafx.scene.input.Dragboard;
@@ -22,133 +21,145 @@ import javafx.scene.input.TransferMode;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 
 /**
- * Controlador del arbol de trabajo (gestor de archivos y carpetas propio
- * del IDE, independiente del explorador del sistema operativo).
- * <p>
- * Responsabilidades:
- * </p>
- * <ul>
- *   <li>Construir el {@link TreeView} de forma perezosa: cada carpeta solo
- *       lee su contenido del disco cuando el usuario la expande.</li>
- *   <li>Mostrar un icono distinto segun la extension del archivo
- *       (.y, .z, .pig, u otro generico).</li>
- *   <li>Ofrecer menu contextual para crear, renombrar, eliminar, duplicar
- *       y refrescar.</li>
- *   <li>Permitir mover archivos entre carpetas arrastrando y soltando.</li>
- *   <li>Notificar (via {@link EscuchaArbol}) cuando el usuario hace doble
- *       clic en un archivo, para que otro componente (el editor) lo abra.</li>
- * </ul>
- * <p>
- * Esta clase NO depende de {@code EditorController} ni del backend del
- * compilador: solo conoce el disco y notifica eventos hacia afuera
- * mediante la interfaz {@link EscuchaArbol}, que sera implementada por
- * {@code MainController} en la Fase 5.
- * </p>
- *
- * @author Proyecto1
+ * Controlador del arbol de trabajo. Modelo "workspace": el TreeView tiene
+ * una raiz invisible que contiene N proyectos (cada uno una carpeta del
+ * disco). Esto permite tener varios proyectos abiertos al mismo tiempo,
+ * agregar nuevos en cualquier momento y cerrar los que ya no se usen.
  */
 public class ArbolController {
 
-    /**
-     * Contrato que debe cumplir quien use este controlador para enterarse
-     * de los eventos relevantes del arbol de trabajo.
-     */
     public interface EscuchaArbol {
-        /** Se invoca cuando el usuario hace doble clic sobre un archivo. */
         void archivoAbierto(File archivo);
-
-        /** Se invoca para reportar un mensaje informativo (para la consola). */
         void mensajeInfo(String mensaje);
-
-        /** Se invoca para reportar un error (para la consola). */
         void mensajeError(String mensaje);
     }
 
-    /** Formato interno usado por el drag&drop para transportar la ruta del archivo arrastrado. */
-    private static final DataFormat FORMATO_RUTA_ARCHIVO = new DataFormat("proyecto1/ruta-archivo");
+    private static final DataFormat FORMATO_RUTA_ARCHIVO =
+            new DataFormat("proyecto1/ruta-archivo");
 
     private final TreeView<Object> treeView;
     private final EscuchaArbol escucha;
 
-    /** Cache de iconos ya cargados, para no leerlos del classpath repetidas veces. */
-    private final Map<String, Image> cacheIconos = new HashMap<>();
+    /** Raiz invisible del workspace. Contiene los proyectos abiertos. */
+    private final TreeItem<Object> raizWorkspace;
 
-    /**
-     * Crea el controlador y deja el {@link TreeView} listo para usarse
-     * (fabrica de celdas configurada). Todavia no carga ninguna carpeta:
-     * para eso se debe llamar a {@link #abrirCarpetaRaiz(File)}.
-     *
-     * @param treeView componente grafico del arbol, ya presente en el FXML
-     * @param escucha  receptor de los eventos del arbol
-     */
     public ArbolController(TreeView<Object> treeView, EscuchaArbol escucha) {
         this.treeView = treeView;
         this.escucha = escucha;
-        this.treeView.setShowRoot(true);
-        this.treeView.setCellFactory(vista -> new CeldaArbol());
+        this.raizWorkspace = new TreeItem<>(null);
+        this.treeView.setRoot(raizWorkspace);
+        this.treeView.setShowRoot(false);
+        this.treeView.setCellFactory(v -> new CeldaArbol());
+    }
+
+    /** Lista observable con los proyectos abiertos (para bindings de visibilidad). */
+    public ObservableList<TreeItem<Object>> getProyectos() {
+        return raizWorkspace.getChildren();
     }
 
     /**
-     * Abre una carpeta como raiz del proyecto, reemplazando el contenido
-     * actual del arbol.
-     *
-     * @param carpetaRaiz carpeta del disco elegida por el usuario
+     * Agrega un proyecto (carpeta) al workspace. Si ya estaba abierto, lo
+     * selecciona en vez de duplicarlo.
      */
-    public void abrirCarpetaRaiz(File carpetaRaiz) {
-        if (carpetaRaiz == null || !carpetaRaiz.isDirectory()) {
+    public void agregarProyecto(File carpetaProyecto) {
+        if (carpetaProyecto == null || !carpetaProyecto.isDirectory()) {
             escucha.mensajeError("La ruta seleccionada no es una carpeta valida.");
             return;
         }
-        NodoArbol nodoRaiz = new NodoArbol(new CarpetaUI(carpetaRaiz));
-        nodoRaiz.setExpanded(true);
-        treeView.setRoot(nodoRaiz);
-        escucha.mensajeInfo("Carpeta de proyecto abierta: " + carpetaRaiz.getAbsolutePath());
+        String ruta = carpetaProyecto.getAbsolutePath();
+        for (TreeItem<Object> hijo : raizWorkspace.getChildren()) {
+            if (hijo.getValue() instanceof CarpetaUI) {
+                String existente = ((CarpetaUI) hijo.getValue()).getCarpeta().getAbsolutePath();
+                if (existente.equals(ruta)) {
+                    escucha.mensajeInfo("El proyecto ya estaba abierto.");
+                    treeView.getSelectionModel().select(hijo);
+                    return;
+                }
+            }
+        }
+        NodoArbol nodoProyecto = new NodoArbol(new CarpetaUI(carpetaProyecto), true);
+        nodoProyecto.setExpanded(true);
+        raizWorkspace.getChildren().add(nodoProyecto);
+        treeView.getSelectionModel().select(nodoProyecto);
+        escucha.mensajeInfo("Proyecto agregado: " + ruta);
     }
 
-    /** Refresca todo el arbol desde la raiz actual (relee el disco). */
-    public void refrescarTodo() {
-        TreeItem<Object> raiz = treeView.getRoot();
-        if (raiz instanceof NodoArbol) {
-            ((NodoArbol) raiz).recargar();
-            escucha.mensajeInfo("Arbol de trabajo actualizado.");
+    /** Quita un proyecto del workspace (no borra nada del disco). */
+    public void quitarProyecto(File carpetaProyecto) {
+        String ruta = carpetaProyecto.getAbsolutePath();
+        for (TreeItem<Object> hijo : new ArrayList<>(raizWorkspace.getChildren())) {
+            if (hijo.getValue() instanceof CarpetaUI) {
+                String existente = ((CarpetaUI) hijo.getValue()).getCarpeta().getAbsolutePath();
+                if (existente.equals(ruta)) {
+                    raizWorkspace.getChildren().remove(hijo);
+                    escucha.mensajeInfo("Proyecto cerrado: " + carpetaProyecto.getName());
+                    return;
+                }
+            }
         }
     }
 
     /**
-     * @return el archivo actualmente seleccionado en el arbol, si lo hay
-     *         y corresponde a un archivo (no a una carpeta)
+     * @return la carpeta del proyecto seleccionado (o el primero del
+     *         workspace si el seleccionado no pertenece a ninguno), o
+     *         {@code null} si no hay proyectos abiertos
      */
+    public File getProyectoSeleccionado() {
+        TreeItem<Object> sel = treeView.getSelectionModel().getSelectedItem();
+        TreeItem<Object> actual = sel;
+        while (actual != null && actual != raizWorkspace) {
+            if (actual.getParent() == raizWorkspace && actual.getValue() instanceof CarpetaUI) {
+                return ((CarpetaUI) actual.getValue()).getCarpeta();
+            }
+            actual = actual.getParent();
+        }
+        for (TreeItem<Object> hijo : raizWorkspace.getChildren()) {
+            if (hijo.getValue() instanceof CarpetaUI) {
+                return ((CarpetaUI) hijo.getValue()).getCarpeta();
+            }
+        }
+        return null;
+    }
+
+    /** Refresca todos los proyectos releyendo el disco. */
+    public void refrescarTodo() {
+        for (TreeItem<Object> hijo : raizWorkspace.getChildren()) {
+            if (hijo instanceof NodoArbol) {
+                ((NodoArbol) hijo).recargar();
+            }
+        }
+        escucha.mensajeInfo("Arbol de trabajo actualizado.");
+    }
+
     public Optional<File> getArchivoSeleccionado() {
-        TreeItem<Object> seleccionado = treeView.getSelectionModel().getSelectedItem();
-        if (seleccionado != null && seleccionado.getValue() instanceof ArchivoUI) {
-            return Optional.of(((ArchivoUI) seleccionado.getValue()).getArchivo());
+        TreeItem<Object> sel = treeView.getSelectionModel().getSelectedItem();
+        if (sel != null && sel.getValue() instanceof ArchivoUI) {
+            return Optional.of(((ArchivoUI) sel.getValue()).getArchivo());
         }
         return Optional.empty();
     }
 
     // ======================================================================
-    // NODO DEL ARBOL CON CARGA PEREZOSA
+    // NODO DEL ARBOL
     // ======================================================================
 
-    /**
-     * TreeItem especializado que solo lee el contenido de su carpeta
-     * cuando JavaFX pide realmente sus hijos (al expandirlo por primera
-     * vez), evitando leer todo el disco de una sola vez.
-     */
     private class NodoArbol extends TreeItem<Object> {
 
         private boolean cargado = false;
+        private final boolean esRaizProyecto;
 
-        NodoArbol(Object valor) {
+        NodoArbol(Object valor) { this(valor, false); }
+
+        NodoArbol(Object valor, boolean esRaizProyecto) {
             super(valor);
+            this.esRaizProyecto = esRaizProyecto;
         }
+
+        boolean isRaizProyecto() { return esRaizProyecto; }
 
         @Override
         public ObservableList<TreeItem<Object>> getChildren() {
@@ -161,41 +172,33 @@ public class ArbolController {
 
         @Override
         public boolean isLeaf() {
-            // Solo los archivos son hojas; las carpetas siempre muestran
-            // la flecha de expansion (aunque esten vacias).
             return getValue() instanceof ArchivoUI;
         }
 
-        /** Fuerza una relectura del disco la proxima vez que se pidan los hijos. */
         void recargar() {
             cargado = false;
             super.getChildren().clear();
-            if (isExpanded()) {
-                // Forzar recarga inmediata si ya estaba expandido.
-                getChildren();
-            }
+            if (isExpanded()) getChildren();
         }
 
         private List<TreeItem<Object>> construirHijos() {
-            List<TreeItem<Object>> resultado = new ArrayList<>();
+            List<TreeItem<Object>> res = new ArrayList<>();
             Object valor = getValue();
-            if (!(valor instanceof CarpetaUI)) {
-                return resultado;
-            }
+            if (!(valor instanceof CarpetaUI)) return res;
             File carpeta = ((CarpetaUI) valor).getCarpeta();
             for (File hijo : GestorArchivos.listarHijos(carpeta)) {
                 if (hijo.isDirectory()) {
-                    resultado.add(new NodoArbol(new CarpetaUI(hijo)));
+                    res.add(new NodoArbol(new CarpetaUI(hijo)));
                 } else {
-                    resultado.add(new NodoArbol(new ArchivoUI(hijo)));
+                    res.add(new NodoArbol(new ArchivoUI(hijo)));
                 }
             }
-            return resultado;
+            return res;
         }
     }
 
     // ======================================================================
-    // CELDA PERSONALIZADA (ICONO + TEXTO + MENU CONTEXTUAL + DRAG&DROP)
+    // CELDA
     // ======================================================================
 
     private class CeldaArbol extends TreeCell<Object> {
@@ -210,162 +213,159 @@ public class ArbolController {
             super.updateItem(valor, vacio);
             if (vacio || valor == null) {
                 setText(null);
-                setGraphic(null);
                 setContextMenu(null);
                 return;
             }
-
             if (valor instanceof ArchivoUI) {
-                ArchivoUI archivoUI = (ArchivoUI) valor;
-                setText(archivoUI.getNombreParaMostrar());
-                setGraphic(crearIcono(iconoParaExtension(archivoUI.getExtension())));
-                setContextMenu(crearMenuArchivo(archivoUI));
+                ArchivoUI a = (ArchivoUI) valor;
+                setText(a.getNombreParaMostrar());
+                setContextMenu(crearMenuArchivo(a));
             } else if (valor instanceof CarpetaUI) {
-                CarpetaUI carpetaUI = (CarpetaUI) valor;
-                setText(carpetaUI.getNombre());
-                setGraphic(crearIcono("carpeta.png"));
-                setContextMenu(crearMenuCarpeta(carpetaUI));
+                CarpetaUI c = (CarpetaUI) valor;
+                setText(c.getNombre());
+                boolean esRaiz = getTreeItem() instanceof NodoArbol
+                        && ((NodoArbol) getTreeItem()).isRaizProyecto();
+                setContextMenu(crearMenuCarpeta(c, esRaiz));
             } else {
                 setText(String.valueOf(valor));
-                setGraphic(null);
                 setContextMenu(null);
             }
         }
 
         private void configurarDobleClic() {
-            setOnMouseClicked((MouseEvent evento) -> {
-                if (evento.getButton() == MouseButton.PRIMARY
-                        && evento.getClickCount() == 2
+            setOnMouseClicked((MouseEvent e) -> {
+                if (e.getButton() == MouseButton.PRIMARY
+                        && e.getClickCount() == 2
                         && !isEmpty()
                         && getItem() instanceof ArchivoUI) {
-                    File archivo = ((ArchivoUI) getItem()).getArchivo();
-                    escucha.archivoAbierto(archivo);
+                    escucha.archivoAbierto(((ArchivoUI) getItem()).getArchivo());
                 }
             });
         }
 
-        /** Configura esta celda como origen y destino de arrastrar/soltar. */
         private void configurarArrastre() {
-            setOnDragDetected(evento -> {
-                if (isEmpty() || getItem() == null) {
-                    return;
-                }
-                File origen = obtenerArchivoODirectorio(getItem());
-                if (origen == null) {
-                    return;
-                }
+            setOnDragDetected(e -> {
+                if (isEmpty() || getItem() == null) return;
+                File origen = obtenerFile(getItem());
+                if (origen == null) return;
                 Dragboard tablero = startDragAndDrop(TransferMode.MOVE);
                 ClipboardContent contenido = new ClipboardContent();
                 contenido.put(FORMATO_RUTA_ARCHIVO, origen.getAbsolutePath());
                 tablero.setContent(contenido);
-                evento.consume();
+                e.consume();
             });
 
-            setOnDragOver(evento -> {
-                if (evento.getGestureSource() != this
-                        && evento.getDragboard().hasContent(FORMATO_RUTA_ARCHIVO)
+            setOnDragOver(e -> {
+                if (e.getGestureSource() != this
+                        && e.getDragboard().hasContent(FORMATO_RUTA_ARCHIVO)
                         && getItem() instanceof CarpetaUI) {
-                    evento.acceptTransferModes(TransferMode.MOVE);
+                    e.acceptTransferModes(TransferMode.MOVE);
                 }
-                evento.consume();
+                e.consume();
             });
 
-            setOnDragDropped(evento -> {
-                Dragboard tablero = evento.getDragboard();
+            setOnDragDropped(e -> {
+                Dragboard tablero = e.getDragboard();
                 boolean exito = false;
                 if (tablero.hasContent(FORMATO_RUTA_ARCHIVO) && getItem() instanceof CarpetaUI) {
-                    String rutaOrigen = (String) tablero.getContent(FORMATO_RUTA_ARCHIVO);
-                    File origen = new File(rutaOrigen);
-                    File carpetaDestino = ((CarpetaUI) getItem()).getCarpeta();
+                    File origen = new File((String) tablero.getContent(FORMATO_RUTA_ARCHIVO));
+                    File destino = ((CarpetaUI) getItem()).getCarpeta();
                     try {
-                        GestorArchivos.mover(origen, carpetaDestino);
-                        escucha.mensajeInfo("Movido \"" + origen.getName() + "\" a \"" + carpetaDestino.getName() + "\".");
+                        GestorArchivos.mover(origen, destino);
+                        escucha.mensajeInfo("Movido \"" + origen.getName()
+                                + "\" a \"" + destino.getName() + "\".");
                         refrescarTodo();
                         exito = true;
                     } catch (IOException ex) {
-                        escucha.mensajeError("No se pudo mover el archivo: " + ex.getMessage());
+                        escucha.mensajeError("No se pudo mover: " + ex.getMessage());
                         Notificaciones.mostrarError("Mover archivo", ex.getMessage());
                     }
                 }
-                evento.setDropCompleted(exito);
-                evento.consume();
+                e.setDropCompleted(exito);
+                e.consume();
             });
         }
 
-        private File obtenerArchivoODirectorio(Object valor) {
-            if (valor instanceof ArchivoUI) {
-                return ((ArchivoUI) valor).getArchivo();
-            }
-            if (valor instanceof CarpetaUI) {
-                return ((CarpetaUI) valor).getCarpeta();
-            }
+        private File obtenerFile(Object valor) {
+            if (valor instanceof ArchivoUI) return ((ArchivoUI) valor).getArchivo();
+            if (valor instanceof CarpetaUI) return ((CarpetaUI) valor).getCarpeta();
             return null;
         }
 
-        // -------------------- MENUS CONTEXTUALES --------------------
-
-        private ContextMenu crearMenuArchivo(ArchivoUI archivoUI) {
+        private ContextMenu crearMenuArchivo(ArchivoUI a) {
             MenuItem abrir = new MenuItem("Abrir");
-            abrir.setOnAction(e -> escucha.archivoAbierto(archivoUI.getArchivo()));
+            abrir.setOnAction(e -> escucha.archivoAbierto(a.getArchivo()));
 
             MenuItem renombrar = new MenuItem("Renombrar");
-            renombrar.setOnAction(e -> renombrarElemento(archivoUI.getArchivo()));
+            renombrar.setOnAction(e -> renombrarElemento(a.getArchivo()));
 
             MenuItem eliminar = new MenuItem("Eliminar");
-            eliminar.setOnAction(e -> eliminarElemento(archivoUI.getArchivo()));
+            eliminar.setOnAction(e -> eliminarElemento(a.getArchivo()));
 
             MenuItem duplicar = new MenuItem("Duplicar");
-            duplicar.setOnAction(e -> duplicarArchivo(archivoUI.getArchivo()));
+            duplicar.setOnAction(e -> duplicarArchivo(a.getArchivo()));
 
             return new ContextMenu(abrir, renombrar, eliminar, duplicar);
         }
 
-        private ContextMenu crearMenuCarpeta(CarpetaUI carpetaUI) {
+        private ContextMenu crearMenuCarpeta(CarpetaUI c, boolean esRaizProyecto) {
             MenuItem nuevoArchivo = new MenuItem("Nuevo archivo");
-            nuevoArchivo.setOnAction(e -> crearArchivoEnCarpeta(carpetaUI.getCarpeta()));
+            nuevoArchivo.setOnAction(e -> crearArchivoEnCarpeta(c.getCarpeta()));
 
             MenuItem nuevaCarpeta = new MenuItem("Nueva carpeta");
-            nuevaCarpeta.setOnAction(e -> crearSubcarpeta(carpetaUI.getCarpeta()));
+            nuevaCarpeta.setOnAction(e -> crearSubcarpeta(c.getCarpeta()));
 
             MenuItem renombrar = new MenuItem("Renombrar");
-            renombrar.setOnAction(e -> renombrarElemento(carpetaUI.getCarpeta()));
+            renombrar.setOnAction(e -> renombrarElemento(c.getCarpeta()));
 
             MenuItem eliminar = new MenuItem("Eliminar");
-            eliminar.setOnAction(e -> eliminarElemento(carpetaUI.getCarpeta()));
+            eliminar.setOnAction(e -> eliminarElemento(c.getCarpeta()));
 
             MenuItem refrescar = new MenuItem("Refrescar");
             refrescar.setOnAction(e -> refrescarTodo());
 
-            return new ContextMenu(nuevoArchivo, nuevaCarpeta, renombrar, eliminar, refrescar);
-        }
+            ContextMenu menu = new ContextMenu(
+                    nuevoArchivo, nuevaCarpeta,
+                    new SeparatorMenuItem(),
+                    renombrar, eliminar, refrescar);
 
-        // -------------------- ACCIONES --------------------
+            // Si es la raiz de un proyecto, anadimos la opcion de cerrarlo.
+            if (esRaizProyecto) {
+                MenuItem cerrar = new MenuItem("Cerrar proyecto");
+                cerrar.setOnAction(e -> quitarProyecto(c.getCarpeta()));
+                menu.getItems().add(new SeparatorMenuItem());
+                menu.getItems().add(cerrar);
+            }
+            return menu;
+        }
 
         private void crearArchivoEnCarpeta(File carpeta) {
             Optional<String> nombre = Notificaciones.pedirTexto(
-                    "Nuevo archivo", "Nombre del nuevo archivo (incluya extension .y, .z o .pig):", "nuevo.y");
+                    "Nuevo archivo",
+                    "Nombre del nuevo archivo (incluya extension .y, .z o .pig):",
+                    "nuevo.y");
             nombre.ifPresent(n -> {
                 try {
                     GestorArchivos.crearArchivo(new File(carpeta, n), "");
                     escucha.mensajeInfo("Archivo creado: " + n);
                     refrescarTodo();
                 } catch (IOException ex) {
-                    escucha.mensajeError("No se pudo crear el archivo: " + ex.getMessage());
+                    escucha.mensajeError("No se pudo crear: " + ex.getMessage());
                     Notificaciones.mostrarError("Nuevo archivo", ex.getMessage());
                 }
             });
         }
 
-        private void crearSubcarpeta(File carpetaPadre) {
+        private void crearSubcarpeta(File padre) {
             Optional<String> nombre = Notificaciones.pedirTexto(
                     "Nueva carpeta", "Nombre de la nueva carpeta:", "nueva_carpeta");
             nombre.ifPresent(n -> {
                 try {
-                    GestorArchivos.crearCarpeta(new File(carpetaPadre, n));
+                    GestorArchivos.crearCarpeta(new File(padre, n));
                     escucha.mensajeInfo("Carpeta creada: " + n);
                     refrescarTodo();
                 } catch (IOException ex) {
-                    escucha.mensajeError("No se pudo crear la carpeta: " + ex.getMessage());
+                    escucha.mensajeError("No se pudo crear: " + ex.getMessage());
                     Notificaciones.mostrarError("Nueva carpeta", ex.getMessage());
                 }
             });
@@ -373,7 +373,9 @@ public class ArbolController {
 
         private void renombrarElemento(File elemento) {
             Optional<String> nuevoNombre = Notificaciones.pedirTexto(
-                    "Renombrar", "Nuevo nombre para \"" + elemento.getName() + "\":", elemento.getName());
+                    "Renombrar",
+                    "Nuevo nombre para \"" + elemento.getName() + "\":",
+                    elemento.getName());
             nuevoNombre.ifPresent(n -> {
                 try {
                     GestorArchivos.renombrar(elemento, n);
@@ -387,12 +389,11 @@ public class ArbolController {
         }
 
         private void eliminarElemento(File elemento) {
-            boolean confirmado = Notificaciones.confirmar(
+            boolean ok = Notificaciones.confirmar(
                     "Eliminar",
-                    "¿Seguro que desea eliminar \"" + elemento.getName() + "\"? Esta accion no se puede deshacer.");
-            if (!confirmado) {
-                return;
-            }
+                    "Seguro que desea eliminar \"" + elemento.getName() + "\"? "
+                            + "Esta accion no se puede deshacer.");
+            if (!ok) return;
             try {
                 GestorArchivos.eliminar(elemento);
                 escucha.mensajeInfo("Eliminado: " + elemento.getName());
@@ -409,50 +410,9 @@ public class ArbolController {
                 escucha.mensajeInfo("Archivo duplicado como: " + copia.getName());
                 refrescarTodo();
             } catch (IOException ex) {
-                escucha.mensajeError("No se pudo duplicar el archivo: " + ex.getMessage());
+                escucha.mensajeError("No se pudo duplicar: " + ex.getMessage());
                 Notificaciones.mostrarError("Duplicar", ex.getMessage());
             }
-        }
-
-        // -------------------- ICONOS --------------------
-
-        private String iconoParaExtension(String extension) {
-            switch (extension.toLowerCase(Locale.ROOT)) {
-                case "y":
-                    return "archivo-y.png";
-                case "z":
-                    return "archivo-z.png";
-                case "pig":
-                    return "archivo-pig.png";
-                default:
-                    return "archivo-generico.png";
-            }
-        }
-
-        /**
-         * Crea un {@link ImageView} de 16x16 para el icono indicado. Si el
-         * archivo PNG todavia no existe en {@code resources/icons/} (ver
-         * Fase 6 en PROGRESO_FRONTEND.md), no se produce ningun error: la
-         * celda simplemente se muestra sin icono.
-         */
-        private ImageView crearIcono(String nombreArchivoPng) {
-            Image imagen = cacheIconos.computeIfAbsent(nombreArchivoPng, this::cargarIconoOVacio);
-            if (imagen == null) {
-                return null;
-            }
-            ImageView vista = new ImageView(imagen);
-            vista.setFitWidth(16);
-            vista.setFitHeight(16);
-            vista.setPreserveRatio(true);
-            return vista;
-        }
-
-        private Image cargarIconoOVacio(String nombreArchivoPng) {
-            var flujo = getClass().getResourceAsStream("/icons/" + nombreArchivoPng);
-            if (flujo == null) {
-                return null;
-            }
-            return new Image(flujo);
         }
     }
 }

@@ -15,34 +15,18 @@
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.control.TreeView?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<!--
-    Layout principal del IDE del compilador.
-
-    Estructura (BorderPane):
-      - top:    VBox con MenuBar + ToolBar
-      - left:   arbol de trabajo (TreeView) dentro de un TitledPane, oculto/mostrado desde el menu Ver
-      - center: SplitPane vertical con el TabPane del editor arriba y la consola de salida abajo
-      - right:  panel de errores (opcional, vacio por ahora), oculto por defecto
-      - bottom: barra de estado
-
-    Controlador: com.proyecto1.ui.controller.MainController
--->
 <BorderPane fx:id="raizPrincipal" prefHeight="800.0" prefWidth="1200.0"
             xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.proyecto1.ui.controller.MainController">
 
     <top>
         <VBox>
-            <!-- ===================== BARRA DE MENU ===================== -->
             <MenuBar fx:id="barraMenu">
-
                 <Menu text="Archivo">
                     <MenuItem text="Nuevo archivo" onAction="#accionNuevoArchivo" />
                     <MenuItem text="Nuevo proyecto/carpeta" onAction="#accionNuevoProyecto" />
@@ -53,7 +37,7 @@
                     <MenuItem text="Guardar" onAction="#accionGuardar" />
                     <MenuItem text="Guardar como" onAction="#accionGuardarComo" />
                     <SeparatorMenuItem />
-                    <MenuItem text="Cerrar pestaña actual" onAction="#accionCerrarPestanaActual" />
+                    <MenuItem text="Cerrar pestana actual" onAction="#accionCerrarPestanaActual" />
                     <SeparatorMenuItem />
                     <MenuItem text="Salir" onAction="#accionSalir" />
                 </Menu>
@@ -71,15 +55,12 @@
                 </Menu>
 
                 <Menu text="Ver">
-                    <CheckMenuItem fx:id="miMostrarArbol" text="Mostrar arbol de trabajo" selected="true"
-                                   onAction="#accionAlternarArbol" />
-                    <CheckMenuItem fx:id="miMostrarConsola" text="Mostrar consola" selected="true"
-                                   onAction="#accionAlternarConsola" />
-                    <CheckMenuItem fx:id="miMostrarPanelErrores" text="Mostrar panel de errores" selected="false"
-                                   onAction="#accionAlternarPanelErrores" />
-                    <SeparatorMenuItem />
-                    <MenuItem text="Tema claro" onAction="#accionTemaClaro" />
-                    <MenuItem text="Tema oscuro" onAction="#accionTemaOscuro" />
+                    <CheckMenuItem fx:id="miMostrarArbol" text="Mostrar arbol de trabajo"
+                                   selected="true" onAction="#accionAlternarArbol" />
+                    <CheckMenuItem fx:id="miMostrarConsola" text="Mostrar consola"
+                                   selected="true" onAction="#accionAlternarConsola" />
+                    <CheckMenuItem fx:id="miMostrarPanelErrores" text="Mostrar panel de errores"
+                                   selected="false" onAction="#accionAlternarPanelErrores" />
                 </Menu>
 
                 <Menu text="Ejecutar">
@@ -92,143 +73,89 @@
                     <MenuItem text="Acerca de" onAction="#accionAcercaDe" />
                     <MenuItem text="Manual de usuario" onAction="#accionManualUsuario" />
                 </Menu>
-
             </MenuBar>
 
-            <!-- ===================== TOOLBAR ===================== -->
-            <!-- Los iconos se cargan desde resources/icons/ (PNG generados en la Fase 6). -->
             <ToolBar fx:id="barraHerramientas">
-                <Button fx:id="btnNuevoArchivo" text="Nuevo" onAction="#accionNuevoArchivo"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/nuevo.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
-                <Button fx:id="btnAbrirArchivo" text="Abrir" onAction="#accionAbrirArchivo"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/abrir.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
-                <Button fx:id="btnGuardar" text="Guardar" onAction="#accionGuardar"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/guardar.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
-                <Button fx:id="btnGuardarComo" text="Guardar como" onAction="#accionGuardarComo"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/guardar-como.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
+                <Button fx:id="btnNuevoProyecto" text="Nuevo proyecto" onAction="#accionNuevoProyecto" />
+                <Button fx:id="btnAbrirCarpeta" text="Abrir carpeta" onAction="#accionAbrirCarpeta" />
                 <Separator orientation="VERTICAL" />
-                <Button fx:id="btnDeshacer" text="Deshacer" onAction="#accionDeshacer"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/deshacer.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
-                <Button fx:id="btnRehacer" text="Rehacer" onAction="#accionRehacer"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/rehacer.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
-                <Button fx:id="btnBuscar" text="Buscar" onAction="#accionBuscarReemplazar"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/buscar.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
+                <Button fx:id="btnNuevoArchivo" text="Nuevo archivo" onAction="#accionNuevoArchivo" />
+                <Button fx:id="btnAbrirArchivo" text="Abrir archivo" onAction="#accionAbrirArchivo" />
+                <Button fx:id="btnGuardar" text="Guardar" onAction="#accionGuardar" />
+                <Button fx:id="btnGuardarComo" text="Guardar como" onAction="#accionGuardarComo" />
                 <Separator orientation="VERTICAL" />
-                <Button fx:id="btnAnalizar" text="Analizar" onAction="#accionAnalizarArchivoActual"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/analizar.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
-                <Button fx:id="btnEjecutar" text="Ejecutar" onAction="#accionCompilarProyecto"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/ejecutar.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
+                <Button fx:id="btnDeshacer" text="Deshacer" onAction="#accionDeshacer" />
+                <Button fx:id="btnRehacer" text="Rehacer" onAction="#accionRehacer" />
+                <Button fx:id="btnBuscar" text="Buscar" onAction="#accionBuscarReemplazar" />
                 <Separator orientation="VERTICAL" />
-                <Button fx:id="btnTema" text="Tema claro/oscuro" onAction="#accionAlternarTema"
-                        contentDisplay="LEFT">
-                    <graphic>
-                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
-                            <Image url="@/icons/tema.png" />
-                        </ImageView>
-                    </graphic>
-                </Button>
+                <Button fx:id="btnAnalizar" text="Analizar" onAction="#accionAnalizarArchivoActual" />
+                <Button fx:id="btnEjecutar" text="Ejecutar" onAction="#accionCompilarProyecto" />
             </ToolBar>
         </VBox>
     </top>
 
-    <!-- ===================== ARBOL DE TRABAJO (IZQUIERDA) ===================== -->
     <left>
-        <TitledPane fx:id="panelArbol" text="Arbol de trabajo" collapsible="false" prefWidth="260.0">
-            <TreeView fx:id="arbolTrabajo" showRoot="true" />
+        <TitledPane fx:id="panelArbol" text="Arbol de trabajo"
+                    collapsible="false" prefWidth="260.0">
+            <StackPane>
+                <TreeView fx:id="arbolTrabajo" showRoot="true" />
+                <VBox fx:id="panelArbolVacio" alignment="CENTER" spacing="12"
+                      styleClass="panel-arbol-vacio">
+                    <Label text="Sin proyectos abiertos" styleClass="texto-suave" />
+                    <Label text="Crea uno nuevo o abre una carpeta existente"
+                           styleClass="texto-suave" wrapText="true"
+                           textAlignment="CENTER" maxWidth="180" />
+                    <Button text="Nuevo proyecto" onAction="#accionNuevoProyecto" maxWidth="160" />
+                    <Button text="Abrir carpeta" onAction="#accionAbrirCarpeta" maxWidth="160" />
+                </VBox>
+            </StackPane>
         </TitledPane>
     </left>
 
-    <!-- ===================== CENTRO: EDITOR + CONSOLA ===================== -->
     <center>
-        <SplitPane fx:id="splitCentral" dividerPositions="0.75" orientation="VERTICAL">
-            <TabPane fx:id="panelPestanas" tabClosingPolicy="ALL_TABS" />
+        <SplitPane fx:id="splitCentral" dividerPositions="0.72" orientation="VERTICAL">
+            <StackPane>
+                <TabPane fx:id="panelPestanas" tabClosingPolicy="ALL_TABS" />
+                <VBox fx:id="panelBienvenida" alignment="CENTER" spacing="16"
+                      styleClass="panel-bienvenida">
+                    <Label text="Compilador - Proyecto 1"
+                           style="-fx-font-size: 24px; -fx-font-weight: bold;" />
+                    <Label text="Abre una carpeta o crea un archivo para empezar"
+                           styleClass="texto-suave" />
+                    <HBox alignment="CENTER" spacing="10">
+                        <Button text="Abrir carpeta" onAction="#accionAbrirCarpeta" />
+                        <Button text="Abrir archivo" onAction="#accionAbrirArchivo" />
+                        <Button text="Nuevo archivo" onAction="#accionNuevoArchivo" />
+                    </HBox>
+                </VBox>
+            </StackPane>
 
             <VBox fx:id="contenedorConsola">
                 <Label text="Consola de salida" styleClass="titulo-panel">
                     <VBox.margin>
-                        <Insets left="6.0" top="4.0" bottom="2.0" />
+                        <Insets left="8.0" top="6.0" bottom="4.0" />
                     </VBox.margin>
                 </Label>
-                <TextArea fx:id="consolaSalida" editable="false" wrapText="true" VBox.vgrow="ALWAYS"
-                          styleClass="consola-salida" />
+                <TextArea fx:id="consolaSalida" editable="false" wrapText="true"
+                          VBox.vgrow="ALWAYS" styleClass="consola-salida" />
             </VBox>
         </SplitPane>
     </center>
 
-    <!-- ===================== PANEL DE ERRORES (DERECHA, OPCIONAL) ===================== -->
     <right>
-        <TitledPane fx:id="panelErrores" text="Errores" collapsible="false" prefWidth="220.0"
-                    visible="false" managed="false">
+        <TitledPane fx:id="panelErrores" text="Errores" collapsible="false"
+                    prefWidth="220.0" visible="false" managed="false">
             <VBox>
-                <Label text="(Sin errores por ahora)" styleClass="texto-secundario">
-                    <VBox.margin>
-                        <Insets left="6.0" top="6.0" />
-                    </VBox.margin>
+                <Label text="(Sin errores por ahora)" styleClass="texto-suave">
+                    <VBox.margin><Insets left="8.0" top="8.0" /></VBox.margin>
                 </Label>
             </VBox>
         </TitledPane>
     </right>
 
-    <!-- ===================== BARRA DE ESTADO (INFERIOR) ===================== -->
     <bottom>
         <HBox fx:id="barraEstado" styleClass="barra-estado" spacing="16.0">
-            <padding>
-                <Insets top="4.0" bottom="4.0" left="10.0" right="10.0" />
-            </padding>
+            <padding><Insets top="6.0" bottom="6.0" left="14.0" right="14.0" /></padding>
             <Label fx:id="lblRutaActiva" text="Sin archivo abierto" />
             <Separator orientation="VERTICAL" />
             <Label fx:id="lblPosicionCursor" text="Linea 1, Columna 1" />
@@ -238,5 +165,4 @@
             <Label fx:id="lblEstadoModificado" text="" />
         </HBox>
     </bottom>
-
 </BorderPane>
