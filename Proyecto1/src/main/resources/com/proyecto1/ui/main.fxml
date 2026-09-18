@@ -15,6 +15,8 @@
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.control.TreeView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
@@ -94,30 +96,91 @@
             </MenuBar>
 
             <!-- ===================== TOOLBAR ===================== -->
+            <!-- Los iconos se cargan desde resources/icons/ (PNG generados en la Fase 6). -->
             <ToolBar fx:id="barraHerramientas">
                 <Button fx:id="btnNuevoArchivo" text="Nuevo" onAction="#accionNuevoArchivo"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/nuevo.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Button fx:id="btnAbrirArchivo" text="Abrir" onAction="#accionAbrirArchivo"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/abrir.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Button fx:id="btnGuardar" text="Guardar" onAction="#accionGuardar"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/guardar.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Button fx:id="btnGuardarComo" text="Guardar como" onAction="#accionGuardarComo"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/guardar-como.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Separator orientation="VERTICAL" />
                 <Button fx:id="btnDeshacer" text="Deshacer" onAction="#accionDeshacer"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/deshacer.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Button fx:id="btnRehacer" text="Rehacer" onAction="#accionRehacer"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/rehacer.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Button fx:id="btnBuscar" text="Buscar" onAction="#accionBuscarReemplazar"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/buscar.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Separator orientation="VERTICAL" />
                 <Button fx:id="btnAnalizar" text="Analizar" onAction="#accionAnalizarArchivoActual"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/analizar.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Button fx:id="btnEjecutar" text="Ejecutar" onAction="#accionCompilarProyecto"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/ejecutar.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
                 <Separator orientation="VERTICAL" />
                 <Button fx:id="btnTema" text="Tema claro/oscuro" onAction="#accionAlternarTema"
-                        contentDisplay="LEFT" />
+                        contentDisplay="LEFT">
+                    <graphic>
+                        <ImageView fitWidth="16.0" fitHeight="16.0" preserveRatio="true">
+                            <Image url="@/icons/tema.png" />
+                        </ImageView>
+                    </graphic>
+                </Button>
             </ToolBar>
         </VBox>
     </top>

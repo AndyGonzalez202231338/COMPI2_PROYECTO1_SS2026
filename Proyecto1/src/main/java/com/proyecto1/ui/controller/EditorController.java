@@ -374,4 +374,32 @@ public class EditorController {
         }
         areaCodigo.setText(areaCodigo.getText().replace(buscar, reemplazar));
     }
+
+    /**
+     * Busca la siguiente aparicion de {@code texto} a partir de la
+     * posicion actual del cursor y la selecciona. Si no encuentra nada
+     * despues del cursor, vuelve a buscar desde el inicio (busqueda
+     * ciclica), tal como se espera de un dialogo de Buscar basico.
+     *
+     * @param texto texto a buscar (si esta vacio, no hace nada)
+     * @return {@code true} si se encontro y selecciono una coincidencia
+     */
+    public boolean buscarSiguiente(String texto) {
+        if (texto == null || texto.isEmpty()) {
+            return false;
+        }
+        String contenido = areaCodigo.getText();
+        int desde = areaCodigo.getCaretPosition();
+        int indice = contenido.indexOf(texto, desde);
+        if (indice < 0) {
+            // Busqueda ciclica: reintentar desde el principio del documento.
+            indice = contenido.indexOf(texto, 0);
+        }
+        if (indice < 0) {
+            return false;
+        }
+        areaCodigo.selectRange(indice, indice + texto.length());
+        areaCodigo.requestFocus();
+        return true;
+    }
 }
