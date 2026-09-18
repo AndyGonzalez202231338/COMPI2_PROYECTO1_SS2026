@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckMenuItem?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+    Layout principal del IDE del compilador.
+
+    Estructura (BorderPane):
+      - top:    VBox con MenuBar + ToolBar
+      - left:   arbol de trabajo (TreeView) dentro de un TitledPane, oculto/mostrado desde el menu Ver
+      - center: SplitPane vertical con el TabPane del editor arriba y la consola de salida abajo
+      - right:  panel de errores (opcional, vacio por ahora), oculto por defecto
+      - bottom: barra de estado
+
+    Controlador: com.proyecto1.ui.controller.MainController
+-->
+<BorderPane fx:id="raizPrincipal" prefHeight="800.0" prefWidth="1200.0"
+            xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.proyecto1.ui.controller.MainController">
+
+    <top>
+        <VBox>
+            <!-- ===================== BARRA DE MENU ===================== -->
+            <MenuBar fx:id="barraMenu">
+
+                <Menu text="Archivo">
+                    <MenuItem text="Nuevo archivo" onAction="#accionNuevoArchivo" />
+                    <MenuItem text="Nuevo proyecto/carpeta" onAction="#accionNuevoProyecto" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Abrir archivo" onAction="#accionAbrirArchivo" />
+                    <MenuItem text="Abrir carpeta" onAction="#accionAbrirCarpeta" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Guardar" onAction="#accionGuardar" />
+                    <MenuItem text="Guardar como" onAction="#accionGuardarComo" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Cerrar pestaña actual" onAction="#accionCerrarPestanaActual" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Salir" onAction="#accionSalir" />
+                </Menu>
+
+                <Menu text="Editar">
+                    <MenuItem text="Deshacer" onAction="#accionDeshacer" />
+                    <MenuItem text="Rehacer" onAction="#accionRehacer" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Cortar" onAction="#accionCortar" />
+                    <MenuItem text="Copiar" onAction="#accionCopiar" />
+                    <MenuItem text="Pegar" onAction="#accionPegar" />
+                    <MenuItem text="Seleccionar todo" onAction="#accionSeleccionarTodo" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Buscar / Reemplazar..." onAction="#accionBuscarReemplazar" />
+                </Menu>
+
+                <Menu text="Ver">
+                    <CheckMenuItem fx:id="miMostrarArbol" text="Mostrar arbol de trabajo" selected="true"
+                                   onAction="#accionAlternarArbol" />
+                    <CheckMenuItem fx:id="miMostrarConsola" text="Mostrar consola" selected="true"
+                                   onAction="#accionAlternarConsola" />
+                    <CheckMenuItem fx:id="miMostrarPanelErrores" text="Mostrar panel de errores" selected="false"
+                                   onAction="#accionAlternarPanelErrores" />
+                    <SeparatorMenuItem />
+                    <MenuItem text="Tema claro" onAction="#accionTemaClaro" />
+                    <MenuItem text="Tema oscuro" onAction="#accionTemaOscuro" />
+                </Menu>
+
+                <Menu text="Ejecutar">
+                    <MenuItem text="Analizar archivo actual" onAction="#accionAnalizarArchivoActual" />
+                    <MenuItem text="Compilar todo el proyecto" onAction="#accionCompilarProyecto" />
+                    <MenuItem text="Ejecutar ultimo analisis" onAction="#accionEjecutarUltimoAnalisis" />
+                </Menu>
+
+                <Menu text="Ayuda">
+                    <MenuItem text="Acerca de" onAction="#accionAcercaDe" />
+                    <MenuItem text="Manual de usuario" onAction="#accionManualUsuario" />
+                </Menu>
+
+            </MenuBar>
+
+            <!-- ===================== TOOLBAR ===================== -->
+            <ToolBar fx:id="barraHerramientas">
+                <Button fx:id="btnNuevoArchivo" text="Nuevo" onAction="#accionNuevoArchivo"
+                        contentDisplay="LEFT" />
+                <Button fx:id="btnAbrirArchivo" text="Abrir" onAction="#accionAbrirArchivo"
+                        contentDisplay="LEFT" />
+                <Button fx:id="btnGuardar" text="Guardar" onAction="#accionGuardar"
+                        contentDisplay="LEFT" />
+                <Button fx:id="btnGuardarComo" text="Guardar como" onAction="#accionGuardarComo"
+                        contentDisplay="LEFT" />
+                <Separator orientation="VERTICAL" />
+                <Button fx:id="btnDeshacer" text="Deshacer" onAction="#accionDeshacer"
+                        contentDisplay="LEFT" />
+                <Button fx:id="btnRehacer" text="Rehacer" onAction="#accionRehacer"
+                        contentDisplay="LEFT" />
+                <Button fx:id="btnBuscar" text="Buscar" onAction="#accionBuscarReemplazar"
+                        contentDisplay="LEFT" />
+                <Separator orientation="VERTICAL" />
+                <Button fx:id="btnAnalizar" text="Analizar" onAction="#accionAnalizarArchivoActual"
+                        contentDisplay="LEFT" />
+                <Button fx:id="btnEjecutar" text="Ejecutar" onAction="#accionCompilarProyecto"
+                        contentDisplay="LEFT" />
+                <Separator orientation="VERTICAL" />
+                <Button fx:id="btnTema" text="Tema claro/oscuro" onAction="#accionAlternarTema"
+                        contentDisplay="LEFT" />
+            </ToolBar>
+        </VBox>
+    </top>
+
+    <!-- ===================== ARBOL DE TRABAJO (IZQUIERDA) ===================== -->
+    <left>
+        <TitledPane fx:id="panelArbol" text="Arbol de trabajo" collapsible="false" prefWidth="260.0">
+            <TreeView fx:id="arbolTrabajo" showRoot="true" />
+        </TitledPane>
+    </left>
+
+    <!-- ===================== CENTRO: EDITOR + CONSOLA ===================== -->
+    <center>
+        <SplitPane fx:id="splitCentral" dividerPositions="0.75" orientation="VERTICAL">
+            <TabPane fx:id="panelPestanas" tabClosingPolicy="ALL_TABS" />
+
+            <VBox fx:id="contenedorConsola">
+                <Label text="Consola de salida" styleClass="titulo-panel">
+                    <VBox.margin>
+                        <Insets left="6.0" top="4.0" bottom="2.0" />
+                    </VBox.margin>
+                </Label>
+                <TextArea fx:id="consolaSalida" editable="false" wrapText="true" VBox.vgrow="ALWAYS"
+                          styleClass="consola-salida" />
+            </VBox>
+        </SplitPane>
+    </center>
+
+    <!-- ===================== PANEL DE ERRORES (DERECHA, OPCIONAL) ===================== -->
+    <right>
+        <TitledPane fx:id="panelErrores" text="Errores" collapsible="false" prefWidth="220.0"
+                    visible="false" managed="false">
+            <VBox>
+                <Label text="(Sin errores por ahora)" styleClass="texto-secundario">
+                    <VBox.margin>
+                        <Insets left="6.0" top="6.0" />
+                    </VBox.margin>
+                </Label>
+            </VBox>
+        </TitledPane>
+    </right>
+
+    <!-- ===================== BARRA DE ESTADO (INFERIOR) ===================== -->
+    <bottom>
+        <HBox fx:id="barraEstado" styleClass="barra-estado" spacing="16.0">
+            <padding>
+                <Insets top="4.0" bottom="4.0" left="10.0" right="10.0" />
+            </padding>
+            <Label fx:id="lblRutaActiva" text="Sin archivo abierto" />
+            <Separator orientation="VERTICAL" />
+            <Label fx:id="lblPosicionCursor" text="Linea 1, Columna 1" />
+            <Separator orientation="VERTICAL" />
+            <Label fx:id="lblLenguajeDetectado" text="Lenguaje: Desconocido" />
+            <HBox HBox.hgrow="ALWAYS" />
+            <Label fx:id="lblEstadoModificado" text="" />
+        </HBox>
+    </bottom>
+
+</BorderPane>

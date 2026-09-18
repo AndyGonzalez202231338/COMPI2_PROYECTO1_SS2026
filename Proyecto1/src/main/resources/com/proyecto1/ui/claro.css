@@ -1,0 +1,166 @@
+/*
+ * Tema CLARO del IDE del compilador.
+ *
+ * Se definen "variables" de color a nivel de .root (JavaFX permite
+ * declarar propiedades -mi-variable y reutilizarlas con -fx-... : -mi-variable;
+ * lo que funciona como una hoja de variables). El tema oscuro (oscuro.css)
+ * redefine las mismas variables, de forma que el resto de selectores no
+ * necesitan duplicarse entre ambos archivos si se desea extender el tema.
+ */
+
+.root {
+    -color-fondo: #f4f5f7;
+    -color-fondo-panel: #ffffff;
+    -color-borde: #d0d3d8;
+    -color-texto: #202225;
+    -color-texto-secundario: #6b7280;
+    -color-acento: #2f6fed;
+    -color-acento-suave: #e7effe;
+    -color-error: #c62828;
+    -color-advertencia: #b45309;
+    -color-info: #202225;
+    -color-editor-fondo: #ffffff;
+    -color-editor-texto: #1c1c1c;
+    -color-gutter-fondo: #eceef1;
+    -color-gutter-texto: #8a8f98;
+    -color-consola-fondo: #101418;
+    -color-consola-texto: #d7dadd;
+
+    -fx-base: -color-fondo;
+    -fx-background: -color-fondo;
+    -fx-control-inner-background: -color-fondo-panel;
+    -fx-text-fill: -color-texto;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+}
+
+.label {
+    -fx-text-fill: -color-texto;
+}
+
+.texto-secundario {
+    -fx-text-fill: -color-texto-secundario;
+    -fx-font-style: italic;
+}
+
+.titulo-panel {
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-texto;
+}
+
+/* ===================== MENU Y TOOLBAR ===================== */
+
+.menu-bar {
+    -fx-background-color: -color-fondo-panel;
+    -fx-border-color: transparent transparent -color-borde transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tool-bar {
+    -fx-background-color: -color-fondo-panel;
+    -fx-border-color: transparent transparent -color-borde transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-spacing: 4px;
+}
+
+.button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-texto;
+    -fx-background-radius: 4px;
+    -fx-padding: 5px 10px;
+}
+
+.button:hover {
+    -fx-background-color: -color-acento-suave;
+}
+
+.button:pressed {
+    -fx-background-color: derive(-color-acento-suave, -10%);
+}
+
+/* ===================== ARBOL DE TRABAJO ===================== */
+
+.titled-pane > .title {
+    -fx-background-color: -color-fondo-panel;
+    -fx-border-color: transparent transparent -color-borde transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.titled-pane > .content {
+    -fx-background-color: -color-fondo-panel;
+    -fx-border-color: transparent;
+}
+
+.tree-view {
+    -fx-background-color: -color-fondo-panel;
+    -fx-control-inner-background: -color-fondo-panel;
+}
+
+.tree-cell {
+    -fx-text-fill: -color-texto;
+}
+
+.tree-cell:selected {
+    -fx-background-color: -color-acento-suave;
+    -fx-text-fill: -color-texto;
+}
+
+/* ===================== EDITOR (TABPANE) ===================== */
+
+.tab-pane {
+    -fx-background-color: -color-fondo;
+}
+
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: -color-fondo-panel;
+}
+
+.tab {
+    -fx-background-color: -color-fondo;
+    -fx-background-radius: 4px 4px 0 0;
+}
+
+.tab:selected {
+    -fx-background-color: -color-editor-fondo;
+    -fx-border-color: -color-acento transparent transparent transparent;
+    -fx-border-width: 2px 0 0 0;
+}
+
+.tab .tab-label {
+    -fx-text-fill: -color-texto;
+}
+
+/* ===================== CONSOLA DE SALIDA ===================== */
+
+.consola-salida {
+    -fx-control-inner-background: -color-consola-fondo;
+    -fx-text-fill: -color-consola-texto;
+    -fx-font-family: "Consolas", "JetBrains Mono", "Courier New", monospace;
+    -fx-font-size: 12px;
+}
+
+.consola-salida .content {
+    -fx-background-color: -color-consola-fondo;
+}
+
+/* ===================== BARRA DE ESTADO ===================== */
+
+.barra-estado {
+    -fx-background-color: -color-fondo-panel;
+    -fx-border-color: -color-borde transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.barra-estado .label {
+    -fx-text-fill: -color-texto-secundario;
+    -fx-font-size: 11px;
+}
+
+/* ===================== SPLIT PANE ===================== */
+
+.split-pane {
+    -fx-background-color: -color-fondo;
+}
+
+.split-pane-divider {
+    -fx-background-color: -color-borde;
+}
