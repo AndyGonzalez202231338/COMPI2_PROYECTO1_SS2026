@@ -1,30 +1,29 @@
 package com.proyecto1.ui.controller;
 
+import com.proyecto1.ui.editor.EditorCodigo;
 import com.proyecto1.ui.modelo.ArchivoUI;
+import com.proyecto1.ui.resaltado.ResaltadorSintaxis;
 import com.proyecto1.ui.servicio.GestorArchivos;
 import com.proyecto1.ui.util.Notificaciones;
+import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.fxml.FXML;
+import javafx.geometry.VPos;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.TextArea;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.Pane;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Objects;
 
-/**
- * Controlador de UNA pestana del editor (editor.fxml). Cada archivo abierto
- * tiene su propia instancia, creada con crearPestana(...).
- */
 public class EditorController {
-
-    private static final int ESPACIOS_POR_TAB = 4;
 
     public interface EscuchaEditor {
         void mensajeInfo(String mensaje);
@@ -32,16 +31,24 @@ public class EditorController {
         void estadoCambiado(EditorController editor);
     }
 
-    @FXML private TextArea areaNumeros;
-    @FXML private TextArea areaCodigo;
+    // =================================================================
+    // Campos inyectados por el FXML (nombre EXACTO al fx:id del FXML)
+    // =================================================================
+    @FXML private Text textoNumeros;         // ← es Text, no TextArea
+    @FXML private EditorCodigo editorCodigo;
+    @FXML private ScrollPane scrollEditor;
+    @FXML private Pane panelGutter;
 
     private ArchivoUI archivoUI;
     private EscuchaEditor escucha;
     private Tab tabAsociada;
     private boolean modificado = false;
     private boolean cargandoContenido = false;
+    private ResaltadorSintaxis resaltador;
 
-    // ---------- Fabrica ----------
+    // =================================================================
+    // Fabrica
+    // =================================================================
 
     public static EditorController crearPestana(File archivo, TabPane tabPane, EscuchaEditor escucha)
             throws IOException {
@@ -61,49 +68,98 @@ public class EditorController {
         tab.setUserData(controlador);
         controlador.tabAsociada = tab;
         tab.setOnCloseRequest(evento -> controlador.alIntentarCerrar(evento));
+        tab.setOnClosed(evento -> controlador.resaltador.detener());
 
         tabPane.getTabs().add(tab);
         tabPane.getSelectionModel().select(tab);
+
+        Platform.runLater(controlador.editorCodigo::requestFocus);
         return controlador;
     }
 
     public static EditorController desdeTab(Tab tab) {
-        if (tab != null && tab.getUserData() instanceof EditorController) {
+        if (tab != null && tab.getUserData() instanceof EditorController)
             return (EditorController) tab.getUserData();
-        }
         return null;
     }
 
+    // =================================================================
+    // Inicializacion
+    // =================================================================
+
     @FXML
     private void initialize() {
-        areaCodigo.textProperty().addListener((obs, viejo, nuevo) -> {
+        // Fuente compartida por gutter y editor.
+        Font fuenteEditor = Font.font("Monospaced", 13);
+        textoNumeros.setFont(fuenteEditor);
+        // Un Text usa por defecto el BASELINE como origen: la primera linea
+        // quedaba dibujada por encima del Pane (por eso se veia "2" primero).
+        // Ademas un Pane ignora el padding CSS, asi que se posiciona a mano.
+        textoNumeros.setTextOrigin(VPos.TOP);
+        textoNumeros.setLayoutX(8);
+        textoNumeros.setLayoutY(EditorCodigo.PADDING_SUPERIOR);
+        editorCodigo.setFuente(fuenteEditor);
+
+        // ScrollPane compartido: el editor lo usa para seguir al cursor.
+        editorCodigo.setScrollPane(scrollEditor);
+        scrollEditor.setFocusTraversable(false);
+        configurarGutterFijo();
+
+        // El editor avisa cuando el texto cambia: refrescar gutter y
+        // marcar la pestana como modificada.
+        editorCodigo.agregarEscuchaTexto(nuevo -> {
             actualizarNumerosDeLinea(nuevo);
             if (!cargandoContenido) marcarModificado(true);
         });
-        areaCodigo.caretPositionProperty().addListener((obs, viejo, nuevo) -> notificarEstadoCambiado());
-        areaCodigo.addEventFilter(KeyEvent.KEY_PRESSED, this::manejarTeclasEspeciales);
-        areaCodigo.scrollTopProperty().addListener((obs, v, n) -> areaNumeros.setScrollTop(n.doubleValue()));
+
+        // El editor avisa cuando el caret se mueve: actualizar barra de estado.
+        editorCodigo.setEscuchaCursor((linea, columna) -> notificarEstadoCambiado());
+
+        // Resaltador: tokeniza y le devuelve al editor los Text coloreados.
+        resaltador = new ResaltadorSintaxis(editorCodigo);
+
+        Platform.runLater(editorCodigo::requestFocus);
     }
 
-    // ---------- Carga / guardado ----------
+    /**
+     * El gutter scrollea verticalmente junto con el texto (comparten el
+     * contenido del ScrollPane), pero en horizontal se compensa con
+     * translateX para que los numeros no desaparezcan por la izquierda.
+     */
+    private void configurarGutterFijo() {
+        panelGutter.setViewOrder(-1); // dibujar por encima del editor sin alterar el layout
+        Runnable fijar = () -> {
+            double anchoContenido = scrollEditor.getContent().getLayoutBounds().getWidth();
+            double anchoViewport = scrollEditor.getViewportBounds().getWidth();
+            double desplazamiento = scrollEditor.getHvalue() * Math.max(0, anchoContenido - anchoViewport);
+            panelGutter.setTranslateX(desplazamiento);
+        };
+        scrollEditor.hvalueProperty().addListener((o, a, b) -> fijar.run());
+        scrollEditor.viewportBoundsProperty().addListener((o, a, b) -> fijar.run());
+        scrollEditor.getContent().layoutBoundsProperty().addListener((o, a, b) -> fijar.run());
+    }
+
+    // =================================================================
+    // Carga / guardado
+    // =================================================================
 
     private void cargarContenidoDesdeDisco() throws IOException {
         String contenido = GestorArchivos.abrirArchivo(archivoUI.getArchivo());
         cargandoContenido = true;
-        areaCodigo.setText(contenido);
-        areaCodigo.positionCaret(0);
+        editorCodigo.setTexto(contenido);
         cargandoContenido = false;
+        actualizarNumerosDeLinea(contenido);
         marcarModificado(false);
     }
 
     public void guardar() throws IOException {
-        GestorArchivos.guardarArchivo(archivoUI.getArchivo(), areaCodigo.getText());
+        GestorArchivos.guardarArchivo(archivoUI.getArchivo(), editorCodigo.getTexto());
         marcarModificado(false);
         escucha.mensajeInfo("Archivo guardado: " + archivoUI.getNombre());
     }
 
     public void guardarComo(File nuevoArchivo) throws IOException {
-        GestorArchivos.guardarArchivo(nuevoArchivo, areaCodigo.getText());
+        GestorArchivos.guardarArchivo(nuevoArchivo, editorCodigo.getTexto());
         this.archivoUI = new ArchivoUI(nuevoArchivo);
         marcarModificado(false);
         escucha.mensajeInfo("Archivo guardado como: " + nuevoArchivo.getName());
@@ -124,13 +180,14 @@ public class EditorController {
             case CANCELAR:
                 evento.consume();
                 break;
-            case DESCARTAR:
             default:
                 break;
         }
     }
 
-    // ---------- Numeracion de lineas ----------
+    // =================================================================
+    // Gutter de numeros de linea (un Text, no un TextArea)
+    // =================================================================
 
     private void actualizarNumerosDeLinea(String texto) {
         int cantidad = texto.isEmpty() ? 1 : texto.split("\n", -1).length;
@@ -139,39 +196,12 @@ public class EditorController {
             sb.append(i);
             if (i < cantidad) sb.append("\n");
         }
-        areaNumeros.setText(sb.toString());
-        areaNumeros.setScrollTop(areaCodigo.getScrollTop());
+        textoNumeros.setText(sb.toString());
     }
 
-    // ---------- Auto-indentacion y Tab ----------
-
-    private void manejarTeclasEspeciales(KeyEvent evento) {
-        if (evento.getCode() == KeyCode.TAB) {
-            evento.consume();
-            areaCodigo.insertText(areaCodigo.getCaretPosition(), " ".repeat(ESPACIOS_POR_TAB));
-            return;
-        }
-        if (evento.getCode() == KeyCode.ENTER) {
-            evento.consume();
-            String indentacion = obtenerIndentacionLineaActual();
-            areaCodigo.insertText(areaCodigo.getCaretPosition(), "\n" + indentacion);
-        }
-    }
-
-    private String obtenerIndentacionLineaActual() {
-        String textoHastaCursor = areaCodigo.getText(0, areaCodigo.getCaretPosition());
-        int inicio = textoHastaCursor.lastIndexOf('\n') + 1;
-        String linea = textoHastaCursor.substring(inicio);
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < linea.length(); i++) {
-            char c = linea.charAt(i);
-            if (c == ' ' || c == '\t') sb.append(c);
-            else break;
-        }
-        return sb.toString();
-    }
-
-    // ---------- Estado ----------
+    // =================================================================
+    // Estado
+    // =================================================================
 
     private void marcarModificado(boolean valor) {
         this.modificado = valor;
@@ -184,40 +214,48 @@ public class EditorController {
     }
 
     public ArchivoUI getArchivoUI() { return archivoUI; }
-    public boolean isModificado() { return modificado; }
-    public Tab getTab() { return tabAsociada; }
-    public String getContenido() { return areaCodigo.getText(); }
-    public void enfocar() { areaCodigo.requestFocus(); }
+    public boolean isModificado()   { return modificado; }
+    public Tab getTab()             { return tabAsociada; }
+    public String getContenido()    { return editorCodigo.getTexto(); }
+    public EditorCodigo getEditor() { return editorCodigo; }
+    public void enfocar()           { editorCodigo.requestFocus(); }
 
     public int[] getLineaYColumna() {
-        String texto = areaCodigo.getText(0, areaCodigo.getCaretPosition());
-        String[] lineas = texto.split("\n", -1);
-        return new int[] { lineas.length, lineas[lineas.length - 1].length() + 1 };
+        return new int[] { editorCodigo.getLineaActual(), editorCodigo.getColumnaActual() };
     }
 
-    // ---------- Delegados del menu Editar ----------
+    // =================================================================
+    // Delegados del menu Editar
+    // =================================================================
 
-    public void deshacer() { areaCodigo.undo(); }
-    public void rehacer()  { areaCodigo.redo(); }
-    public void cortar()   { areaCodigo.cut(); }
-    public void copiar()   { areaCodigo.copy(); }
-    public void pegar()    { areaCodigo.paste(); }
-    public void seleccionarTodo() { areaCodigo.selectAll(); }
+    public void deshacer() {
+        Notificaciones.mostrarInformacion("Deshacer",
+                "El historial de undo/redo aun no esta implementado.");
+    }
+
+    public void rehacer() {
+        Notificaciones.mostrarInformacion("Rehacer",
+                "El historial de undo/redo aun no esta implementado.");
+    }
+
+    public void cortar()          { editorCodigo.fireEvent(atajo(javafx.scene.input.KeyCode.X)); }
+    public void copiar()          { editorCodigo.fireEvent(atajo(javafx.scene.input.KeyCode.C)); }
+    public void pegar()           { editorCodigo.fireEvent(atajo(javafx.scene.input.KeyCode.V)); }
+    public void seleccionarTodo() { editorCodigo.fireEvent(atajo(javafx.scene.input.KeyCode.A)); }
+
+    private javafx.scene.input.KeyEvent atajo(javafx.scene.input.KeyCode code) {
+        return new javafx.scene.input.KeyEvent(
+                javafx.scene.input.KeyEvent.KEY_PRESSED, "", "",
+                code, false, true, false, false);
+    }
 
     public void buscarYReemplazar(String buscar, String reemplazar) {
         if (buscar == null || buscar.isEmpty()) return;
-        areaCodigo.setText(areaCodigo.getText().replace(buscar, reemplazar));
+        editorCodigo.setTexto(editorCodigo.getTexto().replace(buscar, reemplazar));
     }
 
     public boolean buscarSiguiente(String texto) {
         if (texto == null || texto.isEmpty()) return false;
-        String contenido = areaCodigo.getText();
-        int desde = areaCodigo.getCaretPosition();
-        int idx = contenido.indexOf(texto, desde);
-        if (idx < 0) idx = contenido.indexOf(texto, 0);
-        if (idx < 0) return false;
-        areaCodigo.selectRange(idx, idx + texto.length());
-        areaCodigo.requestFocus();
-        return true;
+        return editorCodigo.getTexto().contains(texto);
     }
 }

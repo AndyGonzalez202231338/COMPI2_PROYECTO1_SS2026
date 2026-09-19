@@ -1,14 +1,10 @@
 /*
  * Tema unico "celeste" del IDE.
- *
- * IMPORTANTE: todas las variables de color deben ser colores SOLIDOS.
- * JavaFX trata los "looked-up colors" como Color y falla si contienen un
- * linear-gradient (ClassCastException). Los gradientes van INLINE, solo
- * dentro de -fx-background-color de las reglas que los necesiten.
+ * Las reglas de fondo blanco del editor tambien estan inline en el FXML;
+ * aqui solo se refuerzan para que si el CSS se aplica, se vea consistente.
  */
 
 .root {
-    /* Paleta celeste (todas solidas) */
     -cielo-50:  #f0f9ff;
     -cielo-100: #e0f2fe;
     -cielo-200: #bae6fd;
@@ -20,7 +16,6 @@
     -cielo-800: #075985;
     -cielo-900: #0c4a6e;
 
-    /* Colores semanticos (SOLIDOS) */
     -color-fondo:            #e0f2fe;
     -color-panel:            #ffffff;
     -color-panel-alt:        #f0f9ff;
@@ -39,7 +34,13 @@
     -color-consola-fondo:    #0c1e2e;
     -color-consola-texto:    #bae6fd;
 
-    /* Base JavaFX (debe ser color solido) */
+    -token-reservada:  #7c3aed;
+    -token-cadena:     #16a34a;
+    -token-numero:     #ea580c;
+    -token-comentario: #64748b;
+    -token-operador:   #0284c7;
+    -token-simbolo:    #475569;
+
     -fx-base: -color-fondo;
     -fx-background: -color-fondo;
     -fx-control-inner-background: -color-panel;
@@ -48,25 +49,17 @@
     -fx-font-size: 13px;
 }
 
-/* Fondo del BorderPane principal: aqui SI podemos usar gradiente inline
-   porque -fx-background-color acepta Paint (incluye gradientes). */
 #raizPrincipal {
     -fx-background-color: linear-gradient(to bottom right,
         #e0f2fe 0%, #f0f9ff 55%, #e0f2fe 100%);
 }
 
 /* ===================== TIPOGRAFIA ===================== */
-
 .label         { -fx-text-fill: -color-texto; }
 .texto-suave   { -fx-text-fill: -color-texto-suave; -fx-font-style: italic; }
-.titulo-panel  {
-    -fx-font-weight: bold;
-    -fx-text-fill: -color-acento;
-    -fx-font-size: 12px;
-}
+.titulo-panel  { -fx-font-weight: bold; -fx-text-fill: -color-acento; -fx-font-size: 12px; }
 
 /* ===================== MENU BAR ===================== */
-
 .menu-bar {
     -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f0f9ff 100%);
     -fx-border-color: transparent transparent -color-borde transparent;
@@ -80,13 +73,9 @@
     -fx-padding: 5 10 5 10;
 }
 .menu-bar > .container > .menu-button:hover,
-.menu-bar > .container > .menu-button:showing {
-    -fx-background-color: -color-acento-suave;
-}
+.menu-bar > .container > .menu-button:showing { -fx-background-color: -color-acento-suave; }
 .menu-bar > .container > .menu-button:hover .label,
-.menu-bar > .container > .menu-button:showing .label {
-    -fx-text-fill: -color-acento-hover;
-}
+.menu-bar > .container > .menu-button:showing .label { -fx-text-fill: -color-acento-hover; }
 
 .context-menu {
     -fx-background-color: -color-panel;
@@ -101,18 +90,10 @@
 .menu-item .label     { -fx-text-fill: -color-texto; }
 .menu-item:focused    { -fx-background-color: -color-acento-suave; }
 .menu-item:focused .label { -fx-text-fill: -color-acento-hover; }
-
-.separator:horizontal .line {
-    -fx-border-color: -color-borde-suave transparent transparent transparent;
-    -fx-border-width: 1 0 0 0;
-}
-.separator:vertical .line {
-    -fx-border-color: transparent -color-borde transparent transparent;
-    -fx-border-width: 0 1 0 0;
-}
+.separator:horizontal .line { -fx-border-color: -color-borde-suave transparent transparent transparent; -fx-border-width: 1 0 0 0; }
+.separator:vertical .line   { -fx-border-color: transparent -color-borde transparent transparent; -fx-border-width: 0 1 0 0; }
 
 /* ===================== TOOLBAR ===================== */
-
 .tool-bar {
     -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f0f9ff 100%);
     -fx-border-color: transparent transparent -color-borde transparent;
@@ -131,17 +112,10 @@
     -fx-cursor: hand;
     -fx-font-size: 12px;
 }
-.tool-bar .button:hover {
-    -fx-background-color: -color-acento-suave;
-    -fx-border-color: -color-borde-fuerte;
-    -fx-text-fill: -color-acento-hover;
-}
-.tool-bar .button:pressed {
-    -fx-background-color: -cielo-300;
-}
+.tool-bar .button:hover { -fx-background-color: -color-acento-suave; -fx-border-color: -color-borde-fuerte; -fx-text-fill: -color-acento-hover; }
+.tool-bar .button:pressed { -fx-background-color: -cielo-300; }
 
 /* ===================== BOTON GENERICO ===================== */
-
 .button {
     -fx-background-color: transparent;
     -fx-text-fill: -color-texto;
@@ -149,63 +123,28 @@
     -fx-padding: 6 14 6 14;
     -fx-cursor: hand;
 }
-.button:hover   {
-    -fx-background-color: -color-acento-suave;
-    -fx-text-fill: -color-acento-hover;
-}
+.button:hover   { -fx-background-color: -color-acento-suave; -fx-text-fill: -color-acento-hover; }
 .button:pressed { -fx-background-color: derive(-color-acento-suave, -8%); }
 
 /* ===================== TITLED PANE ===================== */
-
 .titled-pane > .title {
     -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f0f9ff 100%);
     -fx-border-color: transparent transparent -color-borde transparent;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 8 10 8 10;
 }
-.titled-pane > .title > .text {
-    -fx-fill: -color-acento;
-    -fx-font-weight: bold;
-    -fx-font-size: 12px;
-}
-.titled-pane > .content {
-    -fx-background-color: -color-panel;
-    -fx-border-color: transparent;
-}
+.titled-pane > .title > .text { -fx-fill: -color-acento; -fx-font-weight: bold; -fx-font-size: 12px; }
+.titled-pane > .content { -fx-background-color: -color-panel; -fx-border-color: transparent; }
 
 /* ===================== ARBOL ===================== */
-
-.tree-view {
-    -fx-background-color: -color-panel;
-    -fx-control-inner-background: -color-panel;
-    -fx-border-color: transparent;
-    -fx-padding: 6 0 6 0;
-}
-.tree-cell {
-    -fx-text-fill: -color-texto;
-    -fx-background-color: transparent;
-    -fx-padding: 5 10 5 4;
-    -fx-cell-size: 24px;
-}
-.tree-cell:hover {
-    -fx-background-color: -color-acento-muy-suave;
-}
-.tree-cell:selected {
-    -fx-background-color: -color-acento-suave;
-    -fx-text-fill: -color-acento-hover;
-    -fx-font-weight: bold;
-}
-.tree-cell > .tree-disclosure-node > .arrow {
-    -fx-background-color: -color-acento;
-}
+.tree-view { -fx-background-color: -color-panel; -fx-control-inner-background: -color-panel; -fx-border-color: transparent; -fx-padding: 6 0 6 0; }
+.tree-cell { -fx-text-fill: -color-texto; -fx-background-color: transparent; -fx-padding: 5 10 5 4; -fx-cell-size: 24px; }
+.tree-cell:hover    { -fx-background-color: -color-acento-muy-suave; }
+.tree-cell:selected { -fx-background-color: -color-acento-suave; -fx-text-fill: -color-acento-hover; -fx-font-weight: bold; }
+.tree-cell > .tree-disclosure-node > .arrow { -fx-background-color: -color-acento; }
 
 /* ===================== TABPANE ===================== */
-
-.tab-pane {
-    -fx-background-color: -color-fondo;
-    -fx-tab-min-height: 32px;
-    -fx-tab-max-height: 32px;
-}
+.tab-pane { -fx-background-color: -color-fondo; -fx-tab-min-height: 32px; -fx-tab-max-height: 32px; }
 .tab-pane > .tab-header-area { -fx-padding: 6 6 0 6; }
 .tab-pane > .tab-header-area > .tab-header-background {
     -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f0f9ff 100%);
@@ -220,40 +159,20 @@
     -fx-border-radius: 8 8 0 0;
     -fx-padding: 6 14 6 14;
 }
-.tab-pane > .tab-header-area > .headers-region > .tab:hover {
-    -fx-background-color: -color-acento-muy-suave;
-}
+.tab-pane > .tab-header-area > .headers-region > .tab:hover { -fx-background-color: -color-acento-muy-suave; }
 .tab-pane > .tab-header-area > .headers-region > .tab:selected {
     -fx-background-color: -color-panel;
     -fx-border-color: -color-acento transparent transparent transparent;
 }
-.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
-    -fx-text-fill: -color-texto-suave;
-    -fx-font-size: 12px;
-}
-.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
-    -fx-text-fill: -color-acento-hover;
-    -fx-font-weight: bold;
-}
-.tab-pane > .tab-header-area > .headers-region > .tab .tab-close-button {
-    -fx-background-color: -color-texto-suave;
-}
-.tab-pane > .tab-header-area > .headers-region > .tab .tab-close-button:hover {
-    -fx-background-color: -color-error;
-}
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label { -fx-text-fill: -color-texto-suave; -fx-font-size: 12px; }
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label { -fx-text-fill: -color-acento-hover; -fx-font-weight: bold; }
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-close-button { -fx-background-color: -color-texto-suave; }
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-close-button:hover { -fx-background-color: -color-error; }
 
-/* Overlay de bienvenida cuando no hay pestanas */
-.panel-bienvenida {
-    -fx-background-color: transparent;
-}
-
-/* Overlay del arbol vacio (botones "Nuevo proyecto" / "Abrir carpeta") */
-.panel-arbol-vacio {
-    -fx-background-color: transparent;
-}
+.panel-bienvenida  { -fx-background-color: transparent; }
+.panel-arbol-vacio { -fx-background-color: transparent; }
 
 /* ===================== CONSOLA ===================== */
-
 .consola-salida {
     -fx-control-inner-background: -color-consola-fondo;
     -fx-text-fill: -color-consola-texto;
@@ -266,80 +185,53 @@
     -fx-background-insets: 0;
     -fx-padding: 4;
 }
-.consola-salida .content {
-    -fx-background-color: -color-consola-fondo;
-    -fx-background-radius: 6;
-}
+.consola-salida .content { -fx-background-color: -color-consola-fondo; -fx-background-radius: 6; }
 
 /* ===================== BARRA DE ESTADO ===================== */
-
 .barra-estado {
     -fx-background-color: linear-gradient(to right, #ffffff 0%, #e0f2fe 100%);
     -fx-border-color: -color-acento transparent transparent transparent;
     -fx-border-width: 2 0 0 0;
     -fx-alignment: center-left;
 }
-.barra-estado .label {
-    -fx-text-fill: -color-texto-suave;
-    -fx-font-size: 11px;
-}
+.barra-estado .label { -fx-text-fill: -color-texto-suave; -fx-font-size: 11px; }
 
 /* ===================== SPLITPANE ===================== */
-
 .split-pane { -fx-background-color: -color-fondo; -fx-padding: 0; }
-.split-pane > .split-pane-divider {
-    -fx-background-color: -color-borde-suave;
-    -fx-padding: 0 1.5 0 1.5;
-}
-.split-pane > .split-pane-divider:hover {
-    -fx-background-color: -color-acento;
-}
+.split-pane > .split-pane-divider { -fx-background-color: -color-borde-suave; -fx-padding: 0 1.5 0 1.5; }
+.split-pane > .split-pane-divider:hover { -fx-background-color: -color-acento; }
 
 /* ===================== EDITOR ===================== */
 
-.contenedor-editor { -fx-background-color: -color-panel; }
-
-.editor-codigo,
-.editor-numeros {
-    -fx-font-family: "Consolas", "JetBrains Mono", "Courier New", monospace;
-    -fx-font-size: 13px;
-    -fx-border-color: transparent;
-    -fx-background-insets: 0;
+.contenedor-editor {
+    -fx-background-color: white;
 }
-.editor-codigo {
-    -fx-control-inner-background: -color-panel;
-    -fx-text-fill: -color-texto;
-    -fx-highlight-fill: -color-acento-suave;
-    -fx-highlight-text-fill: -color-acento-hover;
-    -fx-padding: 8 10 8 10;
-}
-.editor-codigo .content { -fx-background-color: -color-panel; }
 
-.editor-numeros {
-    -fx-control-inner-background: -color-panel-alt;
-    -fx-text-fill: -color-texto-suave;
-    -fx-padding: 8 6 8 6;
+/* ---------- Gutter: Pane + Text ---------- */
+.gutter {
+    -fx-background-color: -color-panel-alt;
     -fx-border-color: transparent -color-borde-suave transparent transparent;
     -fx-border-width: 0 1 0 0;
+    -fx-padding: 8 6 8 6;   /* mismo top que EditorCodigo (8px) */
 }
-.editor-numeros .content { -fx-background-color: -color-panel-alt; }
-.editor-numeros .scroll-bar:vertical,
-.editor-numeros .scroll-bar:horizontal {
-    -fx-opacity: 0;
-    -fx-pref-width: 0;
-    -fx-pref-height: 0;
+.gutter-texto {
+    -fx-fill: -color-texto-suave;
 }
 
-/* ===================== SCROLLBARS ===================== */
-
-.scroll-bar { -fx-background-color: transparent; }
-.scroll-bar .track { -fx-background-color: transparent; -fx-border-color: transparent; }
-.scroll-bar .thumb {
-    -fx-background-color: -color-borde-fuerte;
-    -fx-background-radius: 8px;
+/* ===================== RESALTADO SINTACTICO ===================== */
+.token-base       { -fx-fill: -color-texto; }
+.token-reservada  { -fx-fill: -token-reservada; }
+.token-cadena     { -fx-fill: -token-cadena; }
+.token-numero     { -fx-fill: -token-numero; }
+.token-comentario { -fx-fill: -token-comentario; }
+.token-operador   { -fx-fill: -token-operador; }
+.token-simbolo    { -fx-fill: -token-simbolo; }
+.token-error      { -fx-fill: -color-error; -fx-underline: true; }
+/* ===================== SCROLL DEL EDITOR ===================== */
+.scroll-editor {
+    -fx-background-color: white;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
 }
-.scroll-bar .thumb:hover { -fx-background-color: -color-acento; }
-.scroll-bar:vertical .thumb { -fx-pref-width: 8px; }
-.scroll-bar:horizontal .thumb { -fx-pref-height: 8px; }
-.scroll-bar .increment-button,
-.scroll-bar .decrement-button { -fx-background-color: transparent; -fx-padding: 0; }
+.scroll-editor > .viewport { -fx-background-color: white; }
+.scroll-editor > .corner   { -fx-background-color: -color-panel-alt; }
