@@ -3,6 +3,7 @@ package com.proyecto1.ui.controller;
 import com.proyecto1.ui.modelo.ArchivoUI;
 import com.proyecto1.ui.servicio.GestorArchivos;
 import com.proyecto1.ui.util.Notificaciones;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -33,10 +34,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SeparatorMenuItem;
 
 import java.io.File;
 import java.io.IOException;
@@ -97,15 +94,26 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
     private void initialize() {
         arbolController = new ArbolController(arbolTrabajo, this);
 
+        // Al cambiar de pestana, actualizar barra de estado y dar foco
+        // al editor de la pestana seleccionada. EditorCodigo ya gestiona
+        // su propio caret/seleccion internamente; solo hay que pedirle
+        // el foco para que empiece a recibir teclado.
         panelPestanas.getSelectionModel().selectedItemProperty()
-                .addListener((obs, vieja, nueva) ->
-                        actualizarBarraEstado(EditorController.desdeTab(nueva)));
+                .addListener((obs, vieja, nueva) -> {
+                    actualizarBarraEstado(EditorController.desdeTab(nueva));
+                    EditorController ed = EditorController.desdeTab(nueva);
+                    if (ed != null) {
+                        Platform.runLater(ed::enfocar);
+                    }
+                });
 
         // El overlay de bienvenida se ve cuando no hay pestanas abiertas.
         panelBienvenida.visibleProperty().bind(Bindings.isEmpty(panelPestanas.getTabs()));
+        panelBienvenida.managedProperty().bind(Bindings.isEmpty(panelPestanas.getTabs()));
 
         // El overlay del arbol se ve cuando no hay NINGUN proyecto abierto.
         panelArbolVacio.visibleProperty().bind(Bindings.isEmpty(arbolController.getProyectos()));
+        panelArbolVacio.managedProperty().bind(Bindings.isEmpty(arbolController.getProyectos()));
 
         configurarMenuWorkspace();
 
@@ -114,13 +122,8 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
     }
 
     /**
-     * Menu contextual del arbol cuando se hace clic derecho sobre el FONDO
-     * (fuera de cualquier celda). Las celdas tienen su propio menu contextual
-     * definido en ArbolController; JavaFX le da prioridad al menu de la celda
-     * cuando el clic cae sobre una.
-     *
-     * Con este menu puedes agregar proyectos en cualquier momento, aunque ya
-     * tengas varios abiertos.
+     * Menu contextual del arbol cuando se hace clic derecho sobre el FONDO.
+     * Las celdas tienen su propio menu contextual definido en ArbolController.
      */
     private void configurarMenuWorkspace() {
         MenuItem itemNuevoProyecto = new MenuItem("Nuevo proyecto...");
@@ -335,7 +338,7 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
         gp.add(new Label("Reemplazar por:"), 0, 1);  gp.add(cReempl, 1, 1);
         dlg.getDialogPane().setContent(gp);
 
-        ButtonType bSig = new ButtonType("Buscar siguiente", ButtonBar.ButtonData.OTHER);
+        ButtonType bSig  = new ButtonType("Buscar siguiente", ButtonBar.ButtonData.OTHER);
         ButtonType bTodo = new ButtonType("Reemplazar todo", ButtonBar.ButtonData.APPLY);
         ButtonType bCerrar = new ButtonType("Cerrar", ButtonBar.ButtonData.CANCEL_CLOSE);
         dlg.getDialogPane().getButtonTypes().setAll(bSig, bTodo, bCerrar);
@@ -373,6 +376,7 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
             EditorController.crearPestana(archivo, panelPestanas, this);
             escribirInfo("Archivo abierto: " + archivo.getAbsolutePath());
         } catch (IOException ex) {
+            ex.printStackTrace();   // ← AÑADIR
             escribirError("No se pudo abrir: " + ex.getMessage());
             Notificaciones.mostrarError("Abrir archivo", ex.getMessage());
         }
