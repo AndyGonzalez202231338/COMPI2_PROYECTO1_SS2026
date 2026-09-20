@@ -13,7 +13,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 public class AnalizadorSemanticoY {
 
-    public void analizar(Programa programa) {
+    public ManejadorErrores analizar(Programa programa) {
         ManejadorErrores errores = new ManejadorErrores();
         AmbitoGlobal global = new AmbitoGlobal();
 
@@ -47,5 +47,6 @@ public class AnalizadorSemanticoY {
 
         // Reporte final
         errores.imprimir();
+        return errores;
     }
 }
