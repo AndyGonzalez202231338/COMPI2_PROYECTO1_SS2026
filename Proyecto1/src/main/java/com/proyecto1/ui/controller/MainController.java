@@ -1,10 +1,14 @@
 package com.proyecto1.ui.controller;
 
+import com.proyecto1.semantico.errores.ErrorSemantico;
+import com.proyecto1.servicio.ResultadoAnalisis;
+import com.proyecto1.servicio.ServicioAnalisis;
 import com.proyecto1.ui.modelo.ArchivoUI;
 import com.proyecto1.ui.servicio.GestorArchivos;
 import com.proyecto1.ui.util.Notificaciones;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.fxml.FXML;
@@ -18,6 +22,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -65,6 +70,7 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
     @FXML private TextArea consolaSalida;
 
     @FXML private TitledPane panelErrores;
+    @FXML private ListView<String> listaErrores;
 
     @FXML private HBox barraEstado;
     @FXML private Label lblRutaActiva;
@@ -158,8 +164,76 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
     // ==================== MENU EJECUTAR (placeholders) ====================
 
     @FXML private void accionAnalizarArchivoActual() {
-        escribirAdvertencia("Analizar: pendiente de conexion con el backend.");
-        Notificaciones.mostrarFuncionPendiente(obtenerVentana());
+        EditorController editor = obtenerEditorActivo();
+        if (editor == null) {
+            escribirAdvertencia("No hay ningun archivo abierto para analizar.");
+            return;
+        }
+
+        File archivo = editor.getArchivoUI().getArchivo();
+        String texto = editor.getContenido();
+        editor.getEditor().limpiarMarcasDeError();
+        escribirInfo("Analizando " + archivo.getName() + "...");
+
+        Task<ResultadoAnalisis> tarea = new Task<>() {
+            @Override
+            protected ResultadoAnalisis call() {
+                return new ServicioAnalisis().analizar(archivo, texto);
+            }
+        };
+        tarea.setOnSucceeded(evento -> mostrarResultadoAnalisis(editor, tarea.getValue()));
+        tarea.setOnFailed(evento -> {
+            Throwable causa = tarea.getException();
+            String mensaje = causa != null && causa.getMessage() != null ? causa.getMessage() : "desconocido";
+            escribirError("Error interno al analizar: " + mensaje);
+        });
+
+        Thread hilo = new Thread(tarea, "analisis-" + archivo.getName());
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    /** Vuelca un {@link ResultadoAnalisis} en la consola, el panel de errores y las marcas del editor. Corre en el hilo de JavaFX. */
+    private void mostrarResultadoAnalisis(EditorController editor, ResultadoAnalisis resultado) {
+        listaErrores.getItems().clear();
+        List<Integer> lineasConError = new ArrayList<>();
+
+        if (resultado.isExito()) {
+            escribirInfo("[OK] " + resultado.getMensajeResumen());
+        } else {
+            escribirError("[ERROR] " + resultado.getMensajeResumen());
+        }
+
+        agregarErroresAlPanel(resultado.getErroresLexicos(), "Lexico", lineasConError);
+        agregarErroresAlPanel(resultado.getErroresSintacticos(), "Sintactico", lineasConError);
+        agregarErroresAlPanel(resultado.getErroresSemanticos(), "Semantico", lineasConError);
+
+        for (ErrorSemantico advertencia : resultado.getAdvertencias()) {
+            String linea = "[Advertencia] linea " + advertencia.getLinea() + ":" + advertencia.getColumna()
+                    + " - " + advertencia.getMensaje();
+            listaErrores.getItems().add(linea);
+            escribirAdvertencia(linea);
+        }
+
+        if (!lineasConError.isEmpty()) {
+            editor.getEditor().marcarLineasConError(lineasConError);
+        }
+
+        boolean hayAlgoQueMostrar = !resultado.isExito() || !resultado.getAdvertencias().isEmpty();
+        if (hayAlgoQueMostrar && !miMostrarPanelErrores.isSelected()) {
+            miMostrarPanelErrores.setSelected(true);
+            accionAlternarPanelErrores();
+        }
+    }
+
+    private void agregarErroresAlPanel(List<ErrorSemantico> errores, String categoria, List<Integer> lineasConError) {
+        for (ErrorSemantico error : errores) {
+            String linea = "[" + categoria + "] linea " + error.getLinea() + ":" + error.getColumna()
+                    + " - " + error.getMensaje();
+            listaErrores.getItems().add(linea);
+            escribirError(linea);
+            lineasConError.add(error.getLinea());
+        }
     }
     @FXML private void accionCompilarProyecto() {
         escribirAdvertencia("Compilar: pendiente de conexion con el backend.");

@@ -45,6 +45,7 @@ public class EditorCodigo extends Pane {
     private int columnaPreferida = -1;
 
     private final TextFlow flow = new TextFlow();
+    private final Pane capaErrores = new Pane();
     private final Pane capaCaret = new Pane();
     private final Pane capaSeleccion = new Pane();
     private final Line caretLinea = new Line();
@@ -74,7 +75,10 @@ public class EditorCodigo extends Pane {
 
         // FIX: la linea del caret nunca se agregaba a ninguna capa -> invisible.
         capaCaret.getChildren().add(caretLinea);
-        getChildren().addAll(capaSeleccion, flow, capaCaret);
+        // capaErrores va PRIMERO (mas atras) para que quede detras del texto y
+        // de la seleccion, igual que un resaltado de fondo.
+        getChildren().addAll(capaErrores, capaSeleccion, flow, capaCaret);
+        capaErrores.setMouseTransparent(true);
         capaSeleccion.setMouseTransparent(true);
         flow.setMouseTransparent(true);
         capaCaret.setMouseTransparent(true);
@@ -111,10 +115,7 @@ public class EditorCodigo extends Pane {
         redibujarTodo();
     }
 
-    // ================================================================
     // API publica
-    // ================================================================
-
     public String getTexto() { return texto.toString(); }
 
     public void setTexto(String nuevo) {
@@ -148,6 +149,32 @@ public class EditorCodigo extends Pane {
         redibujarCaretYSeleccion();
     }
 
+    /**
+     * Pinta de fondo (rojo translucido) cada linea de {@code lineasBase1} (numeradas
+     * desde 1, igual que {@link #getLineaActual()}). No toca el resaltado de
+     * sintaxis (vive en {@code flow}, esta capa es independiente y va detras de
+     * todo). Lineas fuera de rango se ignoran en silencio.
+     */
+    public void marcarLineasConError(List<Integer> lineasBase1) {
+        capaErrores.getChildren().clear();
+        double alto = medirAltoLinea();
+        double ancho = medirAnchoCaracter();
+        double anchoMarca = Math.max(getWidth() - PADDING_IZQUIERDO, (maxColumnas + 2) * ancho);
+
+        for (int lineaBase1 : lineasBase1) {
+            int indiceLinea = lineaBase1 - 1;
+            if (indiceLinea < 0 || indiceLinea >= contarLineas()) continue;
+            Rectangle marca = new Rectangle(PADDING_IZQUIERDO, PADDING_SUPERIOR + indiceLinea * alto,
+                    anchoMarca, alto);
+            marca.setFill(Color.web("#d32f2f", 0.15));
+            capaErrores.getChildren().add(marca);
+        }
+    }
+
+    public void limpiarMarcasDeError() {
+        capaErrores.getChildren().clear();
+    }
+
     /** Linea actual (base 1). */
     public int getLineaActual() { return lineaDe(caret) + 1; }
 
@@ -161,10 +188,7 @@ public class EditorCodigo extends Pane {
                 .replace("\t", " ".repeat(ESPACIOS_POR_TAB));
     }
 
-    // ================================================================
     // Edicion
-    // ================================================================
-
     private void insertar(String s) {
         if (haySeleccion()) borrarSeleccion();
         texto.insert(caret, s);
@@ -201,10 +225,7 @@ public class EditorCodigo extends Pane {
 
     private boolean haySeleccion() { return caret != ancla; }
 
-    // ================================================================
     // Teclado
-    // ================================================================
-
     private void alPresionarTecla(KeyEvent e) {
         boolean shift = e.isShiftDown();
         boolean ctrl = e.isControlDown() || e.isMetaDown();
@@ -292,10 +313,7 @@ public class EditorCodigo extends Pane {
         return Character.isLetterOrDigit(c) || c == '_';
     }
 
-    // ================================================================
     // Portapapeles
-    // ================================================================
-
     private void copiar() {
         if (!haySeleccion()) return;
         int ini = Math.min(caret, ancla), fin = Math.max(caret, ancla);
@@ -312,10 +330,7 @@ public class EditorCodigo extends Pane {
         insertar(normalizar(s));
     }
 
-    // ================================================================
     // Mouse
-    // ================================================================
-
     private void alPresionarMouse(MouseEvent e) {
         requestFocus();
         int pos = indiceDesdePunto(e.getX(), e.getY());
@@ -346,10 +361,7 @@ public class EditorCodigo extends Pane {
         return ini + col;
     }
 
-    // ================================================================
     // Redibujado
-    // ================================================================
-
     private void redibujarTodo() {
         recalcularTamano();
         Text t = new Text(texto.toString());
@@ -411,10 +423,7 @@ public class EditorCodigo extends Pane {
         }
     }
 
-    // ================================================================
     // Tamano propio (para que el ScrollPane sepa cuanto scrollear)
-    // ================================================================
-
     private void recalcularTamano() {
         int lineas = 1, max = 0, col = 0;
         for (int i = 0; i < texto.length(); i++) {
@@ -485,10 +494,7 @@ public class EditorCodigo extends Pane {
         if (maxOffX > 0) scroll.setHvalue(Math.max(0, Math.min(1, offX / maxOffX)));
     }
 
-    // ================================================================
     // Metricas y utilidades de lineas
-    // ================================================================
-
     private double medirAltoLinea() {
         if (altoLineaCache > 0) return altoLineaCache;
         Text t = new Text("Wg");

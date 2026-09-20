@@ -12,7 +12,7 @@ public class AnalizadorSemanticoPigLatin {
      * @param globalImports el AmbitoGlobal compartido de TODOS los .y y .z importados
      *                      (debe haberse construido antes analizando esos archivos)
      */
-    public void analizar(Programa programa, AmbitoGlobal globalImports) {
+    public ManejadorErrores analizar(Programa programa, AmbitoGlobal globalImports) {
         ManejadorErrores errores = new ManejadorErrores();
 
         // Ámbito global del .pig, con el de imports como padre
@@ -27,5 +27,6 @@ public class AnalizadorSemanticoPigLatin {
         programa.getPrincipal().verificar(globalPig, errores);
 
         errores.imprimir();
+        return errores;
     }
 }

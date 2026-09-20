@@ -14,7 +14,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 public class AnalizadorSemanticoZ {
 
-    public void analizar(Clase clase) {
+    public ManejadorErrores analizar(Clase clase) {
         ManejadorErrores errores = new ManejadorErrores();
         AmbitoGlobal global = new AmbitoGlobal();
 
@@ -25,7 +25,7 @@ public class AnalizadorSemanticoZ {
             errores.reportar(clase.getLinea(), clase.getColumna(),
                     "Clase duplicada: '" + clase.getNombre() + "'");
             errores.imprimir();
-            return;
+            return errores;
         }
         AmbitoClase ambClase = new AmbitoClase(global, sClase);
 
@@ -58,5 +58,6 @@ public class AnalizadorSemanticoZ {
         for (Constructor c : clase.getConstructores()) c.verificar(ambClase, errores);
 
         errores.imprimir();
+        return errores;
     }
 }
