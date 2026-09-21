@@ -5,6 +5,7 @@ import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
 
 import java.util.List;
 
@@ -33,8 +34,19 @@ public final class Si extends NodoY implements InstruccionY {
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
-        if (!(ambito instanceof AmbitoBloque ab) || !ab.dentroDeAlgunCiclo())
-            errores.reportar(linea, columna, "'continuar' solo puede usarse dentro de un ciclo");
+        // Cada rama (si / sino) tiene su condicion (bool) y su propio sub-ambito, igual que en Z.
+        // El ambito de cada rama es hijo del actual, asi un 'continuar'/'romper' dentro de un si
+        // que esta dentro de un ciclo sigue viendo el ciclo (dentroDeAlgunCiclo sube por los padres).
+        for (RamaSi rama : ramas) {
+            Tipo tc = rama.getCondicion().verificar(ambito, errores);
+            if (!Tipos.esBooleano(tc))
+                errores.reportar(rama.getCondicion().getLinea(), rama.getCondicion().getColumna(),
+                        "La condición de 'si' debe ser bool, se recibió " + tc.nombre());
+            rama.getCuerpo().verificar(new AmbitoBloque(ambito, false), errores);
+        }
+        if (contrario != null) {
+            contrario.verificar(new AmbitoBloque(ambito, false), errores);
+        }
         return TipoPrimitivo.VOID;
     }
 }

@@ -110,6 +110,11 @@ public class IndentTokenStream extends CommonTokenStream {
                 if (saltoPendiente && huboContenidoPrevio) {
                     resultado.add(crearToken(LenguajeLexer.NEWLINE, primerSaltoPendiente, "<NEWLINE>"));
                     cerrarOAbrirNiveles(pilaIndentacion, nivelEspaciosPendiente, actual, resultado);
+                } else if (huboContenidoPrevio && nivelAnidamiento == 0) {
+                    // El archivo NO termina en salto de linea (muy comun al guardar desde un editor):
+                    // la ultima instruccion igual necesita su NEWLINE, o el parser se queja de
+                    // "missing NEWLINE at '<DEDENT>'". Se sintetiza uno en la posicion del EOF.
+                    resultado.add(crearToken(LenguajeLexer.NEWLINE, actual, "<NEWLINE>"));
                 }
                 while (pilaIndentacion.peek() != 0) {
                     pilaIndentacion.pop();

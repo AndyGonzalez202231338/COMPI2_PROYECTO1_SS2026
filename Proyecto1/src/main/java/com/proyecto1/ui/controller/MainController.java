@@ -4,10 +4,15 @@ import com.proyecto1.semantico.errores.ErrorSemantico;
 import com.proyecto1.servicio.ResultadoAnalisis;
 import com.proyecto1.servicio.ServicioAnalisis;
 import com.proyecto1.ui.modelo.ArchivoUI;
+import com.proyecto1.ui.modelo.FilaError;
 import com.proyecto1.ui.servicio.GestorArchivos;
 import com.proyecto1.ui.util.Notificaciones;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -21,11 +26,14 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
@@ -34,7 +42,9 @@ import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
@@ -56,8 +66,7 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
     @FXML private ToolBar barraHerramientas;
 
     @FXML private CheckMenuItem miMostrarArbol;
-    @FXML private CheckMenuItem miMostrarConsola;
-    @FXML private CheckMenuItem miMostrarPanelErrores;
+    @FXML private CheckMenuItem miMostrarPanelInferior;
 
     @FXML private TitledPane panelArbol;
     @FXML private TreeView<Object> arbolTrabajo;
@@ -66,11 +75,20 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
     @FXML private TabPane panelPestanas;
     @FXML private VBox panelBienvenida;
 
-    @FXML private VBox contenedorConsola;
+    @FXML private SplitPane splitCentral;
+
+    /** Panel inferior tipo "consola de IDE": pestana Consola + pestana Errores (tabla). */
+    @FXML private TabPane panelInferior;
+    @FXML private Tab tabConsola;
+    @FXML private Tab tabErrores;
     @FXML private TextArea consolaSalida;
 
-    @FXML private TitledPane panelErrores;
-    @FXML private ListView<String> listaErrores;
+    @FXML private TableView<FilaError> tablaErrores;
+    @FXML private TableColumn<FilaError, FilaError.Tipo> colTipo;
+    @FXML private TableColumn<FilaError, Integer> colFila;
+    @FXML private TableColumn<FilaError, Integer> colColumna;
+    @FXML private TableColumn<FilaError, String> colDescripcion;
+    private final ObservableList<FilaError> filasErrores = FXCollections.observableArrayList();
 
     @FXML private HBox barraEstado;
     @FXML private Label lblRutaActiva;
@@ -122,6 +140,7 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
         panelArbolVacio.managedProperty().bind(Bindings.isEmpty(arbolController.getProyectos()));
 
         configurarMenuWorkspace();
+        configurarTablaErrores();
 
         actualizarBarraEstado(null);
         escribirInfo("IDE iniciado. Cree un proyecto nuevo o abra una carpeta para comenzar.");
@@ -152,13 +171,82 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
         boolean v = miMostrarArbol.isSelected();
         panelArbol.setVisible(v); panelArbol.setManaged(v);
     }
-    @FXML private void accionAlternarConsola() {
-        boolean v = miMostrarConsola.isSelected();
-        contenedorConsola.setVisible(v); contenedorConsola.setManaged(v);
+    @FXML private void accionAlternarPanelInferior() {
+        mostrarPanelInferior(miMostrarPanelInferior.isSelected());
     }
-    @FXML private void accionAlternarPanelErrores() {
-        boolean v = miMostrarPanelErrores.isSelected();
-        panelErrores.setVisible(v); panelErrores.setManaged(v);
+
+    /**
+     * Muestra u oculta el panel inferior (consola + errores). Se quita/agrega del SplitPane
+     * en vez de solo ocultarlo: asi el editor recupera TODO el alto cuando esta oculto.
+     */
+    private void mostrarPanelInferior(boolean visible) {
+        miMostrarPanelInferior.setSelected(visible);
+        boolean estaEnSplit = splitCentral.getItems().contains(panelInferior);
+        if (visible && !estaEnSplit) {
+            splitCentral.getItems().add(panelInferior);
+            splitCentral.setDividerPositions(0.66);
+        } else if (!visible && estaEnSplit) {
+            splitCentral.getItems().remove(panelInferior);
+        }
+    }
+
+    // ==================== TABLA DE ERRORES ====================
+
+    private void configurarTablaErrores() {
+        tablaErrores.setItems(filasErrores);
+
+        colTipo.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getTipo()));
+        colTipo.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(FilaError.Tipo tipo, boolean vacia) {
+                super.updateItem(tipo, vacia);
+                getStyleClass().removeAll("tipo-lexico", "tipo-sintactico", "tipo-semantico", "tipo-advertencia");
+                if (vacia || tipo == null) {
+                    setText(null);
+                } else {
+                    setText(tipo.getEtiqueta());
+                    getStyleClass().add("tipo-" + tipo.name().toLowerCase());
+                }
+            }
+        });
+
+        colFila.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getFila()));
+        colFila.setCellFactory(col -> celdaNumerica());
+        colColumna.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getColumna()));
+        colColumna.setCellFactory(col -> celdaNumerica());
+
+        // La descripcion NO se corta con "...": se parte en varias lineas segun el ancho actual de
+        // la columna (y la fila crece), asi el mensaje completo se ve aunque la ventana sea angosta.
+        colDescripcion.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getDescripcion()));
+        colDescripcion.setCellFactory(col -> new TableCell<>() {
+            private final Text texto = new Text();
+            {
+                texto.getStyleClass().add("texto-celda-error");
+                texto.wrappingWidthProperty().bind(col.widthProperty().subtract(20));
+                setPrefHeight(Region.USE_COMPUTED_SIZE);
+            }
+            @Override
+            protected void updateItem(String descripcion, boolean vacia) {
+                super.updateItem(descripcion, vacia);
+                if (vacia || descripcion == null) {
+                    setGraphic(null);
+                } else {
+                    texto.setText(descripcion);
+                    setGraphic(texto);
+                }
+            }
+        });
+    }
+
+    /** Muestra el numero, o "-" si el error no tiene posicion (valor <= 0). */
+    private TableCell<FilaError, Integer> celdaNumerica() {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(Integer valor, boolean vacia) {
+                super.updateItem(valor, vacia);
+                setText(vacia || valor == null ? null : (valor > 0 ? String.valueOf(valor) : "-"));
+            }
+        };
     }
 
     // ==================== MENU EJECUTAR (placeholders) ====================
@@ -172,13 +260,15 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
 
         File archivo = editor.getArchivoUI().getArchivo();
         String texto = editor.getContenido();
+        // Raiz del proyecto que contiene el archivo: ahi tambien se buscan los .y/.z que importa un .pig.
+        File raizProyecto = arbolController.getProyectoQueContiene(archivo);
         editor.getEditor().limpiarMarcasDeError();
         escribirInfo("Analizando " + archivo.getName() + "...");
 
         Task<ResultadoAnalisis> tarea = new Task<>() {
             @Override
             protected ResultadoAnalisis call() {
-                return new ServicioAnalisis().analizar(archivo, texto);
+                return new ServicioAnalisis(raizProyecto).analizar(archivo, texto);
             }
         };
         tarea.setOnSucceeded(evento -> mostrarResultadoAnalisis(editor, tarea.getValue()));
@@ -193,9 +283,9 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
         hilo.start();
     }
 
-    /** Vuelca un {@link ResultadoAnalisis} en la consola, el panel de errores y las marcas del editor. Corre en el hilo de JavaFX. */
+    /** Vuelca un {@link ResultadoAnalisis} en la consola, la tabla de errores y las marcas del editor. Corre en el hilo de JavaFX. */
     private void mostrarResultadoAnalisis(EditorController editor, ResultadoAnalisis resultado) {
-        listaErrores.getItems().clear();
+        filasErrores.clear();
         List<Integer> lineasConError = new ArrayList<>();
 
         if (resultado.isExito()) {
@@ -204,34 +294,36 @@ public class MainController implements ArbolController.EscuchaArbol, EditorContr
             escribirError("[ERROR] " + resultado.getMensajeResumen());
         }
 
-        agregarErroresAlPanel(resultado.getErroresLexicos(), "Lexico", lineasConError);
-        agregarErroresAlPanel(resultado.getErroresSintacticos(), "Sintactico", lineasConError);
-        agregarErroresAlPanel(resultado.getErroresSemanticos(), "Semantico", lineasConError);
+        agregarErroresALaTabla(resultado.getErroresLexicos(), FilaError.Tipo.LEXICO, lineasConError);
+        agregarErroresALaTabla(resultado.getErroresSintacticos(), FilaError.Tipo.SINTACTICO, lineasConError);
+        agregarErroresALaTabla(resultado.getErroresSemanticos(), FilaError.Tipo.SEMANTICO, lineasConError);
 
         for (ErrorSemantico advertencia : resultado.getAdvertencias()) {
-            String linea = "[Advertencia] linea " + advertencia.getLinea() + ":" + advertencia.getColumna()
-                    + " - " + advertencia.getMensaje();
-            listaErrores.getItems().add(linea);
-            escribirAdvertencia(linea);
+            FilaError fila = FilaError.desde(FilaError.Tipo.ADVERTENCIA,
+                    advertencia.getLinea(), advertencia.getColumna(), advertencia.getMensaje());
+            filasErrores.add(fila);
+            escribirAdvertencia("linea " + fila.getFila() + ":" + fila.getColumna() + " - " + fila.getDescripcion());
         }
 
         if (!lineasConError.isEmpty()) {
             editor.getEditor().marcarLineasConError(lineasConError);
         }
 
-        boolean hayAlgoQueMostrar = !resultado.isExito() || !resultado.getAdvertencias().isEmpty();
-        if (hayAlgoQueMostrar && !miMostrarPanelErrores.isSelected()) {
-            miMostrarPanelErrores.setSelected(true);
-            accionAlternarPanelErrores();
+        // La pestana Errores lleva la cuenta; si hay algo que ver, se abre sola (y se muestra el
+        // panel inferior aunque estuviera oculto). Si todo salio bien, se deja la Consola a la vista.
+        tabErrores.setText(filasErrores.isEmpty() ? "Errores" : "Errores (" + filasErrores.size() + ")");
+        if (!filasErrores.isEmpty()) {
+            mostrarPanelInferior(true);
+            panelInferior.getSelectionModel().select(tabErrores);
         }
     }
 
-    private void agregarErroresAlPanel(List<ErrorSemantico> errores, String categoria, List<Integer> lineasConError) {
+    private void agregarErroresALaTabla(List<ErrorSemantico> errores, FilaError.Tipo tipo, List<Integer> lineasConError) {
         for (ErrorSemantico error : errores) {
-            String linea = "[" + categoria + "] linea " + error.getLinea() + ":" + error.getColumna()
-                    + " - " + error.getMensaje();
-            listaErrores.getItems().add(linea);
-            escribirError(linea);
+            FilaError fila = FilaError.desde(tipo, error.getLinea(), error.getColumna(), error.getMensaje());
+            filasErrores.add(fila);
+            escribirError("[" + tipo.getEtiqueta() + "] linea " + fila.getFila() + ":" + fila.getColumna()
+                    + " - " + fila.getDescripcion());
             lineasConError.add(error.getLinea());
         }
     }

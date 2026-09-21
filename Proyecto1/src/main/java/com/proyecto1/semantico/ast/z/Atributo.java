@@ -40,9 +40,19 @@ public final class Atributo extends NodoZ {
 
     public void verificar(AmbitoClase amb, ManejadorErrores errores) {
         Tipo t = tipo.resolver(amb, errores);
-        Simbolo s = new Simbolo(nombre, CategoriaSimbolo.ATRIBUTO, t, linea, columna);
-        if (!amb.declararMiembro(s))
-            errores.reportar(linea, columna, "Atributo duplicado: '" + nombre + "'");
+        // AnalizadorSemanticoZ ya registró este atributo en su primera pasada. Si el símbolo que
+        // hay en el ámbito es ESTE mismo (misma posición), no hay nada que declarar: intentarlo de
+        // nuevo lo marcaba como "duplicado" de sí mismo en TODA clase con atributos. Un duplicado
+        // real (otro atributo con el mismo nombre, en otra posición) sí se sigue reportando.
+        Simbolo existente = amb.resolverLocal(nombre);
+        boolean yaRegistradoEnPrimeraPasada = existente != null
+                && existente.getCategoria() == CategoriaSimbolo.ATRIBUTO
+                && existente.getLinea() == linea && existente.getColumna() == columna;
+        if (!yaRegistradoEnPrimeraPasada) {
+            Simbolo s = new Simbolo(nombre, CategoriaSimbolo.ATRIBUTO, t, linea, columna);
+            if (!amb.declararMiembro(s))
+                errores.reportar(linea, columna, "Atributo duplicado: '" + nombre + "'");
+        }
 
         if (inicializador != null) {
             Tipo tInit = inicializador.verificar(amb, errores);

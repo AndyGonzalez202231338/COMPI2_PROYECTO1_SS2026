@@ -26,7 +26,7 @@ public class GeneradorC3D {
     }
 
     public String nuevaEtiqueta() {
-        return "L" + (++contadorEtiquetas);
+        return "et" + (++contadorEtiquetas);
     }
 
     public void emitir(String cuadrupla) {

@@ -1,6 +1,7 @@
 package com.proyecto1.servicio;
 
 import com.proyecto1.semantico.errores.ErrorSemantico;
+import com.proyecto1.semantico.tabla.AmbitoGlobal;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,10 +26,12 @@ public final class ResultadoAnalisis {
     private final List<ErrorSemantico> erroresSemanticos;
     private final List<ErrorSemantico> advertencias;
     private final int cantidadLineas;
+    private final AmbitoGlobal ambitoGlobal; // solo .y/.z que llegaron hasta el análisis semántico; si no, null
 
     private ResultadoAnalisis(String lenguaje, List<ErrorSemantico> erroresLexicos,
                               List<ErrorSemantico> erroresSintacticos, List<ErrorSemantico> erroresSemanticos,
-                              List<ErrorSemantico> advertencias, int cantidadLineas) {
+                              List<ErrorSemantico> advertencias, int cantidadLineas, AmbitoGlobal ambitoGlobal) {
+        this.ambitoGlobal = ambitoGlobal;
         this.lenguaje = lenguaje;
         this.erroresLexicos = erroresLexicos;
         this.erroresSintacticos = erroresSintacticos;
@@ -50,21 +53,35 @@ public final class ResultadoAnalisis {
                                                List<ErrorSemantico> erroresSemanticos,
                                                List<ErrorSemantico> advertencias, int cantidadLineas) {
         return new ResultadoAnalisis(lenguaje, erroresLexicos, erroresSintacticos, erroresSemanticos,
-                advertencias, cantidadLineas);
+                advertencias, cantidadLineas, null);
+    }
+
+    /**
+     * Igual que la anterior pero además guarda el {@link AmbitoGlobal} resultante del análisis
+     * semántico de un .y/.z (sus estructuras, funciones o clase ya resueltas). Es lo que permite
+     * que un .pig que hace {@code import} de ese archivo pueda usar sus símbolos.
+     */
+    public static ResultadoAnalisis conErrores(String lenguaje, List<ErrorSemantico> erroresLexicos,
+                                               List<ErrorSemantico> erroresSintacticos,
+                                               List<ErrorSemantico> erroresSemanticos,
+                                               List<ErrorSemantico> advertencias, int cantidadLineas,
+                                               AmbitoGlobal ambitoGlobal) {
+        return new ResultadoAnalisis(lenguaje, erroresLexicos, erroresSintacticos, erroresSemanticos,
+                advertencias, cantidadLineas, ambitoGlobal);
     }
 
     /** Para cuando el lexer/parser/analizador lanzó una excepción inesperada (no debería pasar, pero no debe tumbar la UI). */
     public static ResultadoAnalisis errorInterno(String lenguaje, String mensaje) {
         ErrorSemantico error = new ErrorSemantico(0, 0, "Error interno: " + mensaje);
         return new ResultadoAnalisis(lenguaje, Collections.emptyList(), Collections.emptyList(),
-                List.of(error), Collections.emptyList(), 0);
+                List.of(error), Collections.emptyList(), 0, null);
     }
 
     public static ResultadoAnalisis extensionNoSoportada(String nombreArchivo) {
         ErrorSemantico error = new ErrorSemantico(0, 0,
                 "No se reconoce el tipo de archivo de '" + nombreArchivo + "' (se esperaba .y, .z o .pig).");
         return new ResultadoAnalisis("Desconocido", Collections.emptyList(), Collections.emptyList(),
-                List.of(error), Collections.emptyList(), 0);
+                List.of(error), Collections.emptyList(), 0, null);
     }
 
     public boolean isExito() { return getTotalErrores() == 0; }
@@ -79,6 +96,9 @@ public final class ResultadoAnalisis {
     public List<ErrorSemantico> getErroresSemanticos() { return erroresSemanticos; }
     public List<ErrorSemantico> getAdvertencias() { return advertencias; }
     public int getCantidadLineas() { return cantidadLineas; }
+
+    /** Ámbito global del .y/.z analizado (null si no hubo análisis semántico, p. ej. por errores de sintaxis, o si es un .pig). */
+    public AmbitoGlobal getAmbitoGlobal() { return ambitoGlobal; }
 
     /** Mensaje corto, sin prefijos de presentación (esos los agrega quien imprima en consola). */
     public String getMensajeResumen() {
