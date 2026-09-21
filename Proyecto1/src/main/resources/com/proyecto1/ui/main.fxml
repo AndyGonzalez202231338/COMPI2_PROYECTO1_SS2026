@@ -2,14 +2,16 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckMenuItem?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.ToolBar?>
@@ -24,18 +26,6 @@
         <VBox>
             <MenuBar fx:id="barraMenu">
                 <Menu text="Archivo">
-                    <MenuItem text="Nuevo archivo" onAction="#accionNuevoArchivo"/>
-                    <MenuItem text="Nuevo proyecto/carpeta" onAction="#accionNuevoProyecto"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Abrir archivo" onAction="#accionAbrirArchivo"/>
-                    <MenuItem text="Abrir carpeta" onAction="#accionAbrirCarpeta"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Guardar" onAction="#accionGuardar"/>
-                    <MenuItem text="Guardar como" onAction="#accionGuardarComo"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Cerrar pestana actual" onAction="#accionCerrarPestanaActual"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Salir" onAction="#accionSalir"/>
                 </Menu>
                 <Menu text="Editar">
                     <MenuItem text="Deshacer" onAction="#accionDeshacer"/>
@@ -50,8 +40,7 @@
                 </Menu>
                 <Menu text="Ver">
                     <CheckMenuItem fx:id="miMostrarArbol" text="Mostrar arbol de trabajo" selected="true" onAction="#accionAlternarArbol"/>
-                    <CheckMenuItem fx:id="miMostrarConsola" text="Mostrar consola" selected="true" onAction="#accionAlternarConsola"/>
-                    <CheckMenuItem fx:id="miMostrarPanelErrores" text="Mostrar panel de errores" selected="false" onAction="#accionAlternarPanelErrores"/>
+                    <CheckMenuItem fx:id="miMostrarPanelInferior" text="Mostrar consola y errores" selected="true" onAction="#accionAlternarPanelInferior"/>
                 </Menu>
                 <Menu text="Ejecutar">
                     <MenuItem text="Analizar archivo actual" onAction="#accionAnalizarArchivoActual"/>
@@ -95,7 +84,7 @@
         </TitledPane>
     </left>
     <center>
-        <SplitPane fx:id="splitCentral" dividerPositions="0.72" orientation="VERTICAL">
+        <SplitPane fx:id="splitCentral" dividerPositions="0.66" orientation="VERTICAL">
             <StackPane>
                 <TabPane fx:id="panelPestanas" tabClosingPolicy="ALL_TABS"/>
                 <VBox fx:id="panelBienvenida" alignment="CENTER" spacing="16" styleClass="panel-bienvenida">
@@ -108,21 +97,29 @@
                     </HBox>
                 </VBox>
             </StackPane>
-            <VBox fx:id="contenedorConsola">
-            </VBox>
+            <TabPane fx:id="panelInferior" tabClosingPolicy="UNAVAILABLE" styleClass="panel-inferior">
+                <Tab fx:id="tabConsola" text="Consola">
+                    <TextArea fx:id="consolaSalida" editable="false" wrapText="true" styleClass="consola-salida"/>
+                </Tab>
+                <Tab fx:id="tabErrores" text="Errores">
+                    <TableView fx:id="tablaErrores" styleClass="tabla-errores">
+                        <columnResizePolicy>
+                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                        </columnResizePolicy>
+                        <columns>
+                            <TableColumn fx:id="colTipo" text="TIPO ERROR" minWidth="110.0" prefWidth="130.0" maxWidth="180.0"/>
+                            <TableColumn fx:id="colFila" text="FILA" minWidth="55.0" prefWidth="65.0" maxWidth="100.0"/>
+                            <TableColumn fx:id="colColumna" text="COLUMNA" minWidth="80.0" prefWidth="90.0" maxWidth="120.0"/>
+                            <TableColumn fx:id="colDescripcion" text="DESCRIPCIÓN" minWidth="250.0" prefWidth="900.0"/>
+                        </columns>
+                        <placeholder>
+                            <Label text="(Sin errores por ahora)" styleClass="texto-suave"/>
+                        </placeholder>
+                    </TableView>
+                </Tab>
+            </TabPane>
         </SplitPane>
     </center>
-    <right>
-        <TitledPane fx:id="panelErrores" text="Errores" collapsible="false" prefWidth="220.0" visible="false" managed="false">
-            <VBox VBox.vgrow="ALWAYS">
-                <ListView fx:id="listaErrores" VBox.vgrow="ALWAYS">
-                    <placeholder>
-                        <Label text="(Sin errores por ahora)" styleClass="texto-suave"/>
-                    </placeholder>
-                </ListView>
-            </VBox>
-        </TitledPane>
-    </right>
     <bottom>
         <HBox fx:id="barraEstado" styleClass="barra-estado" spacing="16.0">
             <padding>

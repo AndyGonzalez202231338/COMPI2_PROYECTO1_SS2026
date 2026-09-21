@@ -15,8 +15,16 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 public class AnalizadorSemanticoZ {
 
     public ManejadorErrores analizar(Clase clase) {
+        return analizar(clase, new AmbitoGlobal());
+    }
+
+    /**
+     * Igual que {@link #analizar(Clase)} pero llenando el {@code global} que entrega quien
+     * llama. Así, al terminar, quien llamó conserva la clase ya resuelta (con sus atributos
+     * y métodos) -- es lo que necesita un .pig para poder importarla.
+     */
+    public ManejadorErrores analizar(Clase clase, AmbitoGlobal global) {
         ManejadorErrores errores = new ManejadorErrores();
-        AmbitoGlobal global = new AmbitoGlobal();
 
         // ---- PRIMERA PASADA: registrar la clase ----
         Simbolo sClase = new Simbolo(clase.getNombre(), CategoriaSimbolo.CLASE,

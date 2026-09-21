@@ -16,6 +16,11 @@ public class AmbitoGlobal extends Ambito {
         super(padre);
     }
 
+    /** Guarda {@code simbolo} sobreescribiendo, si lo hay, otro con el mismo nombre (declarar() lo rechazaria). */
+    public void reemplazar(Simbolo simbolo) {
+        simbolos.insertar(simbolo.getNombre(), simbolo);
+    }
+
     @Override
     public String descripcion() {
         return "ámbito global";

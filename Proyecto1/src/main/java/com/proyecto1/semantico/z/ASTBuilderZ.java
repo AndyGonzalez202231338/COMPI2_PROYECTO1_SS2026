@@ -206,7 +206,9 @@ public class ASTBuilderZ extends GramaticaZBaseVisitor<NodoAST> {
 
     // STATEMENT (12 alternativas -> 12 overrides)
     @Override public NodoAST visitStmtBlock(GramaticaZ.StmtBlockContext ctx) {
-        return visit(ctx.block());
+        // Antes: visit(ctx.block()) -- no hay visitBlockDef, asi que devolvia null y el cuerpo de
+        // todo for/while/if escrito con llaves quedaba null (NullPointerException al verificar).
+        return construirBloque((GramaticaZ.BlockDefContext) ctx.block());
     }
     @Override public NodoAST visitStmtIf(GramaticaZ.StmtIfContext ctx) {
         return visit(ctx.ifStatement());

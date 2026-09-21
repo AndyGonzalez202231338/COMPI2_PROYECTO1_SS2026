@@ -34,6 +34,11 @@ public abstract class Ambito {
         return simbolos.obtener(nombre);
     }
 
+    /** Símbolos declarados directamente en ESTE ámbito (sin incluir los de los padres). */
+    public java.util.List<Simbolo> simbolosLocales() {
+        return simbolos.valores();
+    }
+
     /** Busca en este ámbito y, si no está, sube por la cadena de padres hasta el global. */
     public Simbolo resolver(String nombre) {
         Simbolo encontrado = simbolos.obtener(nombre);

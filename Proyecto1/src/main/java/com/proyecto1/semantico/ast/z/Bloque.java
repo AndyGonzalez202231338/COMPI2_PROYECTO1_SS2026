@@ -8,7 +8,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import java.util.List;
 
 /** Un {@code block} (#blockDef): "{ statement* }". */
-public final class Bloque extends NodoZ {
+public final class Bloque extends NodoZ implements InstruccionZ {
 
     private final List<InstruccionZ> instrucciones;
 

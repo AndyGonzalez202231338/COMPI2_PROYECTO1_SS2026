@@ -125,6 +125,28 @@ public class ArbolController {
         return null;
     }
 
+    /**
+     * @return la carpeta raiz del proyecto abierto que contiene a {@code archivo}, o
+     *         {@code null} si el archivo no pertenece a ningun proyecto del workspace
+     */
+    public File getProyectoQueContiene(File archivo) {
+        if (archivo == null) return null;
+        java.nio.file.Path ruta = archivo.toPath().toAbsolutePath().normalize();
+        File mejor = null;
+        int mejorLongitud = -1;
+        for (TreeItem<Object> hijo : raizWorkspace.getChildren()) {
+            if (!(hijo.getValue() instanceof CarpetaUI)) continue;
+            File carpeta = ((CarpetaUI) hijo.getValue()).getCarpeta();
+            java.nio.file.Path raiz = carpeta.toPath().toAbsolutePath().normalize();
+            // Si hay proyectos anidados gana el mas especifico (la ruta mas larga).
+            if (ruta.startsWith(raiz) && raiz.getNameCount() > mejorLongitud) {
+                mejor = carpeta;
+                mejorLongitud = raiz.getNameCount();
+            }
+        }
+        return mejor;
+    }
+
     /** Refresca todos los proyectos releyendo el disco. */
     public void refrescarTodo() {
         for (TreeItem<Object> hijo : raizWorkspace.getChildren()) {

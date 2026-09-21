@@ -14,8 +14,16 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 public class AnalizadorSemanticoY {
 
     public ManejadorErrores analizar(Programa programa) {
+        return analizar(programa, new AmbitoGlobal());
+    }
+
+    /**
+     * Igual que {@link #analizar(Programa)} pero llenando el {@code global} que entrega quien
+     * llama. Así, al terminar, quien llamó conserva las estructuras y funciones ya resueltas
+     * (con sus campos y parámetros) -- es lo que necesita un .pig para poder importarlas.
+     */
+    public ManejadorErrores analizar(Programa programa, AmbitoGlobal global) {
         ManejadorErrores errores = new ManejadorErrores();
-        AmbitoGlobal global = new AmbitoGlobal();
 
         // ---- PRIMERA PASADA: recolectar estructuras y funciones ----
         for (Estructura e : programa.getEstructuras()) {

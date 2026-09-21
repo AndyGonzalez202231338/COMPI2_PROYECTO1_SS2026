@@ -19,6 +19,8 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -35,11 +37,22 @@ import java.util.List;
  * los compiladores: no tiene sentido revisar tipos de un programa que ni siquiera
  * parsea.
  *
- * IMPORTS de Pig Latin: por ahora se analiza cada .pig con un {@link AmbitoGlobal}
- * de imports VACÍO (ver la nota en {@link #analizarPigLatin}) -- cargar los .y/.z
- * importados de verdad queda pendiente, tal como se pidió.
+ * IMPORTS de Pig Latin: antes de analizar un .pig se cargan de verdad los .y/.z que
+ * importa (ver {@link CargadorImports}); sus estructuras, funciones y clases quedan
+ * disponibles como si estuvieran declaradas en el propio .pig.
  */
 public class ServicioAnalisis{
+
+    /** Raíz del proyecto abierto en el IDE (dónde buscar los archivos importados, además de junto al .pig). Puede ser null. */
+    private final File raizProyecto;
+
+    public ServicioAnalisis() {
+        this(null);
+    }
+
+    public ServicioAnalisis(File raizProyecto) {
+        this.raizProyecto = raizProyecto;
+    }
 
     public ResultadoAnalisis analizar(File archivo, String texto) {
         String extension = extensionDe(archivo);
@@ -47,7 +60,7 @@ public class ServicioAnalisis{
             return switch (extension) {
                 case "y" -> analizarY(texto);
                 case "z" -> analizarZ(texto, archivo.getName());
-                case "pig" -> analizarPigLatin(texto);
+                case "pig" -> analizarPigLatin(texto, archivo);
                 default -> ResultadoAnalisis.extensionNoSoportada(archivo.getName());
             };
         } catch (Exception ex) {
@@ -73,14 +86,16 @@ public class ServicioAnalisis{
         GramaticaY.ProgramaContext arbol = parser.programa();
 
         List<ErrorSemantico> erroresSemanticos = List.of();
+        AmbitoGlobal ambitoGlobal = null;
         if (!listener.tieneErrores()) {
             com.proyecto1.semantico.ast.y.Programa programa = new ASTBuilderY().construir(arbol);
-            ManejadorErrores errores = new AnalizadorSemanticoY().analizar(programa);
+            ambitoGlobal = new AmbitoGlobal();
+            ManejadorErrores errores = new AnalizadorSemanticoY().analizar(programa, ambitoGlobal);
             erroresSemanticos = errores.obtenerErrores();
         }
 
         return ResultadoAnalisis.conErrores("Y?", listener.getErroresLexicos(),
-                listener.getErroresSintacticos(), erroresSemanticos, contarLineas(texto));
+                listener.getErroresSintacticos(), erroresSemanticos, List.of(), contarLineas(texto), ambitoGlobal);
     }
 
     private ResultadoAnalisis analizarZ(String texto, String nombreArchivo) {
@@ -101,9 +116,11 @@ public class ServicioAnalisis{
 
         List<ErrorSemantico> erroresSemanticos = List.of();
         List<ErrorSemantico> advertencias = List.of();
+        AmbitoGlobal ambitoGlobal = null;
         if (!listener.tieneErrores()) {
             com.proyecto1.semantico.ast.z.Clase clase = new ASTBuilderZ().construir(arbol);
-            ManejadorErrores errores = new AnalizadorSemanticoZ().analizar(clase);
+            ambitoGlobal = new AmbitoGlobal();
+            ManejadorErrores errores = new AnalizadorSemanticoZ().analizar(clase, ambitoGlobal);
             erroresSemanticos = errores.obtenerErrores();
 
             // Advertencia semántica NO bloqueante: el nombre del archivo debería
@@ -117,10 +134,10 @@ public class ServicioAnalisis{
         }
 
         return ResultadoAnalisis.conErrores("Zetariano", listener.getErroresLexicos(),
-                listener.getErroresSintacticos(), erroresSemanticos, advertencias, contarLineas(texto));
+                listener.getErroresSintacticos(), erroresSemanticos, advertencias, contarLineas(texto), ambitoGlobal);
     }
 
-    private ResultadoAnalisis analizarPigLatin(String texto) {
+    private ResultadoAnalisis analizarPigLatin(String texto, File archivo) {
         ListenerErroresANTLR listener = new ListenerErroresANTLR();
 
         LenguajeLexer lexer = new LenguajeLexer(CharStreams.fromString(texto));
@@ -138,19 +155,26 @@ public class ServicioAnalisis{
         GramaticaPigLatin.ProgramaContext arbol = parser.programa();
 
         List<ErrorSemantico> erroresSemanticos = List.of();
+        List<ErrorSemantico> advertencias = List.of();
         if (!listener.tieneErrores()) {
             com.proyecto1.semantico.ast.piglatin.Programa programa = new ASTBuilderPigLatin().construir(arbol);
-            // Los .y/.z importados todavía no se cargan: se analiza con un ámbito
-            // de imports vacío. Cuando se implemente la carga real de imports, este
-            // AmbitoGlobal es el que hay que reemplazar por el de los archivos
-            // realmente importados.
-            AmbitoGlobal globalImportsVacio = new AmbitoGlobal();
-            ManejadorErrores errores = new AnalizadorSemanticoPigLatin().analizar(programa, globalImportsVacio);
-            erroresSemanticos = errores.obtenerErrores();
+            // Se cargan los .y/.z importados y sus símbolos se juntan en un solo ámbito que
+            // hace de "padre" del ámbito global del .pig. Los problemas al importar (archivo
+            // no encontrado, archivo con errores, símbolo repetido) se reportan en la línea
+            // del import correspondiente.
+            CargadorImports.Resultado imports =
+                    new CargadorImports(this, raizProyecto).cargar(programa.getImportaciones(), archivo);
+            ManejadorErrores errores = new AnalizadorSemanticoPigLatin().analizar(programa, imports.getAmbitoGlobal());
+
+            List<ErrorSemantico> todos = new ArrayList<>(imports.getErrores());
+            todos.addAll(errores.obtenerErrores());
+            todos.sort(Comparator.comparingInt(ErrorSemantico::getLinea).thenComparingInt(ErrorSemantico::getColumna));
+            erroresSemanticos = todos;
+            advertencias = imports.getAdvertencias();
         }
 
         return ResultadoAnalisis.conErrores("PigLatin", listener.getErroresLexicos(),
-                listener.getErroresSintacticos(), erroresSemanticos, contarLineas(texto));
+                listener.getErroresSintacticos(), erroresSemanticos, advertencias, contarLineas(texto));
     }
 
     private String extensionDe(File archivo) {
