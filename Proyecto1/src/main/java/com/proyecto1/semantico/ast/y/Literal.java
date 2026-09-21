@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -41,5 +43,45 @@ public final class Literal extends NodoY implements ExpresionY {
             case CADENA    -> TipoPrimitivo.CADENA;
             case BOOLEANO  -> TipoPrimitivo.BOOL;
         };
+    }
+
+    /**
+     * Emite: NADA (un literal no necesita cuádruplas, se usa directamente como operando).
+     * Devuelve: {@code ResultadoC3D.valor(texto, tipo)}, donde "texto" es la forma
+     * literal lista para usarse como operando: enteros/flotantes tal cual ("5", "3.14"),
+     * caracteres entre comillas simples ('a'), cadenas entre comillas dobles ("hola",
+     * re-escapadas porque el AST guarda el valor ya desescapado) y booleanos como
+     * "true"/"false". Las comillas permiten distinguir después un literal cadena "5" de
+     * un entero 5 sin re-parsear.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String texto = switch (categoria) {
+            case ENTERO, FLOTANTE, BOOLEANO -> String.valueOf(valor);
+            case CARACTER -> "'" + escapar(String.valueOf(valor), '\'') + "'";
+            case CADENA   -> "\"" + escapar(String.valueOf(valor), '"') + "\"";
+        };
+        return ResultadoC3D.valor(texto, verificar(null, null));
+        // verificar() no usa ambito ni errores para un literal; se reutiliza para no
+        // duplicar el mapeo categoría -> tipo.
+    }
+
+    /** Re-escapa un texto ya desescapado para poder escribirlo entre comillas. */
+    private static String escapar(String texto, char delimitador) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : texto.toCharArray()) {
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\t' -> sb.append("\\t");
+                case '\r' -> sb.append("\\r");
+                case '\0' -> sb.append("\\0");
+                default -> {
+                    if (c == delimitador) sb.append('\\');
+                    sb.append(c);
+                }
+            }
+        }
+        return sb.toString();
     }
 }

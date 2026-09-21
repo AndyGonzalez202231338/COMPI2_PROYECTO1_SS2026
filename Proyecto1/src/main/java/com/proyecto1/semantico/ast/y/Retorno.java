@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoFuncion;
@@ -43,5 +45,32 @@ public final class Retorno extends NodoY implements InstruccionY {
                     "Tipo de retorno incompatible: se esperaba " + af.getTipoRetorno().nombre() +
                             ", se recibió " + tv.nombre());
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite: primero el C3D de la expresión (si hay) y luego
+     * {@code (return, v, null, null)}, es decir {@code return v}; sin valor emite
+     * {@code return} con arg1 en null.
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        /*
+        definir prueba():
+            entero x = 1
+         */
+        if (valor == null) {
+            // cuadrupla(return, null, null, null)
+            generador.emitirReturn(null);
+        } else {
+            /*
+            definir prueba() -> entero:
+                retornar 123
+             */
+            ResultadoC3D v = valor.generarC3D(generador);
+            // cuadrupla(return, 123, null, null)
+            generador.emitirReturn(v.getLugar());
+        }
+        return ResultadoC3D.vacio();
     }
 }

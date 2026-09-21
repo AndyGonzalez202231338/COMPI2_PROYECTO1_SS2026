@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -21,5 +23,16 @@ public final class ExpresionStmt extends NodoY implements InstruccionY {
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         return expresion.verificar(ambito, errores);
+    }
+
+    /**
+     * Emite: lo que emita la expresión (efectos como "contador++" incluidos); este nodo
+     * no agrega cuádruplas propias. El valor resultante se descarta.
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        expresion.generarC3D(generador);
+        return ResultadoC3D.vacio();
     }
 }
