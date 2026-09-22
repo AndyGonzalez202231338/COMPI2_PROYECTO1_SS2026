@@ -30,20 +30,10 @@ public final class DeclaracionVariable extends NodoY implements InstruccionY {
         this.inicializador = inicializador;
     }
 
-    public NodoTipoRef getTipo() {
-        return tipo;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-    public List<Integer> getTamanosArreglo() {
-        return tamanosArreglo;
-    }
-
-    public ExpresionY getInicializador() {
-        return inicializador;
-    }
+    public NodoTipoRef getTipo() { return tipo; }
+    public String getNombre() { return nombre; }
+    public List<Integer> getTamanosArreglo() { return tamanosArreglo; }
+    public ExpresionY getInicializador() { return inicializador; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -51,10 +41,9 @@ public final class DeclaracionVariable extends NodoY implements InstruccionY {
 
         // Si es arreglo, envolver en TipoArreglo (un nivel, según Y?)
         if (!tamanosArreglo.isEmpty()) {
-            // Validar que solo tenga UN nivel (Y? no admite multi-dimensional)
             if (tamanosArreglo.size() > 1)
                 errores.reportar(linea, columna, "Y? solo admite arreglos de un nivel");
-            t = new TipoArreglo(t);
+            t = new TipoArreglo(t, tamanosArreglo.get(0));   // <-- longitud
         }
 
         Simbolo s = new Simbolo(nombre, CategoriaSimbolo.VARIABLE, t, linea, columna);
@@ -76,25 +65,48 @@ public final class DeclaracionVariable extends NodoY implements InstruccionY {
     }
 
     /**
-     * Emite: NADA si no hay inicializador (en C3D "reservar" la variable no necesita
-     * cuádrupla: el tipo y nombre viven en la tabla de símbolos, que la Fase 4 usará
-     * para declararla en C). Con inicializador: primero el C3D de la expresión y luego
-     * {@code (=, v, null, nombre)}, es decir {@code nombre = v}.
-     * Devuelve {@code ResultadoC3D.vacio()}.
-     *
-     * Las declaraciones de arreglo lanzan {@link UnsupportedOperationException}: quedan
-     * fuera de la Fase 1.1.
+     * Tres casos, en este orden:
+     * <ol>
+     *   <li><b>Variable escalar</b> (tamanosArreglo vacío): igual que antes — sin
+     *       inicializador no emite nada; con inicializador emite {@code nombre = v}.</li>
+     *   <li><b>Arreglo sin inicializador</b>: no emite NADA. La reserva de celdas la
+     *       hará Fase 4 leyendo la longitud del {@link TipoArreglo} del símbolo (o de
+     *       {@code Simbolo.getTamanosArreglo()}). Emitir cuádruplas aquí sería ruido.</li>
+     *   <li><b>Arreglo con inicializador {@link ListaLiteral}</b>: emite
+     *       {@code arr[i] = v_i} por cada elemento del literal, USANDO EL NOMBRE DEL
+     *       ARREGLO como base (no un temporal intermedio). Eso deja el C3D en la forma
+     *       canónica que Fase 4 espera para un array init: N escrituras indexadas sobre
+     *       la misma variable.</li>
+     * </ol>
+     * Un inicializador de arreglo que NO sea {@link ListaLiteral} (una variable de
+     * arreglo, una llamada que devuelve arreglo, etc.) sigue siendo deuda explícita:
+     * C no permite asignar arreglos y Y? tampoco lo contempla hoy.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        // ---------- Caso arreglo ----------
         if (!tamanosArreglo.isEmpty()) {
+            if (inicializador == null) {
+                // Nada que emitir: Fase 4 reserva las celdas leyendo la longitud del
+                // TipoArreglo del símbolo.
+                return ResultadoC3D.vacio();
+            }
+            if (inicializador instanceof ListaLiteral lit) {
+                // Init elemento a elemento sobre el propio nombre del arreglo: t[i] = v_i.
+                List<ExpresionY> elems = lit.getElementos();
+                for (int i = 0; i < elems.size(); i++) {
+                    ResultadoC3D v = elems.get(i).generarC3D(generador);
+                    generador.emitirGuardarIndice(nombre, String.valueOf(i), v.getLugar());
+                }
+                return ResultadoC3D.vacio();
+            }
             throw new UnsupportedOperationException(
-                    "Declaración de arreglos: pendiente en C3D");
+                    "Inicialización de arreglo con expresión que no es lista literal: pendiente en C3D");
         }
+
+        // ---------- Caso variable escalar (como antes) ----------
         if (inicializador != null) {
-            //entero x   este no se le inicaliza con valor
-            ResultadoC3D v = inicializador.generarC3D(generador); // x = 1
-            //(1, x)
+            ResultadoC3D v = inicializador.generarC3D(generador);
             generador.emitirAsignacion(v.getLugar(), nombre);
         }
         return ResultadoC3D.vacio();

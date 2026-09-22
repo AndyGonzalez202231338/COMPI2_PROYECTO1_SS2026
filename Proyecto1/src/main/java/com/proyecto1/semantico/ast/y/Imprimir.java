@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -17,13 +19,27 @@ public final class Imprimir extends NodoY implements InstruccionY {
         this.argumentos = argumentos;
     }
 
-    public List<ExpresionY> getArgumentos() {
-        return argumentos;
-    }
+    public List<ExpresionY> getArgumentos() { return argumentos; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         for (ExpresionY a : argumentos) a.verificar(ambito, errores);
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite, en orden de aparición: para cada argumento, primero su C3D (que puede
+     * generar cuádruplas propias: "t0 = a + b", "t1 = leer()"→"read t1", …) y luego
+     * {@code (print, v, null, null)}. La Fase 4 decide el separador entre argumentos
+     * (típicamente printf con "%d %f %s ..." según el tipo).
+     * Devuelve {@code ResultadoC3D.vacio()}: imprimir no produce valor.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        for (ExpresionY a : argumentos) {
+            ResultadoC3D v = a.generarC3D(generador);
+            generador.emitirPrint(v.getLugar());
+        }
+        return ResultadoC3D.vacio();
     }
 }

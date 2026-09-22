@@ -203,6 +203,31 @@ public class GeneradorC3D {
         emitir(Cuadrupla.OP_END_FUNC, null, null, null);
     }
 
+    /** t = arr[i]  (=[], arr, i, t). */
+    public void emitirCargaIndice(String arr, String idx, String t) {
+        emitir(Cuadrupla.OP_INDEX_LOAD, arr, idx, t);
+    }
+
+    /** arr[i] = v   ([]=, arr, i, v). */
+    public void emitirGuardarIndice(String arr, String idx, String v) {
+        emitir(Cuadrupla.OP_INDEX_STORE, arr, idx, v);
+    }
+
+    /** t = obj.f   (=., obj, f, t). El campo va por NOMBRE, no por offset. */
+    public void emitirCargaCampo(String obj, String campo, String t) {
+        emitir(Cuadrupla.OP_FIELD_LOAD, obj, campo, t);
+    }
+
+    /** obj.f = v   (.=, obj, f, v). */
+    public void emitirGuardarCampo(String obj, String campo, String v) {
+        emitir(Cuadrupla.OP_FIELD_STORE, obj, campo, v);
+    }
+
+    /** param v : registra v como argumento de la próxima {@code call}. */
+    public void emitirParam(String v) {
+        emitir(Cuadrupla.OP_PARAM, v, null, null);
+    }
+
     // ---------- Acceso a la tabla / backpatching ----------
 
     public TablaCuadruplas getTabla() {
