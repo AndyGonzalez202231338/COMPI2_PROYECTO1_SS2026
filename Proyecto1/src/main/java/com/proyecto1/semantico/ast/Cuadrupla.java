@@ -13,36 +13,48 @@ package com.proyecto1.semantico.ast;
  * Los campos que no aplican a una operación van en null.
  *
  * Convenciones:
- *   Binaria:      (op, a, b, t)        ->  t = a op b
- *   Asignación:   (=, v, null, x)      ->  x = v
- *   Unaria:       (op, v, null, t)     ->  t = op v
- *   Goto:         (goto, null, null, L)
- *   Condicional:  (if_false, c, null, L) / (if_true, c, null, L)
- *   Etiqueta:     (label, null, null, L)
- *   Print:        (print, v, null, null)
- *   Read:         (read, null, null, x)
- *   Call:         (call, f, nArgs, t)
- *   Return:       (return, v, null, null)
- *   Funciones:    (begin_func, nombre, nArgs, null) / (end_func, null, null, null)
+ *   Binaria:       (op, a, b, t)        ->  t = a op b
+ *   Asignación:    (=, v, null, x)      ->  x = v
+ *   Unaria:        (op, v, null, t)     ->  t = op v
+ *   Goto:          (goto, null, null, L)
+ *   Condicional:   (if_false, c, null, L) / (if_true, c, null, L)
+ *   Etiqueta:      (label, null, null, L)
+ *   Print:         (print, v, null, null)
+ *   Read:          (read, null, null, x)
+ *   Call:          (call, f, nArgs, t)
+ *   Param:         (param, v, null, null)     ->  empuja v como argumento de la próxima call
+ *   Return:        (return, v, null, null)
+ *   Funciones:     (begin_func, nombre, nArgs, null) / (end_func, null, null, null)
+ *   Índice carga:  (=[] , arr, i, t)          ->  t = arr[i]
+ *   Índice guarda: ([]= , arr, i, v)          ->  arr[i] = v
+ *   Campo carga:   (=.  , obj, f, t)          ->  t = obj.f    (Fase 4: obj.f u obj->f según tipo)
+ *   Campo guarda:  (.=  , obj, f, v)          ->  obj.f = v
+ *   New:           (new , Clase, null, t)     ->  t = malloc(sizeof(Clase))
  */
 public final class Cuadrupla {
 
     public static final String OP_ASIGNACION = "=";
-    public static final String OP_GOTO = "goto";
-    public static final String OP_IF_FALSE = "if_false";
-    public static final String OP_IF_TRUE = "if_true";
-    public static final String OP_ETIQUETA = "label";
-    public static final String OP_PRINT = "print";
-    public static final String OP_READ = "read";
-    public static final String OP_CALL = "call";
-    public static final String OP_RETURN = "return";
+    public static final String OP_GOTO       = "goto";
+    public static final String OP_IF_FALSE   = "if_false";
+    public static final String OP_IF_TRUE    = "if_true";
+    public static final String OP_ETIQUETA   = "label";
+    public static final String OP_PRINT      = "print";
+    public static final String OP_READ       = "read";
+    public static final String OP_CALL       = "call";
+    public static final String OP_PARAM      = "param";      // Fase 1.8
+    public static final String OP_RETURN     = "return";
     public static final String OP_BEGIN_FUNC = "begin_func";
-    public static final String OP_END_FUNC = "end_func";
-    public static final String OP_INDEX_LOAD  = "=[]";   // t = arr[i]
-    public static final String OP_INDEX_STORE = "[]=";   // arr[i] = v
-    public static final String OP_FIELD_LOAD  = "=.";    // t = obj.f
-    public static final String OP_FIELD_STORE = ".=";    // obj.f = v
-    public static final String OP_PARAM = "param";
+    public static final String OP_END_FUNC   = "end_func";
+
+    // Fase 1.6 — estructuras y arreglos
+    public static final String OP_INDEX_LOAD  = "=[]";       // t = arr[i]
+    public static final String OP_INDEX_STORE = "[]=";       // arr[i] = v
+    public static final String OP_FIELD_LOAD  = "=.";        // t = obj.f
+    public static final String OP_FIELD_STORE = ".=";        // obj.f = v
+
+    // Fase Z.0 — objetos de Z
+    public static final String OP_NEW = "new";               // t = new Clase
+    public static final String OP_NEW_ARRAY = "newarr";   // (newarr, tipoElem, tamaño, t)
 
     private final String operador;
     private final String arg1;
@@ -94,6 +106,8 @@ public final class Cuadrupla {
                 return "read " + resultado;
             case OP_CALL:
                 return "call " + arg1 + ", " + arg2 + (resultado != null ? " -> " + resultado : "");
+            case OP_PARAM:
+                return "param " + arg1;
             case OP_RETURN:
                 return arg1 != null ? "return " + arg1 : "return";
             case OP_BEGIN_FUNC:
@@ -108,8 +122,10 @@ public final class Cuadrupla {
                 return resultado + " = " + arg1 + "." + arg2;
             case OP_FIELD_STORE:
                 return arg1 + "." + arg2 + " = " + resultado;
-            case OP_PARAM:
-                return "param " + arg1;
+            case OP_NEW:
+                return resultado + " = new " + arg1;
+            case OP_NEW_ARRAY:
+                return resultado + " = new " + arg1 + "[" + arg2 + "]";
             default:
                 if (arg1 != null && arg2 == null && resultado != null) {
                     return resultado + " = " + operador + " " + arg1;      // unaria

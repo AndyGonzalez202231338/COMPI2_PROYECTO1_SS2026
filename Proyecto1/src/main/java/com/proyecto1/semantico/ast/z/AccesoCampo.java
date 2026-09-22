@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.CategoriaSimbolo;
@@ -14,37 +16,56 @@ public final class AccesoCampo extends NodoZ implements ExpresionZ {
     private final ExpresionZ objeto;
     private final String campo;
 
+    /** Tipo del campo, cacheado por verificar() para que generarC3D no lo recalcule. */
+    private Tipo tipoCampo;
+
     public AccesoCampo(ExpresionZ objeto, String campo, int linea, int columna) {
         super(linea, columna);
         this.objeto = objeto;
         this.campo = campo;
     }
 
-    public ExpresionZ getObjeto() {
-        return objeto;
-    }
-    public String getCampo() {
-        return campo;
-    }
+    public ExpresionZ getObjeto() { return objeto; }
+    public String getCampo() { return campo; }
+    public Tipo getTipoCampo() { return tipoCampo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         Tipo tObj = objeto.verificar(ambito, errores);
         if (!(tObj instanceof TipoClase tc)) {
             if (!tObj.esDesconocido())
-                errores.reportar(linea, columna, "No se puede acceder a '" + campo + "' en tipo " + tObj.nombre());
+                errores.reportar(linea, columna,
+                        "No se puede acceder a '" + campo + "' en tipo " + tObj.nombre());
             return TipoPrimitivo.DESCONOCIDO;
         }
         Simbolo miembro = tc.getDefinicion().buscarMiembro(campo);
         if (miembro == null) {
-            errores.reportar(linea, columna, "La clase '" + tc.nombre() + "' no tiene miembro '" + campo + "'");
+            errores.reportar(linea, columna,
+                    "La clase '" + tc.nombre() + "' no tiene miembro '" + campo + "'");
             return TipoPrimitivo.DESCONOCIDO;
         }
-        // Solo se accede con '.' a atributos (los métodos se llaman con Llamada)
         if (miembro.getCategoria() != CategoriaSimbolo.ATRIBUTO) {
             errores.reportar(linea, columna, "'" + campo + "' no es un atributo accesible");
             return TipoPrimitivo.DESCONOCIDO;
         }
-        return miembro.getTipo();
+        tipoCampo = miembro.getTipo();
+        return tipoCampo;
+    }
+
+    /**
+     * Emite: C3D del objeto (queda su referencia en un temporal o variable), luego
+     * {@code (=., base, campo, t)}. Devuelve {@code temporal(t, tipoCampo)}.
+     *
+     * <p>La misma cuádrupla {@code =.} se usa para acceder a campos de objetos de Z
+     * que para campos de estructuras de Y. Fase 4 decide {@code obj->campo} vs.
+     * {@code obj.campo} mirando si {@code base} es referencia (Z) o valor (Y).
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        ResultadoC3D base = objeto.generarC3D(generador);
+        String t = generador.nuevoTemporal();
+        generador.emitirCargaCampo(base.getLugar(), campo, t);
+        Tipo tipo = (tipoCampo != null) ? tipoCampo : TipoPrimitivo.DESCONOCIDO;
+        return ResultadoC3D.temporal(t, tipo);
     }
 }
