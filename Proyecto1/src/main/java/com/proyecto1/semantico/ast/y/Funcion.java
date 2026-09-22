@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoFuncion;
@@ -55,5 +57,32 @@ public final class Funcion extends NodoY {
                             + amb.getTipoRetorno().nombre());
         }
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite, en este orden: {@code (begin_func, nombre, nParametros, null)}, todas las
+     * cuádruplas del cuerpo (vía {@link Bloque#generarC3D}) y {@code (end_func)}.
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     *
+     * No emite un {@code return} implícito al final de funciones void; la Fase 4 puede
+     * resolverlo al traducir end_func.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        /*
+        definir prueba():
+            entero x = 0
+            x = 5
+
+        definir prueba() -> entero:
+            retornar 123
+         */
+        //begin_func prueba 0
+        //cuadruplas(prueba, 0)
+        generador.emitirBeginFunc(nombre, parametros.size());
+        cuerpo.generarC3D(generador); //al cuerpo de la funcion se trabaja su C3D
+        //end_func muestra donde temrino ese ambito
+        generador.emitirEndFunc();
+        return ResultadoC3D.vacio();
     }
 }

@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.CategoriaSimbolo;
@@ -20,7 +22,7 @@ public final class DeclaracionVariable extends NodoY implements InstruccionY {
     private final ExpresionY inicializador;      // null si no hay "= expresion"
 
     public DeclaracionVariable(NodoTipoRef tipo, String nombre, List<Integer> tamanosArreglo,
-                                ExpresionY inicializador, int linea, int columna) {
+                               ExpresionY inicializador, int linea, int columna) {
         super(linea, columna);
         this.tipo = tipo;
         this.nombre = nombre;
@@ -71,5 +73,30 @@ public final class DeclaracionVariable extends NodoY implements InstruccionY {
             s.marcarInicializado();
         }
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite: NADA si no hay inicializador (en C3D "reservar" la variable no necesita
+     * cuádrupla: el tipo y nombre viven en la tabla de símbolos, que la Fase 4 usará
+     * para declararla en C). Con inicializador: primero el C3D de la expresión y luego
+     * {@code (=, v, null, nombre)}, es decir {@code nombre = v}.
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     *
+     * Las declaraciones de arreglo lanzan {@link UnsupportedOperationException}: quedan
+     * fuera de la Fase 1.1.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        if (!tamanosArreglo.isEmpty()) {
+            throw new UnsupportedOperationException(
+                    "Declaración de arreglos: pendiente en C3D");
+        }
+        if (inicializador != null) {
+            //entero x   este no se le inicaliza con valor
+            ResultadoC3D v = inicializador.generarC3D(generador); // x = 1
+            //(1, x)
+            generador.emitirAsignacion(v.getLugar(), nombre);
+        }
+        return ResultadoC3D.vacio();
     }
 }
