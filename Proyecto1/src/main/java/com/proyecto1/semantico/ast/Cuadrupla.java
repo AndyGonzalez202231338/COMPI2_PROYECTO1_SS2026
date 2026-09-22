@@ -38,6 +38,11 @@ public final class Cuadrupla {
     public static final String OP_RETURN = "return";
     public static final String OP_BEGIN_FUNC = "begin_func";
     public static final String OP_END_FUNC = "end_func";
+    public static final String OP_INDEX_LOAD  = "=[]";   // t = arr[i]
+    public static final String OP_INDEX_STORE = "[]=";   // arr[i] = v
+    public static final String OP_FIELD_LOAD  = "=.";    // t = obj.f
+    public static final String OP_FIELD_STORE = ".=";    // obj.f = v
+    public static final String OP_PARAM = "param";
 
     private final String operador;
     private final String arg1;
@@ -95,6 +100,16 @@ public final class Cuadrupla {
                 return "begin_func " + arg1 + ", " + arg2;
             case OP_END_FUNC:
                 return "end_func";
+            case OP_INDEX_LOAD:
+                return resultado + " = " + arg1 + "[" + arg2 + "]";
+            case OP_INDEX_STORE:
+                return arg1 + "[" + arg2 + "] = " + resultado;
+            case OP_FIELD_LOAD:
+                return resultado + " = " + arg1 + "." + arg2;
+            case OP_FIELD_STORE:
+                return arg1 + "." + arg2 + " = " + resultado;
+            case OP_PARAM:
+                return "param " + arg1;
             default:
                 if (arg1 != null && arg2 == null && resultado != null) {
                     return resultado + " = " + operador + " " + arg1;      // unaria

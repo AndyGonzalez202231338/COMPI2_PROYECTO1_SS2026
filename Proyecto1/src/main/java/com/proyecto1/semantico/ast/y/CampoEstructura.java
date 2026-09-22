@@ -32,8 +32,8 @@ public final class CampoEstructura extends NodoY {
         if (!tamanosArreglo.isEmpty()) {
             // Y? solo admite arreglos de un nivel (según especificación)
             if (tamanosArreglo.size() > 1)
-                errores.reportar(linea, columna, "Y? solo admite arreglos de un nivel en campos");
-            t = new TipoArreglo(t);
+                errores.reportar(linea, columna, "Y solo admite arreglos de un nivel en campos");
+            t = new TipoArreglo(t, tamanosArreglo.get(0));
         }
 
         Simbolo s = new Simbolo(nombre, CategoriaSimbolo.CAMPO, t, linea, columna);
