@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
@@ -9,13 +11,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 /**
  * {@code ifStatement} (#ifStatementDef): "if (cond) entonces (else contrario)?".
- * A diferencia del {@code Si} de Y? (que junta todas las ramas "sino" en una lista
- * porque la gramática de Y? las repite con "*"), aquí NO hace falta: en Z un
- * "else if (...) ..." es sintácticamente solo "ELSE statement" donde ese statement
- * ES otro {@code Si} — el encadenado sale gratis anidando este mismo nodo.
- *
- * "entonces"/"contrario" son {@link InstruccionZ} (no {@link Bloque}) porque en Z las
- * llaves son opcionales para una sola sentencia ("if (x > 0) return x;" es válido).
+ * El "else if" se resuelve por anidamiento: "contrario" puede ser otro {@link Si}.
  */
 public final class Si extends NodoZ implements InstruccionZ {
 
@@ -30,16 +26,9 @@ public final class Si extends NodoZ implements InstruccionZ {
         this.contrario = contrario;
     }
 
-    public ExpresionZ getCondicion() {
-        return condicion;
-    }
-    public InstruccionZ getEntonces() {
-        return entonces;
-    }
-
-    public InstruccionZ getContrario() {
-        return contrario;
-    }
+    public ExpresionZ getCondicion()   { return condicion; }
+    public InstruccionZ getEntonces()  { return entonces; }
+    public InstruccionZ getContrario() { return contrario; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -56,5 +45,49 @@ public final class Si extends NodoZ implements InstruccionZ {
             contrario.verificar(ambNo, errores);
         }
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Sin "else":
+     * <pre>
+     *   [cond]
+     *   if_false c goto L_fin
+     *   [entonces]
+     *   L_fin:
+     * </pre>
+     * Con "else":
+     * <pre>
+     *   [cond]
+     *   if_false c goto L_sino
+     *   [entonces]
+     *   goto L_fin
+     *   L_sino:
+     *   [contrario]
+     *   L_fin:
+     * </pre>
+     * El else-if se cubre solo: cuando "contrario" es otro {@link Si}, su propio
+     * generarC3D emite su estructura completa anidada dentro de "L_sino:".
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        ResultadoC3D cond = condicion.generarC3D(generador);
+        String fin = generador.nuevaEtiqueta();
+
+        if (contrario == null) {
+            generador.emitirIfFalse(cond.getLugar(), fin);
+            entonces.generarC3D(generador);
+            generador.emitirEtiqueta(fin);
+            return ResultadoC3D.vacio();
+        }
+
+        String etiquetaSino = generador.nuevaEtiqueta();
+        generador.emitirIfFalse(cond.getLugar(), etiquetaSino);
+        entonces.generarC3D(generador);
+        generador.emitirGoto(fin);
+        generador.emitirEtiqueta(etiquetaSino);
+        contrario.generarC3D(generador);
+        generador.emitirEtiqueta(fin);
+        return ResultadoC3D.vacio();
     }
 }

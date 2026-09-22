@@ -28,7 +28,7 @@ public class GeneradorC3D {
     private int contadorTemporales = 0;
     private int contadorEtiquetas  = 0;
     private final TablaCuadruplas tabla;
-    private final Ambito ambito; // puede ser null (sin información de tipos)
+    private Ambito ambito; // mutable: se intercambia al entrar/salir de funciones (Z)
 
     /**
      * Pilas de etiquetas de los ciclos abiertos, con el ciclo más interno en el tope.
@@ -64,6 +64,28 @@ public class GeneradorC3D {
 
     public Ambito getAmbito() {
         return ambito;
+    }
+
+    /**
+     * Cambia el ámbito activo y devuelve el anterior para restaurarlo luego.
+     * Patrón de uso (típico en Constructor/Metodo.generarC3D):
+     * <pre>
+     *   Ambito anterior = generador.entrarAmbito(ambitoPropio);
+     *   try { ... emitir cuerpo ... } finally { generador.salirAmbito(anterior); }
+     * </pre>
+     * Se devuelve el anterior en lugar de apilarlos porque el consumidor necesita
+     * restaurarlo en el mismo orden; no hay anidamiento arbitrario (una función no
+     * contiene a otra), así que no hace falta una pila.
+     */
+    public Ambito entrarAmbito(Ambito nuevo) {
+        Ambito anterior = this.ambito;
+        this.ambito = nuevo;
+        return anterior;
+    }
+
+    /** Restaura el ámbito devuelto por {@link #entrarAmbito(Ambito)}. */
+    public void salirAmbito(Ambito anterior) {
+        this.ambito = anterior;
     }
 
     // ---------- Pilas de ciclos (para continuar / romper) ----------
