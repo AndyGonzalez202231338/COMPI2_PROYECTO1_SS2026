@@ -11,7 +11,8 @@ import java.util.List;
  *   - pedir un temporal nuevo (t0, t1, ...),
  *   - pedir una etiqueta nueva (L0, L1, ... para saltos de si/mientras/para),
  *   - emitir cuádruplas ESTRUCTURADAS en la tabla global,
- *   - consultar el Ámbito (tabla de símbolos) para resolver tipos de identificadores.
+ *   - consultar el Ámbito (tabla de símbolos) para resolver tipos de identificadores,
+ *   - construir etiquetas de función/método/constructor (mangling).
  *
  * Cada nodo recibe este generador en generarC3D(generador), de modo que ningún nodo
  * guarda estado propio ("en qué temporal voy"). Las cuádruplas viven solo en la
@@ -19,76 +20,59 @@ import java.util.List;
  * global mediante siguienteIndice() y reemplazar(int, Cuadrupla).
  *
  * El Ámbito es opcional: si se construye sin él, getAmbito() devuelve null y los nodos
- * que lo necesitan (p. ej. Identificador) caen a TipoPrimitivo.DESCONOCIDO.
+ * que lo necesitan caen a TipoPrimitivo.DESCONOCIDO. Para Z es OBLIGATORIO pasarlo
+ * (Identificador y Asignación de Z lo necesitan para distinguir ATRIBUTO vs. variable).
  */
 public class GeneradorC3D {
 
     private int contadorTemporales = 0;
-    private int contadorEtiquetas = 0;
+    private int contadorEtiquetas  = 0;
     private final TablaCuadruplas tabla;
     private final Ambito ambito; // puede ser null (sin información de tipos)
 
     /**
      * Pilas de etiquetas de los ciclos abiertos, con el ciclo más interno en el tope.
      * Siempre se apilan y desapilan juntas (entrarCiclo/salirCiclo), así que tienen
-     * el mismo tamaño. Las llenarán Mientras, Para y HacerMientras (Fase 1.4) y las
-     * consultan Continuar y Romper. Se usan pilas (no un solo par de etiquetas) para
-     * que "continuar"/"romper" siempre apunten al ciclo más interno cuando hay ciclos
-     * anidados.
+     * el mismo tamaño. Las llenan Mientras, Para y HacerMientras y las consultan
+     * Continuar y Romper. Se usan pilas (no un solo par) para que continuar/romper
+     * siempre apunten al ciclo más interno cuando hay ciclos anidados.
      */
     private final Deque<String> pilaInicioCiclo = new ArrayDeque<>();
-    private final Deque<String> pilaFinCiclo = new ArrayDeque<>();
+    private final Deque<String> pilaFinCiclo    = new ArrayDeque<>();
 
-    /** Sin ámbito: los tipos de los identificadores saldrán DESCONOCIDO. */
     public GeneradorC3D() {
         this(null, new TablaCuadruplas());
     }
 
-    /** Sin ámbito, con tabla inyectada (útil para pruebas). */
     public GeneradorC3D(TablaCuadruplas tabla) {
         this(null, tabla);
     }
 
-    /** Con ámbito para resolver tipos de identificadores. */
     public GeneradorC3D(Ambito ambito) {
         this(ambito, new TablaCuadruplas());
     }
 
-    /** Con ámbito y tabla inyectada (útil para pruebas). */
     public GeneradorC3D(Ambito ambito, TablaCuadruplas tabla) {
         if (tabla == null) {
             throw new IllegalArgumentException("La tabla de cuádruplas no puede ser null");
         }
         this.ambito = ambito;
-        this.tabla = tabla;
+        this.tabla  = tabla;
     }
 
     // ---------- Ámbito ----------
 
-    /** Ámbito para resolver símbolos, o null si el generador se creó sin él. */
     public Ambito getAmbito() {
         return ambito;
     }
 
     // ---------- Pilas de ciclos (para continuar / romper) ----------
 
-    /**
-     * Registra un ciclo que se empieza a generar. Lo llamarán Mientras, Para y
-     * HacerMientras (Fase 1.4) justo antes de generar el cuerpo, y {@link #salirCiclo()}
-     * justo después.
-     *
-     * @param inicio etiqueta a la que debe saltar "continuar". OJO: es el destino de
-     *               "continuar", que no siempre es el comienzo del ciclo: en un "para"
-     *               es el paso de actualización, y en un hacer-mientras la evaluación
-     *               de la condición.
-     * @param fin    etiqueta a la que debe saltar "romper" (la salida del ciclo).
-     */
     public void entrarCiclo(String inicio, String fin) {
         pilaInicioCiclo.push(inicio);
         pilaFinCiclo.push(fin);
     }
 
-    /** Cierra el ciclo más interno (desapila ambas etiquetas). */
     public void salirCiclo() {
         if (pilaInicioCiclo.isEmpty()) {
             throw new IllegalStateException("salirCiclo() sin un entrarCiclo() previo");
@@ -97,31 +81,18 @@ public class GeneradorC3D {
         pilaFinCiclo.pop();
     }
 
-    /** Destino de "continuar" del ciclo más interno, o null si no hay ningún ciclo abierto. */
     public String etiquetaInicioCiclo() {
         return pilaInicioCiclo.peek();
     }
 
-    /** Destino de "romper" del ciclo más interno, o null si no hay ningún ciclo abierto. */
     public String etiquetaFinCiclo() {
         return pilaFinCiclo.peek();
     }
 
-    /**
-     * Registra un bloque "rompible" que NO es un ciclo: el caso/siempre de un
-     * {@code elegir}. Solo empuja a la pila de "fin" (la que consulta "romper"); a
-     * diferencia de {@link #entrarCiclo(String, String)}, NO toca la pila de "inicio"
-     * (la que consulta "continuar"), porque un elegir no habilita "continuar": si está
-     * anidado dentro de un ciclo, "continuar" debe seguir refiriéndose a ESE ciclo, no
-     * al elegir. Así, "romper" dentro de un caso salta al fin del elegir (el más
-     * cercano), y "continuar" dentro del mismo caso sigue apuntando al ciclo externo,
-     * si lo hay.
-     */
     public void entrarBloqueRompible(String fin) {
         pilaFinCiclo.push(fin);
     }
 
-    /** Cierra el bloque rompible más interno abierto con {@link #entrarBloqueRompible(String)}. */
     public void salirBloqueRompible() {
         if (pilaFinCiclo.isEmpty()) {
             throw new IllegalStateException("salirBloqueRompible() sin un entrarBloqueRompible() previo");
@@ -146,17 +117,14 @@ public class GeneradorC3D {
         tabla.agregar(new Cuadrupla(op, arg1, arg2, resultado));
     }
 
-    /** x = v */
     public void emitirAsignacion(String v, String x) {
         emitir(Cuadrupla.OP_ASIGNACION, v, null, x);
     }
 
-    /** t = a op b */
     public void emitirBinaria(String op, String a, String b, String t) {
         emitir(op, a, b, t);
     }
 
-    /** t = op a */
     public void emitirUnaria(String op, String a, String t) {
         emitir(op, a, null, t);
     }
@@ -190,7 +158,11 @@ public class GeneradorC3D {
         emitir(Cuadrupla.OP_CALL, f, String.valueOf(nArgs), t);
     }
 
-    /** v puede ser null para un return sin valor. */
+    /** param v : empuja v como argumento de la próxima call. Orden = orden fuente. */
+    public void emitirParam(String v) {
+        emitir(Cuadrupla.OP_PARAM, v, null, null);
+    }
+
     public void emitirReturn(String v) {
         emitir(Cuadrupla.OP_RETURN, v, null, null);
     }
@@ -203,29 +175,66 @@ public class GeneradorC3D {
         emitir(Cuadrupla.OP_END_FUNC, null, null, null);
     }
 
-    /** t = arr[i]  (=[], arr, i, t). */
+    // ---------- Fase 1.6: arreglos y campos ----------
+
+    /** t = arr[i]  →  (=[], arr, i, t). Fase 4 aplica base + i*tamañoElemento. */
     public void emitirCargaIndice(String arr, String idx, String t) {
         emitir(Cuadrupla.OP_INDEX_LOAD, arr, idx, t);
     }
 
-    /** arr[i] = v   ([]=, arr, i, v). */
+    /** arr[i] = v  →  ([]=, arr, i, v). */
     public void emitirGuardarIndice(String arr, String idx, String v) {
         emitir(Cuadrupla.OP_INDEX_STORE, arr, idx, v);
     }
 
-    /** t = obj.f   (=., obj, f, t). El campo va por NOMBRE, no por offset. */
+    /** t = obj.f  →  (=., obj, f, t). El campo va por NOMBRE, no por offset. */
     public void emitirCargaCampo(String obj, String campo, String t) {
         emitir(Cuadrupla.OP_FIELD_LOAD, obj, campo, t);
     }
 
-    /** obj.f = v   (.=, obj, f, v). */
+    /** obj.f = v  →  (.=, obj, f, v). */
     public void emitirGuardarCampo(String obj, String campo, String v) {
         emitir(Cuadrupla.OP_FIELD_STORE, obj, campo, v);
     }
 
-    /** param v : registra v como argumento de la próxima {@code call}. */
-    public void emitirParam(String v) {
-        emitir(Cuadrupla.OP_PARAM, v, null, null);
+    // ---------- Fase Z.0: objetos de Z ----------
+
+    /**
+     * t = new NombreClase  →  (new, NombreClase, null, t).
+     * Fase 4 lo traduce a {@code t = malloc(sizeof(NombreClase))}.
+     */
+    public void emitirNew(String nombreClase, String t) {
+        emitir(Cuadrupla.OP_NEW, nombreClase, null, t);
+    }
+
+    /** t = new Tipo[tamaño]  →  (newarr, Tipo, tamaño, t). Fase 4: malloc(tamaño * sizeof(Tipo)). */
+    public void emitirNewArray(String tipoDescriptor, String tamano, String t) {
+        emitir(Cuadrupla.OP_NEW_ARRAY, tipoDescriptor, tamano, t);
+    }
+
+    /**
+     * Etiqueta para un método de una clase Z: "Clase_metodo".
+     * Los métodos NO se sobrecargan en Z (declararMiembro los guarda por nombre plano).
+     */
+    public String etiquetaMetodo(String clase, String metodo) {
+        return clase + "_" + metodo;
+    }
+
+    /**
+     * Etiqueta para un constructor de una clase Z: "Clase_init@N".
+     * Los constructores SÍ se sobrecargan por aridad, de ahí el sufijo "@N".
+     *
+     * <p><b>Deuda detectada</b>: hoy {@code Constructor.verificar} intenta resolver el
+     * constructor buscando por {@code nombre + "@" + aridad}, pero
+     * {@code AmbitoContenedor.declararMiembro} los guarda por nombre plano. Es una
+     * incoherencia preexistente entre esas dos clases (no de C3D). Antes de generar
+     * C3D con constructores sobrecargados, hay que decidir cuál de las dos se arregla:
+     * o {@code declararMiembro} usa la clave {@code nombre@aridad} al declararlos, o
+     * {@code Constructor.verificar} busca por nombre plano. La etiqueta de este helper
+     * asume lo primero (sobrecarga permitida).
+     */
+    public String etiquetaConstructor(String clase, int aridad) {
+        return clase + "_init@" + aridad;
     }
 
     // ---------- Acceso a la tabla / backpatching ----------
@@ -234,7 +243,6 @@ public class GeneradorC3D {
         return tabla;
     }
 
-    /** Índice de la próxima cuádrupla a emitir (para guardarlo y hacer backpatching luego). */
     public int siguienteIndice() {
         return tabla.siguienteIndice();
     }

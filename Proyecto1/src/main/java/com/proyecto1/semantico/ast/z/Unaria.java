@@ -1,14 +1,22 @@
 package com.proyecto1.semantico.ast.z;
+
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
+import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * Operación unaria, prefija o postfija: !, - (negación aritmética), ++, --. Cubre
- * #unaryNegacionDef, #unaryMenosDef, #unaryIncrementoPrefijoDef, #unaryDecrementoPrefijoDef
- * (prefijo=true) y la parte opcional de #postfixExpressionDef (prefijo=false).
+ * Operación unaria de Z: !, - (negación), ++, --. Prefija o postfija.
+ *
+ * <p>Diferencia con Y: cuando ++/-- actúa sobre un identificador que resulta ser
+ * un ATRIBUTO, hay que LEER de "this.<nombre>" y ESCRIBIR en "this.<nombre>", no
+ * sobre un temporal. Es el mismo problema que resuelve {@code Asignacion} con su
+ * "LValue", aquí en versión mínima (solo identificadores, como en Y).
  */
 public final class Unaria extends NodoZ implements ExpresionZ {
 
@@ -23,17 +31,9 @@ public final class Unaria extends NodoZ implements ExpresionZ {
         this.prefijo = prefijo;
     }
 
-    public String getOperador() {
-        return operador;
-    }
-
-    public ExpresionZ getOperando() {
-        return operando;
-    }
-
-    public boolean isPrefijo() {
-        return prefijo;
-    }
+    public String getOperador() { return operador; }
+    public ExpresionZ getOperando() { return operando; }
+    public boolean isPrefijo() { return prefijo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -45,13 +45,104 @@ public final class Unaria extends NodoZ implements ExpresionZ {
                 return TipoPrimitivo.BOOL;
             case "-":
                 if (!t.esNumerico() && !t.esDesconocido())
-                    errores.reportar(linea, columna, "'-' requiere numérico");
+                    errores.reportar(linea, columna, "'-' requiere numérico, se recibió " + t.nombre());
                 return t;
             case "++": case "--":
                 if (!Tipos.admiteIncrementoDecremento(t))
-                    errores.reportar(linea, columna, "'" + operador + "' requiere numérico");
+                    errores.reportar(linea, columna,
+                            "'" + operador + "' requiere numérico, se recibió " + t.nombre());
                 return t;
         }
         return TipoPrimitivo.DESCONOCIDO;
+    }
+
+    /**
+     * Emite según el operador (siempre después de generar el C3D del operando):
+     * <ul>
+     *   <li>{@code !} y {@code -}: {@code (op, a, null, t)}, idéntico a Y.</li>
+     *   <li>{@code ++x} / {@code --x} (prefijo): carga valor actual, calcula
+     *       {@code t = valor ± 1}, guarda {@code t} en el destino y devuelve {@code t}.</li>
+     *   <li>{@code x++} / {@code x--} (postfijo): carga valor actual a {@code t0},
+     *       calcula {@code t1 = valor ± 1}, guarda {@code t1} en el destino y devuelve
+     *       {@code t0} (el valor VIEJO).</li>
+     * </ul>
+     * "Destino" es {@code this.<nombre>} si el identificador es un ATRIBUTO, o el
+     * propio nombre si es variable local/parámetro. Para atributos se emiten las
+     * cuádruplas {@code (=., this, x, t)} y {@code (.=, this, x, t)} de Fase 1.6.
+     *
+     * <p>Solo se admite {@link Identificador} como operando de ++/-- (mismo límite
+     * que en Y). Campos y elementos de arreglo quedan para una fase posterior.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        switch (operador) {
+            case "!":
+            case "-": {
+                ResultadoC3D o = operando.generarC3D(generador);
+                String t = generador.nuevoTemporal();
+                generador.emitirUnaria(operador, o.getLugar(), t);
+                Tipo tipo = operador.equals("!") ? TipoPrimitivo.BOOL : o.getTipo();
+                return ResultadoC3D.temporal(t, tipo);
+            }
+            case "++":
+            case "--": {
+                if (!(operando instanceof Identificador id)) {
+                    throw new UnsupportedOperationException(
+                            "'" + operador + "' sobre campos o arreglos: pendiente en C3D (Z)");
+                }
+
+                // Resolver categoría del identificador: ¿es un atributo (this.x)?
+                boolean esAtributo = false;
+                Tipo tipoVar = TipoPrimitivo.DESCONOCIDO;
+                Ambito amb = generador.getAmbito();
+                if (amb != null) {
+                    Simbolo s = amb.resolver(id.getNombre());
+                    if (s != null) {
+                        tipoVar = s.getTipo();
+                        esAtributo = (s.getCategoria() == CategoriaSimbolo.ATRIBUTO);
+                    }
+                }
+
+                // Cargar el valor actual al "lugar del valor" desde el que se opera.
+                String lugarValor;
+                if (esAtributo) {
+                    lugarValor = generador.nuevoTemporal();
+                    generador.emitirCargaCampo("this", id.getNombre(), lugarValor);
+                } else {
+                    lugarValor = id.getNombre();
+                }
+
+                String opBinario = operador.equals("++") ? "+" : "-";
+
+                if (prefijo) {
+                    String t = generador.nuevoTemporal();
+                    generador.emitirBinaria(opBinario, lugarValor, "1", t);
+                    guardarEnDestino(generador, esAtributo, id.getNombre(), t);
+                    return ResultadoC3D.temporal(t, tipoVar);
+                }
+
+                // Postfija: primero copiamos el valor VIEJO a un temporal que será
+                // el resultado de la expresión.
+                String viejo = generador.nuevoTemporal();
+                generador.emitirAsignacion(lugarValor, viejo);
+
+                String nuevo = generador.nuevoTemporal();
+                generador.emitirBinaria(opBinario, lugarValor, "1", nuevo);
+                guardarEnDestino(generador, esAtributo, id.getNombre(), nuevo);
+                return ResultadoC3D.temporal(viejo, tipoVar);
+            }
+            default:
+                throw new UnsupportedOperationException("Operador unario no soportado: " + operador);
+        }
+    }
+
+    /** Escribe "v" en el destino: {@code this.<campo> = v} si es atributo, {@code x = v} si es local. */
+    private static void guardarEnDestino(GeneradorC3D generador, boolean esAtributo,
+                                         String nombre, String v) {
+        if (esAtributo) {
+            generador.emitirGuardarCampo("this", nombre, v);
+        } else {
+            generador.emitirAsignacion(v, nombre);
+        }
     }
 }
