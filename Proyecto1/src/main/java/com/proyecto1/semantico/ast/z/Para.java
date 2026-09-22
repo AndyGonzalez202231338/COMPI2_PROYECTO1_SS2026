@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
@@ -11,19 +13,15 @@ import java.util.List;
 
 /**
  * {@code forStatement} (#forStatementDef): "for(init? ; cond? ; act?) cuerpo".
- * A diferencia del {@code Para} de Y? (cuyo "init"/"act" son SIEMPRE una sola
- * instrucción), en Z el "init" puede ser una declaración única O una lista de
- * expresiones separadas por coma (#forInitDeclaracion / #forInitExpresiones), y el
- * "act" siempre es una lista de expresiones (#forUpdateDef) — por eso aquí van dos
- * campos separados para el init (exactamente uno de los dos no-nulo cuando hay
- * inicialización) en vez de un único {@code InstruccionZ} genérico como en Y?.
+ * El "init" es declaración única o lista de expresiones; el "act" es lista de
+ * expresiones; la "cond" puede omitirse.
  */
 public final class Para extends NodoZ implements InstruccionZ {
 
-    private final DeclaracionVariable inicializacionDeclaracion; // no-null si el init fue una declaración
-    private final List<ExpresionZ> inicializacionExpresiones;    // no-null si el init fue una lista de expresiones
-    private final ExpresionZ condicion;                          // null si se omitió
-    private final List<ExpresionZ> actualizacion;                // null si se omitió
+    private final DeclaracionVariable inicializacionDeclaracion;
+    private final List<ExpresionZ> inicializacionExpresiones;
+    private final ExpresionZ condicion;
+    private final List<ExpresionZ> actualizacion;
     private final InstruccionZ cuerpo;
 
     public Para(DeclaracionVariable inicializacionDeclaracion, List<ExpresionZ> inicializacionExpresiones,
@@ -37,25 +35,11 @@ public final class Para extends NodoZ implements InstruccionZ {
         this.cuerpo = cuerpo;
     }
 
-    public DeclaracionVariable getInicializacionDeclaracion() {
-        return inicializacionDeclaracion;
-    }
-
-    public List<ExpresionZ> getInicializacionExpresiones() {
-        return inicializacionExpresiones;
-    }
-
-    public ExpresionZ getCondicion() {
-        return condicion;
-    }
-
-    public List<ExpresionZ> getActualizacion() {
-        return actualizacion;
-    }
-
-    public InstruccionZ getCuerpo() {
-        return cuerpo;
-    }
+    public DeclaracionVariable getInicializacionDeclaracion() { return inicializacionDeclaracion; }
+    public List<ExpresionZ> getInicializacionExpresiones()    { return inicializacionExpresiones; }
+    public ExpresionZ getCondicion()                          { return condicion; }
+    public List<ExpresionZ> getActualizacion()                { return actualizacion; }
+    public InstruccionZ getCuerpo()                           { return cuerpo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -78,5 +62,61 @@ public final class Para extends NodoZ implements InstruccionZ {
         AmbitoBloque ambCuerpo = new AmbitoBloque(ambCiclo, false);
         cuerpo.verificar(ambCuerpo, errores);
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * <pre>
+     *   [init]                (declaración o lista de expresiones, una sola vez)
+     *   L_inicio:
+     *   [cond?]
+     *   if_false c goto L_fin
+     *   [cuerpo]              (dentro de entrarCiclo/salirCiclo)
+     *   L_act:
+     *   [act]                 (lista de expresiones, en orden)
+     *   goto L_inicio
+     *   L_fin:
+     * </pre>
+     * El ciclo se registra como {@code entrarCiclo(L_act, L_fin)}: "continue" salta a
+     * L_act (así se ejecuta la actualización, evitando ciclos infinitos) y "break" a
+     * L_fin sin pasar por L_act. Sin condición no se emite if_false (solo termina con
+     * "break"). Init y act quedan FUERA de entrarCiclo/salirCiclo.
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String inicio = generador.nuevaEtiqueta();
+        String act    = generador.nuevaEtiqueta();
+        String fin    = generador.nuevaEtiqueta();
+
+        // Init: solo una de las dos variantes es no-null.
+        if (inicializacionDeclaracion != null) {
+            inicializacionDeclaracion.generarC3D(generador);
+        } else if (inicializacionExpresiones != null) {
+            for (ExpresionZ e : inicializacionExpresiones) {
+                e.generarC3D(generador);
+            }
+        }
+
+        generador.emitirEtiqueta(inicio);
+
+        if (condicion != null) {
+            ResultadoC3D c = condicion.generarC3D(generador);
+            generador.emitirIfFalse(c.getLugar(), fin);
+        }
+
+        generador.entrarCiclo(act, fin);
+        cuerpo.generarC3D(generador);
+        generador.salirCiclo();
+
+        generador.emitirEtiqueta(act);
+        if (actualizacion != null) {
+            for (ExpresionZ e : actualizacion) {
+                e.generarC3D(generador);
+            }
+        }
+
+        generador.emitirGoto(inicio);
+        generador.emitirEtiqueta(fin);
+        return ResultadoC3D.vacio();
     }
 }
