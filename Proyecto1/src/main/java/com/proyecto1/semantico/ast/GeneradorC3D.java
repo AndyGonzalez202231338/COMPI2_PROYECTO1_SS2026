@@ -2,6 +2,8 @@ package com.proyecto1.semantico.ast;
 
 import com.proyecto1.semantico.tabla.Ambito;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
 /**
@@ -25,6 +27,17 @@ public class GeneradorC3D {
     private int contadorEtiquetas = 0;
     private final TablaCuadruplas tabla;
     private final Ambito ambito; // puede ser null (sin información de tipos)
+
+    /**
+     * Pilas de etiquetas de los ciclos abiertos, con el ciclo más interno en el tope.
+     * Siempre se apilan y desapilan juntas (entrarCiclo/salirCiclo), así que tienen
+     * el mismo tamaño. Las llenarán Mientras, Para y HacerMientras (Fase 1.4) y las
+     * consultan Continuar y Romper. Se usan pilas (no un solo par de etiquetas) para
+     * que "continuar"/"romper" siempre apunten al ciclo más interno cuando hay ciclos
+     * anidados.
+     */
+    private final Deque<String> pilaInicioCiclo = new ArrayDeque<>();
+    private final Deque<String> pilaFinCiclo = new ArrayDeque<>();
 
     /** Sin ámbito: los tipos de los identificadores saldrán DESCONOCIDO. */
     public GeneradorC3D() {
@@ -55,6 +68,65 @@ public class GeneradorC3D {
     /** Ámbito para resolver símbolos, o null si el generador se creó sin él. */
     public Ambito getAmbito() {
         return ambito;
+    }
+
+    // ---------- Pilas de ciclos (para continuar / romper) ----------
+
+    /**
+     * Registra un ciclo que se empieza a generar. Lo llamarán Mientras, Para y
+     * HacerMientras (Fase 1.4) justo antes de generar el cuerpo, y {@link #salirCiclo()}
+     * justo después.
+     *
+     * @param inicio etiqueta a la que debe saltar "continuar". OJO: es el destino de
+     *               "continuar", que no siempre es el comienzo del ciclo: en un "para"
+     *               es el paso de actualización, y en un hacer-mientras la evaluación
+     *               de la condición.
+     * @param fin    etiqueta a la que debe saltar "romper" (la salida del ciclo).
+     */
+    public void entrarCiclo(String inicio, String fin) {
+        pilaInicioCiclo.push(inicio);
+        pilaFinCiclo.push(fin);
+    }
+
+    /** Cierra el ciclo más interno (desapila ambas etiquetas). */
+    public void salirCiclo() {
+        if (pilaInicioCiclo.isEmpty()) {
+            throw new IllegalStateException("salirCiclo() sin un entrarCiclo() previo");
+        }
+        pilaInicioCiclo.pop();
+        pilaFinCiclo.pop();
+    }
+
+    /** Destino de "continuar" del ciclo más interno, o null si no hay ningún ciclo abierto. */
+    public String etiquetaInicioCiclo() {
+        return pilaInicioCiclo.peek();
+    }
+
+    /** Destino de "romper" del ciclo más interno, o null si no hay ningún ciclo abierto. */
+    public String etiquetaFinCiclo() {
+        return pilaFinCiclo.peek();
+    }
+
+    /**
+     * Registra un bloque "rompible" que NO es un ciclo: el caso/siempre de un
+     * {@code elegir}. Solo empuja a la pila de "fin" (la que consulta "romper"); a
+     * diferencia de {@link #entrarCiclo(String, String)}, NO toca la pila de "inicio"
+     * (la que consulta "continuar"), porque un elegir no habilita "continuar": si está
+     * anidado dentro de un ciclo, "continuar" debe seguir refiriéndose a ESE ciclo, no
+     * al elegir. Así, "romper" dentro de un caso salta al fin del elegir (el más
+     * cercano), y "continuar" dentro del mismo caso sigue apuntando al ciclo externo,
+     * si lo hay.
+     */
+    public void entrarBloqueRompible(String fin) {
+        pilaFinCiclo.push(fin);
+    }
+
+    /** Cierra el bloque rompible más interno abierto con {@link #entrarBloqueRompible(String)}. */
+    public void salirBloqueRompible() {
+        if (pilaFinCiclo.isEmpty()) {
+            throw new IllegalStateException("salirBloqueRompible() sin un entrarBloqueRompible() previo");
+        }
+        pilaFinCiclo.pop();
     }
 
     // ---------- Temporales y etiquetas ----------
