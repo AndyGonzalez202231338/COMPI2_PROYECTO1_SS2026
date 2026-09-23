@@ -1,10 +1,15 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.CategoriaSimbolo;
 import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Una {@code declaracionVariableSinPuntoYComa}, usada tanto como instrucción completa
@@ -115,5 +120,57 @@ public final class DeclaracionVariable extends NodoPigLatin implements Instrucci
         }
         sim.marcarInicializado();
         return TipoPrimitivo.VOID;
+    }
+
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        switch (categoria) {
+            case CON_TIPO: {
+                // Inicializador opcional.
+                if (inicializador != null) {
+                    ResultadoC3D v = inicializador.generarC3D(generador);
+                    generador.emitirAsignacion(v.getLugar(), nombre);
+                }
+                return ResultadoC3D.vacio();
+            }
+            case SOLO_VALOR: {
+                // Inicializador obligatorio por gramática.
+                ResultadoC3D v = inicializador.generarC3D(generador);
+                generador.emitirAsignacion(v.getLugar(), nombre);
+                return ResultadoC3D.vacio();
+            }
+            case ESTRUCTURA: {
+                // t = new Tipo (malloc); luego t.campo_i = v_i en el ORDEN de declaración
+                // de los campos (getMiembrosEnOrden(), no getMiembros()); luego nombre = t.
+                Ambito amb = generador.getAmbito();
+                Simbolo s = (amb != null) ? amb.resolver(nombreTipoEstructura) : null;
+
+                String t = generador.nuevoTemporal();
+                generador.emitirNew(nombreTipoEstructura, t);
+
+                // Filtrar SOLO campos/atributos (no métodos ni constructores), en orden.
+                List<Simbolo> campos = new ArrayList<>();
+                if (s != null) {
+                    for (Simbolo m : s.getMiembrosEnOrden()) {
+                        if (m.getCategoria() == CategoriaSimbolo.CAMPO
+                                || m.getCategoria() == CategoriaSimbolo.ATRIBUTO) {
+                            campos.add(m);
+                        }
+                    }
+                }
+
+                // Emparejamiento posicional con los elementos del inicializador.
+                List<ExpresionPigLatin> valores = inicializadorEstructura.getElementos();
+                for (int i = 0; i < campos.size() && i < valores.size(); i++) {
+                    ResultadoC3D v = valores.get(i).generarC3D(generador);
+                    generador.emitirGuardarCampo(t, campos.get(i).getNombre(), v.getLugar());
+                }
+
+                generador.emitirAsignacion(t, nombre);
+                return ResultadoC3D.vacio();
+            }
+            default:
+                return ResultadoC3D.vacio();
+        }
     }
 }

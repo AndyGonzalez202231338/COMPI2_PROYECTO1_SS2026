@@ -80,8 +80,22 @@ public class Simbolo {
         return miembros;
     }
 
+    private final List<Simbolo> miembrosEnOrden = new ArrayList<>();
+
     public boolean agregarMiembro(Simbolo miembro) {
-        return miembros.insertar(miembro.getNombre(), miembro);
+        boolean nuevo = miembros.insertar(miembro.getNombre(), miembro);
+        if (nuevo) miembrosEnOrden.add(miembro);
+        return nuevo;
+    }
+
+    /**
+     * Miembros en el ORDEN en que se declararon (a diferencia de {@code getMiembros()},
+     * que devuelve la TablaHash sin orden garantizado). Se usa para generar el C3D de
+     * un inicializador de estructura/clase emparejando posicionalmente los valores con
+     * los campos, y (Fase 4) para emitir el {@code struct} de C en el orden correcto.
+     */
+    public List<Simbolo> getMiembrosEnOrden() {
+        return miembrosEnOrden;
     }
 
     public Simbolo buscarMiembro(String nombre) {

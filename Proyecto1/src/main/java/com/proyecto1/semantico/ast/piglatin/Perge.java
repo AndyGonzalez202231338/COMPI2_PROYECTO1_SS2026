@@ -1,12 +1,14 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code PERGE ;} (#sentenciaPergeDef). Equivale a {@code Continuar} de Y. Sin datos propios más que la posición. */
+/** {@code PERGE ;} (#sentenciaPergeDef). Equivale a {@code Continuar} de Y. */
 public final class Perge extends NodoPigLatin implements InstruccionPigLatin {
     public Perge(int linea, int columna) {
         super(linea, columna);
@@ -18,5 +20,21 @@ public final class Perge extends NodoPigLatin implements InstruccionPigLatin {
             errores.reportar(linea, columna,
                     "'perge' solo puede usarse dentro de un ciclo");
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite {@code (goto, null, null, L)}, donde L es {@code generador.etiquetaInicioCiclo()}
+     * (el destino de "perge" del ciclo más interno). Si la pila está vacía lanza
+     * {@link IllegalStateException}. Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String destino = generador.etiquetaInicioCiclo();
+        if (destino == null) {
+            throw new IllegalStateException("'perge' fuera de un ciclo (línea "
+                    + linea + ", columna " + columna + ")");
+        }
+        generador.emitirGoto(destino);
+        return ResultadoC3D.vacio();
     }
 }

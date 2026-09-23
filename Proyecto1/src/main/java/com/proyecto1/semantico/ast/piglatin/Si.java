@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
@@ -7,6 +9,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,13 +29,8 @@ public final class Si extends NodoPigLatin implements InstruccionPigLatin {
         this.contrario = contrario;
     }
 
-    public List<RamaSi> getRamas() {
-        return ramas;
-    }
-
-    public Bloque getContrario() {
-        return contrario;
-    }
+    public List<RamaSi> getRamas() { return ramas; }
+    public Bloque getContrario() { return contrario; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -49,5 +47,63 @@ public final class Si extends NodoPigLatin implements InstruccionPigLatin {
             contrario.verificar(amb, errores);
         }
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite, con backpatching múltiple, por cada rama:
+     * <pre>
+     *   [cond]
+     *   if_false c goto ?          <- destino pendiente
+     *   [cuerpo de la rama]
+     *   goto ?                     <- pendiente hacia L_fin (omitido en la última rama sin contrario)
+     *   L_siguiente:               <- aquí se rellena el if_false de esta rama
+     * </pre>
+     * Al terminar todas las ramas: el cuerpo de "contrario" (si existe), {@code L_fin:}
+     * y se rellenan con L_fin todos los saltos pendientes. Si la última rama no tiene
+     * "contrario", su if_false salta directo a L_fin (sin goto ni etiqueta intermedia).
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        List<Integer> pendientesFin = new ArrayList<>();
+
+        for (int i = 0; i < ramas.size(); i++) {
+            RamaSi rama = ramas.get(i);
+            boolean ultimaSinContrario = (i == ramas.size() - 1) && contrario == null;
+
+            ResultadoC3D condicion = rama.getCondicion().generarC3D(generador);
+
+            int indiceIfFalse = generador.siguienteIndice();
+            generador.emitirIfFalse(condicion.getLugar(), null);
+
+            rama.getCuerpo().generarC3D(generador);
+
+            if (ultimaSinContrario) {
+                pendientesFin.add(indiceIfFalse);
+            } else {
+                pendientesFin.add(generador.siguienteIndice());
+                generador.emitirGoto(null);
+
+                String siguiente = generador.nuevaEtiqueta();
+                generador.emitirEtiqueta(siguiente);
+                parchear(generador, indiceIfFalse, siguiente);
+            }
+        }
+
+        if (contrario != null) {
+            contrario.generarC3D(generador);
+        }
+
+        String fin = generador.nuevaEtiqueta();
+        generador.emitirEtiqueta(fin);
+        for (int indice : pendientesFin) {
+            parchear(generador, indice, fin);
+        }
+        return ResultadoC3D.vacio();
+    }
+
+    /** Backpatching: escribe "etiqueta" como destino de la cuádrupla de salto en "indice". */
+    private static void parchear(GeneradorC3D generador, int indice, String etiqueta) {
+        generador.reemplazar(indice, generador.getCuadruplas().get(indice).conResultado(etiqueta));
     }
 }

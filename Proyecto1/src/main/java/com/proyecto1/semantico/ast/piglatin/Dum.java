@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
@@ -22,13 +24,8 @@ public final class Dum extends NodoPigLatin implements InstruccionPigLatin {
         this.cuerpo = cuerpo;
     }
 
-    public ExpresionPigLatin getCondicion() {
-        return condicion;
-    }
-
-    public Bloque getCuerpo() {
-        return cuerpo;
-    }
+    public ExpresionPigLatin getCondicion() { return condicion; }
+    public Bloque getCuerpo() { return cuerpo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -39,5 +36,35 @@ public final class Dum extends NodoPigLatin implements InstruccionPigLatin {
         AmbitoBloque amb = new AmbitoBloque(ambito, true);
         cuerpo.verificar(amb, errores);
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * <pre>
+     *   L_inicio:
+     *   [cond]
+     *   if_false c goto L_fin
+     *   [cuerpo]              (dentro de entrarCiclo/salirCiclo)
+     *   goto L_inicio
+     *   L_fin:
+     * </pre>
+     * "perge" (continue) salta a L_inicio (reevalúa la condición); "interrumpe" a L_fin.
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String inicio = generador.nuevaEtiqueta();
+        String fin    = generador.nuevaEtiqueta();
+
+        generador.emitirEtiqueta(inicio);
+        ResultadoC3D c = condicion.generarC3D(generador);
+        generador.emitirIfFalse(c.getLugar(), fin);
+
+        generador.entrarCiclo(inicio, fin);
+        cuerpo.generarC3D(generador);
+        generador.salirCiclo();
+
+        generador.emitirGoto(inicio);
+        generador.emitirEtiqueta(fin);
+        return ResultadoC3D.vacio();
     }
 }
