@@ -29,6 +29,7 @@ public class GeneradorC3D {
     private int contadorEtiquetas  = 0;
     private final TablaCuadruplas tabla;
     private Ambito ambito; // mutable: se intercambia al entrar/salir de funciones (Z)
+    private String claseActual;
 
     /**
      * Pilas de etiquetas de los ciclos abiertos, con el ciclo más interno en el tope.
@@ -86,6 +87,19 @@ public class GeneradorC3D {
     /** Restaura el ámbito devuelto por {@link #entrarAmbito(Ambito)}. */
     public void salirAmbito(Ambito anterior) {
         this.ambito = anterior;
+    }
+
+    // ---------- Contexto de clase (para mangling de métodos) ----------
+    public void entrarClase(String nombreClase) {
+        this.claseActual = nombreClase;
+    }
+
+    public void salirClase() {
+        this.claseActual = null;
+    }
+
+    public String getClaseActual() {
+        return claseActual;
     }
 
     // ---------- Pilas de ciclos (para continuar / romper) ----------

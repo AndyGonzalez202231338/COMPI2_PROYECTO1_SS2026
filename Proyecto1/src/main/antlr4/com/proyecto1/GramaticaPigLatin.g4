@@ -21,7 +21,7 @@ seccionVariables
     ;
 
 funcionPrincipal
-    : MAIOR DOSMAYOR sentencia* FIN_PRINCIPAL PUNTOYCOMA                  #funcionPrincipalDef
+    : MAIOR MAYORQUE sentencia* FIN_PRINCIPAL PUNTOYCOMA                  #funcionPrincipalDef
     ;
 
 sentencia

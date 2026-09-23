@@ -1,62 +1,129 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
+import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoClase;
 import com.proyecto1.semantico.tabla.AmbitoFuncion;
 import com.proyecto1.semantico.tabla.CategoriaSimbolo;
 import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 import java.util.List;
 
 /**
- * Un {@code constructorDeclaration} (#constructorDeclarationDef): "public Nombre(params) bloque".
- * Que "nombre" coincida con el nombre de la propia clase es una validación semántica
- * pendiente (Parte 2), no algo que la gramática obligue.
+ * {@code constructorDef} (#constructorDef): "NombreClase ( parametros? ) { cuerpo }".
+ *
+ * <p>El nombre del constructor coincide con el de su clase; {@link #nombre} guarda ese
+ * nombre (es lo que después alimenta a
+ * {@link GeneradorC3D#etiquetaConstructor(String, int)}).
+ *
+ * <p>Todo método/constructor de Z recibe un parámetro implícito extra: "this". Por eso
+ * el {@code begin_func} lleva {@code parametros.size() + 1} argumentos. El "this" no se
+ * declara como símbolo en la tabla (no es un identificador resoluble); es una
+ * convención de generación: cualquier acceso a un atributo emite
+ * {@code (=., this, campo, t)} / {@code (.=, this, campo, v)}.
+ *
+ * <p>Antes del cuerpo del usuario, se inyectan los inicializadores de atributo de la
+ * clase (field initializers), en el orden en que aparecen en la clase. Es el mismo
+ * comportamiento que Java: los inicializadores de campo corren antes del cuerpo del
+ * constructor.
  */
-public final class Constructor extends NodoZ {
+public final class Constructor extends NodoZ /* o la base que ya uses */ {
 
-    private final String nombre;
+    private final String nombre;              // == nombre de la clase
     private final List<Parametro> parametros;
-    private final Bloque cuerpo;
+    private final Bloque cuerpo;              // o InstruccionZ, según tu gramática
 
-    public Constructor(String nombre, List<Parametro> parametros, Bloque cuerpo, int linea, int columna) {
+    /**
+     * Ámbito de la función, creado y validado por verificar() y reutilizado por
+     * generarC3D() para no reconstruir parámetros ni volver a tocar ManejadorErrores.
+     * Es el mismo patrón que AccesoCampo usa para cachear tipoCampo.
+     */
+    private AmbitoFuncion ambitoPropio;
+
+    public Constructor(String nombre, List<Parametro> parametros, Bloque cuerpo,
+                       int linea, int columna) {
         super(linea, columna);
         this.nombre = nombre;
         this.parametros = parametros;
         this.cuerpo = cuerpo;
     }
 
-    public String getNombre() {
-        return nombre;
-    }
+    public String getNombre() { return nombre; }
+    public List<Parametro> getParametros() { return parametros; }
+    public Bloque getCuerpo() { return cuerpo; }
+    public AmbitoFuncion getAmbitoPropio() { return ambitoPropio; }
 
-    public List<Parametro> getParametros() {
-        return parametros;
-    }
-
-    public Bloque getCuerpo() {
-        return cuerpo;
-    }
-
-    public void verificar(AmbitoClase ambClase, ManejadorErrores errores) {
-        // El nombre del constructor debe coincidir con el de la clase
-        if (!nombre.equals(ambClase.getSimboloContenedor().getNombre()))
-            errores.reportar(linea, columna,
-                    "El constructor debe llamarse igual que la clase '" +
-                            ambClase.getSimboloContenedor().getNombre() + "'");
-
-        Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(nombre + "@" + parametros.size());
-        // Si no hay símbolo registrado con clave única, no lo uses; ver nota abajo.
+    /**
+     * Idéntico al verificar() que ya tenías, MÁS una línea al final del setup del
+     * ámbito: cachear el {@link AmbitoFuncion} recién creado en {@link #ambitoPropio}
+     * para que generarC3D() lo reutilice.
+     */
+    public Tipo verificar(AmbitoClase ambClase, ManejadorErrores errores) {
+        Simbolo simbolo = ambClase.resolverLocal(nombre);
+        // Si el símbolo no existe (raro: la clase ya debería haberlo declarado en
+        // declararMiembro), seguimos con un ámbito sin símbolo: el resto del método
+        // ya reporta errores por otro lado.
 
         AmbitoFuncion amb = new AmbitoFuncion(ambClase, simbolo);
+        this.ambitoPropio = amb;  // <-- única línea nueva
 
         for (Parametro p : parametros) {
             Tipo t = p.resolverTipo(amb, errores);
-            Simbolo sp = new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO, t, p.getLinea(), p.getColumna());
-            if (!amb.declarar(sp))
-                errores.reportar(p.getLinea(), p.getColumna(), "Parámetro duplicado: '" + p.getNombre() + "'");
+            Simbolo sp = new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO,
+                    t, p.getLinea(), p.getColumna());
+            if (!amb.declarar(sp)) {
+                errores.reportar(p.getLinea(), p.getColumna(),
+                        "Parámetro duplicado: '" + p.getNombre() + "'");
+            }
+            if (simbolo != null) simbolo.agregarParametro(sp);
         }
+
         cuerpo.verificar(amb, errores);
+        // Un constructor NO exige return; no se comprueba tuvoRetorno aquí.
+        return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite, en este orden:
+     * <ol>
+     *   <li>{@code (begin_func, etiquetaConstructor(nombre, aridad), parametros.size()+1, null)}.
+     *       El +1 es el "this" implícito.</li>
+     *   <li>{@code entrarAmbito(ambitoPropio)}.</li>
+     *   <li>Por cada atributo con inicializador no nulo:
+     *       {@code this.<campo> = <C3D del inicializador>} (una cuádrupla {@code (.=, this, campo, v)}).</li>
+     *   <li>C3D del cuerpo del usuario.</li>
+     *   <li>{@code salirAmbito(anterior)}.</li>
+     *   <li>{@code (end_func)}.</li>
+     * </ol>
+     * No emite un {@code return} implícito; Fase 4 puede añadirlo al traducir
+     * {@code end_func}.
+     *
+     * <p>La firma lleva {@code atributosClase} porque el constructor debe inyectar los
+     * field initializers de la clase y {@link Constructor} por sí solo no los conoce.
+     * {@link Clase#generarC3D} es quien los pasa.
+     */
+    public ResultadoC3D generarC3D(GeneradorC3D generador, List<Atributo> atributosClase) {
+        String etiqueta = generador.etiquetaConstructor(nombre, parametros.size());
+        generador.emitirBeginFunc(etiqueta, parametros.size() + 1);
+
+        Ambito anterior = generador.entrarAmbito(ambitoPropio);
+
+        // Field initializers: primero los de la clase, en orden de declaración.
+        for (Atributo a : atributosClase) {
+            if (a.getInicializador() != null) {
+                ResultadoC3D v = a.getInicializador().generarC3D(generador);
+                generador.emitirGuardarCampo("this", a.getNombre(), v.getLugar());
+            }
+        }
+
+        cuerpo.generarC3D(generador);
+
+        generador.salirAmbito(anterior);
+        generador.emitirEndFunc();
+        return ResultadoC3D.vacio();
     }
 }
