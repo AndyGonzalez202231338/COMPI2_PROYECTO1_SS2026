@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
@@ -11,7 +13,7 @@ import java.util.List;
 /**
  * La {@code funcionPrincipal} (#funcionPrincipalDef): {@code MAIOR >> sentencia*
  * FINIS ;}. Es el único punto de entrada del programa PigLatin (no tiene nombre,
- * parámetros ni tipo de retorno como {@code Funcion} en Y  por eso no se reutiliza
+ * parámetros ni tipo de retorno como {@code Funcion} en Y; por eso no se reutiliza
  * esa forma aquí).
  */
 public final class FuncionPrincipal extends NodoPigLatin {
@@ -32,5 +34,38 @@ public final class FuncionPrincipal extends NodoPigLatin {
         AmbitoBloque amb = new AmbitoBloque(ambito, false);
         for (InstruccionPigLatin i : cuerpo) i.verificar(amb, errores);
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite, en este orden:
+     * <ol>
+     *   <li>{@code (begin_func, "main", 0, null)}: punto de entrada fijo, aridad 0
+     *       (PigLatin no tiene {@code this} implícito, no recibe nada).</li>
+     *   <li>C3D de las variables globales, en el orden en que aparecen en el
+     *       programa. Se declaran DENTRO del {@code begin_func}...{@code end_func}
+     *       porque el C3D no distingue variables globales de locales — Fase 4 puede
+     *       subirlas al nivel de archivo si lo prefiere.</li>
+     *   <li>C3D del cuerpo, en orden.</li>
+     *   <li>{@code (end_func, null, null, null)}.</li>
+     * </ol>
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     *
+     * <p>La firma lleva {@code variablesGlobales} porque {@link FuncionPrincipal}
+     * no las conoce por sí misma (solo tiene su propio cuerpo). {@link Programa} se
+     * las pasa — mismo patrón que {@code Clase(Z)} pasando los atributos a cada
+     * {@code Constructor}.
+     */
+    public ResultadoC3D generarC3D(GeneradorC3D generador, List<InstruccionPigLatin> variablesGlobales) {
+        generador.emitirBeginFunc("main", 0);
+
+        for (InstruccionPigLatin decl : variablesGlobales) {
+            decl.generarC3D(generador);
+        }
+        for (InstruccionPigLatin i : cuerpo) {
+            i.generarC3D(generador);
+        }
+
+        generador.emitirEndFunc();
+        return ResultadoC3D.vacio();
     }
 }
