@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.Simbolo;
@@ -37,5 +39,29 @@ public final class Leer extends NodoPigLatin implements InstruccionPigLatin {
                 s.marcarInicializado();
         }
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite UNA cuádrupla {@code (read, null, null, destino)}.
+     * <ul>
+     *   <li>Con variable: {@code destino = variable}. Se escribe directo en la
+     *       variable ya declarada y validada por verificar(). Sin temporal intermedio:
+     *       el valor leído es exactamente lo que va en esa variable.</li>
+     *   <li>Sin variable: {@code destino = t} con un temporal nuevo. El valor se lee
+     *       igual pero se descarta (nadie lo consume después); el temporal es basura
+     *       que Fase 5 puede eliminar.</li>
+     * </ul>
+     * Devuelve {@code ResultadoC3D.vacio()}: es una sentencia, no produce valor
+     * reutilizable por el llamador.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        if (variable != null) {
+            generador.emitirRead(variable);
+        } else {
+            String t = generador.nuevoTemporal();
+            generador.emitirRead(t);
+        }
+        return ResultadoC3D.vacio();
     }
 }
