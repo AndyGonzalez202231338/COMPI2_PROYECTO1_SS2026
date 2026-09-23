@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -25,17 +27,9 @@ public final class Unaria extends NodoPigLatin implements ExpresionPigLatin {
         this.prefijo = prefijo;
     }
 
-    public String getOperador() {
-        return operador;
-    }
-
-    public ExpresionPigLatin getOperando() {
-        return operando;
-    }
-
-    public boolean isPrefijo() {
-        return prefijo;
-    }
+    public String getOperador() { return operador; }
+    public ExpresionPigLatin getOperando() { return operando; }
+    public boolean isPrefijo() { return prefijo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -55,5 +49,59 @@ public final class Unaria extends NodoPigLatin implements ExpresionPigLatin {
                 return t;
         }
         return TipoPrimitivo.DESCONOCIDO;
+    }
+
+    /**
+     * Emite según el operador (siempre después de generar el C3D del operando):
+     * <ul>
+     *   <li>{@code !} y {@code -}: {@code (op, a, null, t)}. Devuelve el temporal t
+     *       (tipo BOOL para "!", el del operando para "-").</li>
+     *   <li>{@code ++x} / {@code --x} (prefijo): {@code t = x ± 1} y luego {@code x = t}.
+     *       Devuelve t, que contiene el valor NUEVO.</li>
+     *   <li>{@code x++} / {@code x--} (postfijo): {@code t0 = x} (copia del valor viejo),
+     *       {@code t1 = x ± 1} y {@code x = t1}. Devuelve t0 (el valor VIEJO, que es el
+     *       que vale la expresión postfija en {@code y = x++}).</li>
+     * </ul>
+     * Para ++/-- solo se admite como operando un {@link Identificador} (variable simple);
+     * campos y elementos de arreglo lanzan {@link UnsupportedOperationException}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        switch (operador) {
+            case "!":
+            case "-": {
+                ResultadoC3D o = operando.generarC3D(generador);
+                String t = generador.nuevoTemporal();
+                generador.emitirUnaria(operador, o.getLugar(), t);
+                Tipo tipo = operador.equals("!") ? TipoPrimitivo.BOOL : o.getTipo();
+                return ResultadoC3D.temporal(t, tipo);
+            }
+            case "++":
+            case "--": {
+                if (!(operando instanceof Identificador id)) {
+                    throw new UnsupportedOperationException(
+                            "'" + operador + "' sobre campos o arreglos: pendiente en C3D");
+                }
+                ResultadoC3D o = operando.generarC3D(generador);
+                String variable = o.getLugar();
+                String opBinario = operador.equals("++") ? "+" : "-";
+
+                if (prefijo) {
+                    String t = generador.nuevoTemporal();
+                    generador.emitirBinaria(opBinario, variable, "1", t);
+                    generador.emitirAsignacion(t, variable);
+                    return ResultadoC3D.temporal(t, o.getTipo());
+                }
+                // Postfijo: devolver el valor VIEJO.
+                String viejo = generador.nuevoTemporal();
+                generador.emitirAsignacion(variable, viejo);
+                String nuevo = generador.nuevoTemporal();
+                generador.emitirBinaria(opBinario, variable, "1", nuevo);
+                generador.emitirAsignacion(nuevo, variable);
+                return ResultadoC3D.temporal(viejo, o.getTipo());
+            }
+            default:
+                throw new UnsupportedOperationException("Operador unario no soportado: " + operador);
+        }
     }
 }

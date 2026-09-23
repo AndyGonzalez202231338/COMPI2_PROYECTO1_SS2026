@@ -59,7 +59,7 @@ public class ServicioAnalisis{
         try {
             return switch (extension) {
                 case "y" -> analizarY(texto);
-                case "z" -> analizarZ(texto, archivo.getName());
+                case "z" -> analizarZ(texto, archivo);
                 case "pig" -> analizarPigLatin(texto, archivo);
                 default -> ResultadoAnalisis.extensionNoSoportada(archivo.getName());
             };
@@ -98,7 +98,8 @@ public class ServicioAnalisis{
                 listener.getErroresSintacticos(), erroresSemanticos, List.of(), contarLineas(texto), ambitoGlobal);
     }
 
-    private ResultadoAnalisis analizarZ(String texto, String nombreArchivo) {
+    private ResultadoAnalisis analizarZ(String texto, File archivo) {
+        String nombreArchivo = archivo.getName();
         ListenerErroresANTLR listener = new ListenerErroresANTLR();
 
         LenguajeLexer lexer = new LenguajeLexer(CharStreams.fromString(texto));
@@ -119,7 +120,12 @@ public class ServicioAnalisis{
         AmbitoGlobal ambitoGlobal = null;
         if (!listener.tieneErrores()) {
             com.proyecto1.semantico.ast.z.Clase clase = new ASTBuilderZ().construir(arbol);
-            ambitoGlobal = new AmbitoGlobal();
+            // Zetariano no tiene "import": las demás clases .z del proyecto se pre-cargan
+            // aquí para que se vean entre sí automáticamente (como clases Java del mismo
+            // paquete), incluyendo referencias circulares (Nodo <-> Pila). Sin proyecto
+            // abierto (raizProyecto null), CargadorClasesZ devuelve un ámbito vacío y el
+            // comportamiento es exactamente el de antes.
+            ambitoGlobal = new CargadorClasesZ().cargar(archivo, raizProyecto);
             ManejadorErrores errores = new AnalizadorSemanticoZ().analizar(clase, ambitoGlobal);
             erroresSemanticos = errores.obtenerErrores();
 
