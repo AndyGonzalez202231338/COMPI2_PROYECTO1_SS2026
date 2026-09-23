@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -24,14 +26,16 @@ public final class InicializadorArreglo extends NodoPigLatin implements Expresio
 
     private final List<ExpresionPigLatin> elementos;
 
+    /** TipoArreglo(tipoElemento), cacheado por verificar(). */
+    private Tipo tipoArreglo;
+
     public InicializadorArreglo(List<ExpresionPigLatin> elementos, int linea, int columna) {
         super(linea, columna);
         this.elementos = elementos;
     }
 
-    public List<ExpresionPigLatin> getElementos() {
-        return elementos;
-    }
+    public List<ExpresionPigLatin> getElementos() { return elementos; }
+    public Tipo getTipoArreglo() { return tipoArreglo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -44,6 +48,30 @@ public final class InicializadorArreglo extends NodoPigLatin implements Expresio
                         "Elemento incompatible: " + t.nombre() + " vs " + tipoElem.nombre());
         }
         if (tipoElem == null) tipoElem = TipoPrimitivo.DESCONOCIDO;
-        return new TipoArreglo(tipoElem);
+        tipoArreglo = new TipoArreglo(tipoElem);
+        return tipoArreglo;
+    }
+
+    /**
+     * Emite: pide un temporal nuevo {@code tArr} (que representa el arreglo en
+     * construcción), y por cada elemento en orden genera su C3D y emite
+     * {@code ([]=, tArr, i, v)} con {@code i} como literal entero.
+     *
+     * <p>NO se emite ningún {@code newarr} ni allocación: la reserva la resuelve
+     * Fase 4, que ve el {@link TipoArreglo} del resultado (o el tamaño del símbolo
+     * en la declaración) y reserva la memoria adecuada. Aquí solo se dejan las
+     * cuádruplas de escritura por posición, exactamente igual que {@code ListaLiteral(Y)}.
+     *
+     * <p>Devuelve {@code temporal(tArr, tipoArreglo)}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String tArr = generador.nuevoTemporal();
+        for (int i = 0; i < elementos.size(); i++) {
+            ResultadoC3D v = elementos.get(i).generarC3D(generador);
+            generador.emitirGuardarIndice(tArr, String.valueOf(i), v.getLugar());
+        }
+        Tipo tipo = (tipoArreglo != null) ? tipoArreglo : TipoPrimitivo.DESCONOCIDO;
+        return ResultadoC3D.temporal(tArr, tipo);
     }
 }
