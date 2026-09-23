@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
@@ -9,25 +11,15 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 /**
  * {@code sentenciaPer} (#sentenciaPerDef): {@code per (init; cond?; act?) bloque}.
- * Equivale al {@code Para} de Y, con dos diferencias fieles a la gramática:
- * <ul>
- *   <li>NO lleva {@code finis;} al final (a diferencia de {@link Si} y {@link Dum}).</li>
- *   <li>{@code init} viene de {@code inicializacionFor}, que puede ser una
- *       {@link DeclaracionVariable} (sin {@code ;}, alternativa
- *       {@code #initForDeclaracion}) o una {@link ListaExpresiones} (alternativa
- *       {@code #initForExpresiones}); {@code act} viene de {@code actualizacionFor},
- *       que siempre es una {@link ListaExpresiones} (#actualizacionForDef). Por eso
- *       ambas se guardan como {@code InstruccionPigLatin} genérico en vez de un tipo
- *       más estrecho — igual que "init"/"act" en el {@code Para} de Y.</li>
- * </ul>
- * Tanto {@code init} como {@code cond} y {@code act} pueden faltar (los "?" de la
- * gramática).
+ * Equivale al {@code Para} de Y. Init puede ser {@link DeclaracionVariable} o
+ * {@link ListaExpresiones}; act siempre es {@link ListaExpresiones}. Ambos, más la
+ * condición, son opcionales.
  */
 public final class Per extends NodoPigLatin implements InstruccionPigLatin {
 
     private final InstruccionPigLatin inicializacion; // DeclaracionVariable | ListaExpresiones | null
-    private final ExpresionPigLatin condicion;          // null si se omitió
-    private final InstruccionPigLatin actualizacion;    // ListaExpresiones | null
+    private final ExpresionPigLatin condicion;        // null si se omitió
+    private final InstruccionPigLatin actualizacion;  // ListaExpresiones | null
     private final Bloque cuerpo;
 
     public Per(InstruccionPigLatin inicializacion, ExpresionPigLatin condicion,
@@ -39,21 +31,10 @@ public final class Per extends NodoPigLatin implements InstruccionPigLatin {
         this.cuerpo = cuerpo;
     }
 
-    public InstruccionPigLatin getInicializacion() {
-        return inicializacion;
-    }
-
-    public ExpresionPigLatin getCondicion() {
-        return condicion;
-    }
-
-    public InstruccionPigLatin getActualizacion() {
-        return actualizacion;
-    }
-
-    public Bloque getCuerpo() {
-        return cuerpo;
-    }
+    public InstruccionPigLatin getInicializacion() { return inicializacion; }
+    public ExpresionPigLatin getCondicion() { return condicion; }
+    public InstruccionPigLatin getActualizacion() { return actualizacion; }
+    public Bloque getCuerpo() { return cuerpo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -70,5 +51,55 @@ public final class Per extends NodoPigLatin implements InstruccionPigLatin {
         AmbitoBloque ambCuerpo = new AmbitoBloque(ambCiclo, false);
         cuerpo.verificar(ambCuerpo, errores);
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * <pre>
+     *   [init]                (una sola vez, fuera del ciclo)
+     *   L_inicio:
+     *   [cond?]
+     *   if_false c goto L_fin
+     *   [cuerpo]              (dentro de entrarCiclo/salirCiclo)
+     *   L_act:
+     *   [act?]
+     *   goto L_inicio
+     *   L_fin:
+     * </pre>
+     * Se registra el ciclo como {@code entrarCiclo(L_act, L_fin)}: "perge" salta a
+     * L_act (así la actualización SÍ se ejecuta, evitando ciclos infinitos si el cuerpo
+     * hace "perge" antes del incremento) e "interrumpe" a L_fin sin pasar por L_act.
+     * Sin condición no se emite if_false (el ciclo solo termina con "interrumpe").
+     * Init y act quedan FUERA de entrarCiclo/salirCiclo. Devuelve
+     * {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String inicio = generador.nuevaEtiqueta();
+        String act    = generador.nuevaEtiqueta();
+        String fin    = generador.nuevaEtiqueta();
+
+        if (inicializacion != null) {
+            inicializacion.generarC3D(generador);
+        }
+
+        generador.emitirEtiqueta(inicio);
+
+        if (condicion != null) {
+            ResultadoC3D c = condicion.generarC3D(generador);
+            generador.emitirIfFalse(c.getLugar(), fin);
+        }
+
+        generador.entrarCiclo(act, fin);
+        cuerpo.generarC3D(generador);
+        generador.salirCiclo();
+
+        generador.emitirEtiqueta(act);
+        if (actualizacion != null) {
+            actualizacion.generarC3D(generador);
+        }
+
+        generador.emitirGoto(inicio);
+        generador.emitirEtiqueta(fin);
+        return ResultadoC3D.vacio();
     }
 }

@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
@@ -9,10 +11,8 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 /**
  * {@code sentenciaFacere} (#sentenciaFacereDef): {@code facere bloque dum (cond);}.
- * Equivale al {@code HacerMientras} de Y: el cuerpo se ejecuta al menos una vez y la
- * condición se evalúa DESPUÉS de cada iteración. Nótese que, a diferencia de
- * {@link Si} y {@link Dum}, esta sentencia NO lleva {@code finis;} — solo el {@code ;}
- * final tras la condición.
+ * El cuerpo se ejecuta al menos una vez y la condición se evalúa DESPUÉS de cada
+ * iteración. No lleva {@code finis;}.
  */
 public final class Facere extends NodoPigLatin implements InstruccionPigLatin {
 
@@ -25,13 +25,8 @@ public final class Facere extends NodoPigLatin implements InstruccionPigLatin {
         this.condicion = condicion;
     }
 
-    public Bloque getCuerpo() {
-        return cuerpo;
-    }
-
-    public ExpresionPigLatin getCondicion() {
-        return condicion;
-    }
+    public Bloque getCuerpo() { return cuerpo; }
+    public ExpresionPigLatin getCondicion() { return condicion; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -42,5 +37,38 @@ public final class Facere extends NodoPigLatin implements InstruccionPigLatin {
             errores.reportar(condicion.getLinea(), condicion.getColumna(),
                     "Condición del 'facere' debe ser bool");
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * <pre>
+     *   L_inicio:
+     *   [cuerpo]              (dentro de entrarCiclo/salirCiclo)
+     *   L_cond:
+     *   [cond]
+     *   if_true c goto L_inicio
+     *   L_fin:
+     * </pre>
+     * Se registra el ciclo como {@code entrarCiclo(L_cond, L_fin)}: "perge" salta a
+     * L_cond para reevaluar la condición (si saltara a L_inicio repetiría el cuerpo
+     * sin comprobarla) y "interrumpe" a L_fin. Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String inicio = generador.nuevaEtiqueta();
+        String cond   = generador.nuevaEtiqueta();
+        String fin    = generador.nuevaEtiqueta();
+
+        generador.emitirEtiqueta(inicio);
+
+        generador.entrarCiclo(cond, fin);
+        cuerpo.generarC3D(generador);
+        generador.salirCiclo();
+
+        generador.emitirEtiqueta(cond);
+        ResultadoC3D c = condicion.generarC3D(generador);
+        generador.emitirIfTrue(c.getLugar(), inicio);
+
+        generador.emitirEtiqueta(fin);
+        return ResultadoC3D.vacio();
     }
 }

@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -19,5 +21,11 @@ public final class SentenciaVacia extends NodoPigLatin implements InstruccionPig
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         return TipoPrimitivo.VOID;
+    }
+
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        // Nada que emitir: la sentencia vacía no produce cuádruplas.
+        return ResultadoC3D.vacio();
     }
 }

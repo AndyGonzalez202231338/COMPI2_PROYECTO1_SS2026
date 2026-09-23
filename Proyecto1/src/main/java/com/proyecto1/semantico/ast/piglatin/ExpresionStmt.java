@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -26,5 +28,11 @@ public final class ExpresionStmt extends NodoPigLatin implements InstruccionPigL
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         return expresion.verificar(ambito, errores);
+    }
+
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        expresion.generarC3D(generador);   // efectos secundarios sí, valor no
+        return ResultadoC3D.vacio();
     }
 }

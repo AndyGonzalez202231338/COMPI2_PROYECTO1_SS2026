@@ -1,12 +1,14 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.AmbitoBloque;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code INTERRUMPE ;} (#sentenciaInterrumpeDef). Equivale a {@code Romper} de Y. Sin datos propios más que la posición. */
+/** {@code INTERRUMPE ;} (#sentenciaInterrumpeDef). Equivale a {@code Romper} de Y. */
 public final class Interrumpe extends NodoPigLatin implements InstruccionPigLatin {
     public Interrumpe(int linea, int columna) {
         super(linea, columna);
@@ -18,5 +20,23 @@ public final class Interrumpe extends NodoPigLatin implements InstruccionPigLati
             errores.reportar(linea, columna,
                     "'interrumpe' solo puede usarse dentro de un ciclo");
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite {@code (goto, null, null, L)}, donde L es {@code generador.etiquetaFinCiclo()}:
+     * el destino de "interrumpe" del ciclo más interno. Si la pila está vacía lanza
+     * {@link IllegalStateException} — verificar() ya reportó el error, así que esto
+     * solo ocurre si se generó C3D sin análisis semántico previo.
+     * Devuelve {@code ResultadoC3D.vacio()}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        String destino = generador.etiquetaFinCiclo();
+        if (destino == null) {
+            throw new IllegalStateException("'interrumpe' fuera de un ciclo (línea "
+                    + linea + ", columna " + columna + ")");
+        }
+        generador.emitirGoto(destino);
+        return ResultadoC3D.vacio();
     }
 }
