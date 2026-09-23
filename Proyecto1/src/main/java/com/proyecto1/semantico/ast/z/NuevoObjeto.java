@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.z;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.CategoriaSimbolo;
@@ -8,6 +10,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoClase;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** {@code NEW ID LPAREN argumentList? RPAREN} (#primarioInstanciaClase): "new Persona(args)". */
@@ -22,13 +25,8 @@ public final class NuevoObjeto extends NodoZ implements ExpresionZ {
         this.argumentos = argumentos;
     }
 
-    public String getNombreClase() {
-        return nombreClase;
-    }
-
-    public List<ExpresionZ> getArgumentos() {
-        return argumentos;
-    }
+    public String getNombreClase() { return nombreClase; }
+    public List<ExpresionZ> getArgumentos() { return argumentos; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -37,7 +35,6 @@ public final class NuevoObjeto extends NodoZ implements ExpresionZ {
             errores.reportar(linea, columna, "Clase desconocida: '" + nombreClase + "'");
             return TipoPrimitivo.DESCONOCIDO;
         }
-        // Buscar constructor compatible por aridad (el curso no exige matching exacto de tipos)
         boolean hayConstructorCompatible = c.getMiembros().valores().stream()
                 .anyMatch(m -> m.getCategoria() == CategoriaSimbolo.CONSTRUCTOR
                         && m.getParametros().size() == argumentos.size());
@@ -49,5 +46,60 @@ public final class NuevoObjeto extends NodoZ implements ExpresionZ {
         return new TipoClase(c);
     }
 
+    /**
+     * Emite, en este orden:
+     * <ol>
+     *   <li>{@code (new, NombreClase, null, t)}: reserva la celda en heap; {@code t} es
+     *       la referencia al objeto recién creado.</li>
+     *   <li>C3D de cada argumento, en orden, guardando sus lugares (puede haber
+     *       llamadas anidadas dentro de un argumento: sus propias cuádruplas se emiten
+     *       aquí).</li>
+     *   <li>Bloque de {@code param}: primero {@code t} (el objeto actúa como
+     *       {@code this} implícito del constructor), luego cada argumento.</li>
+     *   <li>{@code (call, etiquetaConstructor(nombreClase, nArgs), nArgs+1, null)}:
+     *       el {@code +1} es el {@code this}; el resultado va a {@code null} porque un
+     *       constructor no devuelve nada y la referencia ya está en {@code t}.</li>
+     * </ol>
+     * Devuelve {@code temporal(t, TipoClase)}.
+     *
+     * <p><b>Por qué los params se agrupan al final y no intercalados con los args:</b>
+     * así los {@code nArgs+1} {@code param} contiguos anteriores al {@code call} son
+     * exactamente sus argumentos (this + args en orden). Si un argumento contiene una
+     * llamada anidada ({@code new Foo(new Bar(1))}), la llamada interna queda completa
+     * antes de que se empiecen a emitir los params del {@code new Foo}.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        // 1) Reservar el objeto. El temporal t es la referencia (el futuro "this").
+        String t = generador.nuevoTemporal();
+        generador.emitirNew(nombreClase, t);
 
+        // 2) Evaluar cada argumento (en orden), guardando el lugar donde quedó.
+        List<String> lugaresArgs = new ArrayList<>();
+        for (ExpresionZ a : argumentos) {
+            ResultadoC3D v = a.generarC3D(generador);
+            lugaresArgs.add(v.getLugar());
+        }
+
+        // 3) Bloque de params: this + args, en orden.
+        generador.emitirParam(t);
+        for (String lugar : lugaresArgs) {
+            generador.emitirParam(lugar);
+        }
+
+        // 4) Llamar al constructor. Sin resultado: la referencia ya está en t.
+        int aridad = argumentos.size();
+        String etiqueta = generador.etiquetaConstructor(nombreClase, aridad);
+        generador.emitirCall(etiqueta, aridad + 1, null);
+
+        // Tipo del resultado: TipoClase(clase). Se resuelve del ámbito activo si se
+        // puede; si no, DESCONOCIDO (degradación controlada, igual que Identificador).
+        Tipo tipo = TipoPrimitivo.DESCONOCIDO;
+        Ambito amb = generador.getAmbito();
+        if (amb != null) {
+            Simbolo c = amb.ambitoGlobal().resolverLocal(nombreClase);
+            if (c != null) tipo = new TipoClase(c);
+        }
+        return ResultadoC3D.temporal(t, tipo);
+    }
 }
