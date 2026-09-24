@@ -1,7 +1,9 @@
 package com.proyecto1.semantico.ast;
 
 import com.proyecto1.semantico.tabla.Ambito;
-
+import com.proyecto1.semantico.tipos.Tipo;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -290,4 +292,45 @@ public class GeneradorC3D {
     public List<Cuadrupla> getCuadruplas() {
         return tabla.getCuadruplas();
     }
+
+    // ---------- Fase 4: firmas de funciones (para generar cabeceras C) ----------
+
+    /**
+     * Un parámetro formal de la firma: nombre + tipo. Se registra una vez por cada
+     * parámetro, en orden, cuando el nodo correspondiente (Funcion(Y), Constructor(Z),
+     * Metodo(Z), FuncionPrincipal(PigLatin)) emite su begin_func. El traductor a C lo
+     * usa para escribir la lista de parámetros de la función (p. ej. {@code int a, char* b}).
+     */
+    public record ParametroFirma(String nombre, Tipo tipo) {}
+
+    /**
+     * Firma completa de una función/método/constructor:
+     *   - etiqueta: nombre manglado ("Persona_getEdad", "Persona_init@2", "main", ...).
+     *   - parametros: en orden; para Z incluye el "this" implícito al principio.
+     *   - tipoRetorno: tipo del valor devuelto, o VOID si no devuelve.
+     *   - esMetodo: true si tiene "this" implícito (Z); false para funciones sueltas
+     *     (Y, PigLatin main).
+     */
+    public record Firma(String etiqueta, List<ParametroFirma> parametros,
+                        Tipo tipoRetorno, boolean esMetodo) {}
+
+    /**
+     * Firmas registradas por los nodos cuando emiten begin_func. LinkedHashMap para
+     * preservar el orden de declaración (útil para generar el archivo C en el mismo
+     * orden en que se escribió el fuente). El traductor a C lo lee para escribir
+     * prototipos y cabeceras.
+     */
+    private final Map<String, Firma> firmas = new LinkedHashMap<>();
+
+    /**
+     * Registra la firma de una función/método/constructor. Se llama desde el
+     * generarC3D del nodo correspondiente INMEDIATAMENTE antes de emitir el begin_func
+     * (mismo etiqueta, mismos parámetros, mismo tipoRetorno).
+     */
+    public void registrarFirma(String etiqueta, List<ParametroFirma> params,
+                               Tipo tipoRetorno, boolean esMetodo) {
+        firmas.put(etiqueta, new Firma(etiqueta, params, tipoRetorno, esMetodo));
+    }
+
+    public Map<String, Firma> getFirmas() { return firmas; }
 }

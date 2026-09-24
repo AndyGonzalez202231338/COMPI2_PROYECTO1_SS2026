@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
@@ -25,5 +27,23 @@ public final class Imprimir extends NodoPigLatin implements InstruccionPigLatin 
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         for (ExpresionPigLatin a : argumentos) a.verificar(ambito, errores);
         return TipoPrimitivo.VOID;
+    }
+
+    /**
+     * Emite, en orden de aparición: por cada argumento, primero su C3D (que puede
+     * generar cuádruplas propias: "t0 = a + b", "t1 = leer()", etc.) y luego UNA
+     * cuádrupla {@code (print, v, null, null)} con el lugar resultante. Como la
+     * cuádrupla "print" solo tiene arg1, cada argumento produce su propia cuádrupla
+     * — no hay un "print variádico". Fase 4 decide el formato (printf con "%d %f %s…"
+     * según el tipo del lugar).
+     * Devuelve {@code ResultadoC3D.vacio()}: imprimir no produce valor.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        for (ExpresionPigLatin a : argumentos) {
+            ResultadoC3D v = a.generarC3D(generador);
+            generador.emitirPrint(v.getLugar());
+        }
+        return ResultadoC3D.vacio();
     }
 }
