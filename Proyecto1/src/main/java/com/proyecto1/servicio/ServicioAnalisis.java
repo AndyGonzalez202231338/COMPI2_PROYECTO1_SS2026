@@ -12,6 +12,7 @@ import com.proyecto1.semantico.errores.ErrorSemantico;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.piglatin.ASTBuilderPigLatin;
 import com.proyecto1.semantico.tabla.AmbitoGlobal;
+import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.y.ASTBuilderY;
 import com.proyecto1.semantico.z.ASTBuilderZ;
 
@@ -117,7 +118,7 @@ public class ServicioAnalisis{
 
         List<ErrorSemantico> erroresSemanticos = List.of();
         List<ErrorSemantico> advertencias = List.of();
-        AmbitoGlobal ambitoGlobal = null;
+        AmbitoGlobal ambitoGlobalExportado = null;
         if (!listener.tieneErrores()) {
             com.proyecto1.semantico.ast.z.Clase clase = new ASTBuilderZ().construir(arbol);
             // Zetariano no tiene "import": las demás clases .z del proyecto se pre-cargan
@@ -125,9 +126,23 @@ public class ServicioAnalisis{
             // paquete), incluyendo referencias circulares (Nodo <-> Pila). Sin proyecto
             // abierto (raizProyecto null), CargadorClasesZ devuelve un ámbito vacío y el
             // comportamiento es exactamente el de antes.
-            ambitoGlobal = new CargadorClasesZ().cargar(archivo, raizProyecto);
-            ManejadorErrores errores = new AnalizadorSemanticoZ().analizar(clase, ambitoGlobal);
+            AmbitoGlobal ambitoInterno = new CargadorClasesZ().cargar(archivo, raizProyecto);
+            ManejadorErrores errores = new AnalizadorSemanticoZ().analizar(clase, ambitoInterno);
             erroresSemanticos = errores.obtenerErrores();
+
+            // OJO: lo que se EXPORTA (para que un .pig lo importe, vía CargadorImports) no
+            // puede ser "ambitoInterno" tal cual: además de la clase de ESTE archivo trae,
+            // mezcladas, las clases HERMANAS que se precargaron solo para que esta clase
+            // pudiera resolverlas (ver CargadorClasesZ). Si se exportaran también, un .pig
+            // que hace "import Nodo.z" y "import Pila.z" por separado recibiría cada símbolo
+            // DOS veces (cada archivo "trae" al otro como hermano) y CargadorImports lo
+            // reportaría como si estuviera importado dos veces. Se exporta entonces un
+            // AmbitoGlobal limpio con SOLO la clase que este archivo realmente declara.
+            Simbolo sClase = ambitoInterno.resolverLocal(clase.getNombre());
+            if (sClase != null) {
+                ambitoGlobalExportado = new AmbitoGlobal();
+                ambitoGlobalExportado.declarar(sClase);
+            }
 
             // Advertencia semántica NO bloqueante: el nombre del archivo debería
             // coincidir con el de la clase pública que contiene (regla de Zetariano).
@@ -140,7 +155,7 @@ public class ServicioAnalisis{
         }
 
         return ResultadoAnalisis.conErrores("Zetariano", listener.getErroresLexicos(),
-                listener.getErroresSintacticos(), erroresSemanticos, advertencias, contarLineas(texto), ambitoGlobal);
+                listener.getErroresSintacticos(), erroresSemanticos, advertencias, contarLineas(texto), ambitoGlobalExportado);
     }
 
     private ResultadoAnalisis analizarPigLatin(String texto, File archivo) {
