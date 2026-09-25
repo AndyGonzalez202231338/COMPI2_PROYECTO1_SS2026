@@ -21,7 +21,9 @@ public final class Tipos {
         if (destino == TipoPrimitivo.FLOTANTE && origen == TipoPrimitivo.ENTERO) return true;
 
         // null solo es asignable a tipos compuestos o arreglos (nunca a primitivos).
-        if (origen == TipoPrimitivo.NULO && (destino.esCompuesto() || destino.esArreglo())) return true;
+        //if (origen == TipoPrimitivo.NULO && (destino.esCompuesto() || destino.esArreglo())) return true;
+
+        if (origen == TipoPrimitivo.NULO) return true;   // lenguaje propio: null asignable a cualquier tipo
 
         // Arreglos: se exige tipo base idéntico y misma cantidad de niveles.
         if (destino instanceof TipoArreglo da && origen instanceof TipoArreglo oa) {

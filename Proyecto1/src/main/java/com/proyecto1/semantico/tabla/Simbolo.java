@@ -87,6 +87,10 @@ public class Simbolo {
         if (nuevo) miembrosEnOrden.add(miembro);
         return nuevo;
     }
+    // util para la sobrecarga de datos en constructores
+    public boolean agregarMiembroConClave(String clave, Simbolo miembro) {
+        return miembros.insertar(clave, miembro);
+    }
 
     /**
      * Miembros en el ORDEN en que se declararon (a diferencia de {@code getMiembros()},

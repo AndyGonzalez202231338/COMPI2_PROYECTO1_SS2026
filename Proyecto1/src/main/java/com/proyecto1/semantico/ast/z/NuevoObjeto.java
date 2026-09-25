@@ -9,6 +9,7 @@ import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoClase;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
+import com.proyecto1.semantico.tipos.Tipos;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,14 +36,22 @@ public final class NuevoObjeto extends NodoZ implements ExpresionZ {
             errores.reportar(linea, columna, "Clase desconocida: '" + nombreClase + "'");
             return TipoPrimitivo.DESCONOCIDO;
         }
-        boolean hayConstructorCompatible = c.getMiembros().valores().stream()
-                .anyMatch(m -> m.getCategoria() == CategoriaSimbolo.CONSTRUCTOR
-                        && m.getParametros().size() == argumentos.size());
-        if (!hayConstructorCompatible)
+
+        String clave = nombreClase + "#" + argumentos.size();
+        Simbolo ctor = c.buscarMiembro(clave);
+        if (ctor == null) {
             errores.reportar(linea, columna,
                     "No existe constructor de '" + nombreClase + "' con " + argumentos.size() + " argumentos");
-
-        for (ExpresionZ a : argumentos) a.verificar(ambito, errores);
+        } else {
+            List<Simbolo> params = ctor.getParametros();
+            for (int i = 0; i < argumentos.size(); i++) {
+                Tipo ta = argumentos.get(i).verificar(ambito, errores);
+                if (!Tipos.esAsignable(params.get(i).getTipo(), ta))
+                    errores.reportar(argumentos.get(i).getLinea(), argumentos.get(i).getColumna(),
+                            "Argumento " + (i+1) + " incompatible: se esperaba "
+                                    + params.get(i).getTipo().nombre() + ", se recibió " + ta.nombre());
+            }
+        }
         return new TipoClase(c);
     }
 

@@ -1,6 +1,8 @@
 package com.proyecto1.semantico.ast.y;
 
 import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.cuadruplas.Cuadrupla;
+import com.proyecto1.semantico.ast.cuadruplas.CuadruplaSalto;
 import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
@@ -162,6 +164,7 @@ public final class Si extends NodoY implements InstruccionY {
     private static void parchear(GeneradorC3D generador, int indice, String etiqueta) {
         //darles a las cuadruplas sus etiquetas de salida
         //(del arreglo de indices que deben de salir, cuadrupas buscadas con el indice se le pasa etiqueta salida)
-        generador.reemplazar(indice, generador.getCuadruplas().get(indice).conResultado(etiqueta));
+        Cuadrupla actual = generador.getCuadruplas().get(indice);
+        generador.reemplazar(indice, ((CuadruplaSalto) actual).conResultado(etiqueta));
     }
 }

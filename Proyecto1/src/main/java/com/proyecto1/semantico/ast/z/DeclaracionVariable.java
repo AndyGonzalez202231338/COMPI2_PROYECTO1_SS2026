@@ -42,6 +42,19 @@ public final class DeclaracionVariable extends NodoZ implements InstruccionZ {
         Tipo t = tipo.resolver(ambito, errores);
         Simbolo s = new Simbolo(nombre, CategoriaSimbolo.VARIABLE, t, linea, columna);
 
+        if (inicializador instanceof NuevoArregloConTamano nat) {
+            boolean todosLiterales = true;
+            for (ExpresionZ tam : nat.getTamanos()) {
+                if (tam instanceof Literal lit && lit.getCategoria() == CategoriaLiteral.ENTERO) {
+                    s.getTamanosArreglo().add(((Long) lit.getValor()).intValue());
+                } else {
+                    todosLiterales = false;
+                    break;
+                }
+            }
+            if (!todosLiterales) s.getTamanosArreglo().clear();  // tamaño dinámico: no verificable
+        }
+
         if (!ambito.declarar(s)) {
             errores.reportar(linea, columna, "Variable ya declarada en este ámbito: '" + nombre + "'");
             return TipoPrimitivo.DESCONOCIDO;

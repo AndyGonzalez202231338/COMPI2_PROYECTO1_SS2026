@@ -1,9 +1,6 @@
 package com.proyecto1.semantico;
 
-import com.proyecto1.semantico.ast.z.Atributo;
-import com.proyecto1.semantico.ast.z.Clase;
-import com.proyecto1.semantico.ast.z.Constructor;
-import com.proyecto1.semantico.ast.z.Metodo;
+import com.proyecto1.semantico.ast.z.*;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.AmbitoClase;
 import com.proyecto1.semantico.tabla.AmbitoGlobal;
@@ -101,21 +98,30 @@ public class AnalizadorSemanticoZ {
             ambClase.declararMiembro(sa);
         }
 
-        // Registrar métodos (clave: nombre#aridad)
+        // Métodos
         for (Metodo m : clase.getMetodos()) {
             Tipo tRet = m.esVoid() ? TipoPrimitivo.VOID : m.getTipoRetorno().resolver(global, errores);
-            Simbolo sm = new Simbolo(m.getNombre(), CategoriaSimbolo.METODO,
-                    tRet, m.getLinea(), m.getColumna());
-            registrarParametros(sm, m.getParametros(), global, errores);
-            ambClase.declararMiembro(sm);
+            Simbolo sm = new Simbolo(m.getNombre(), CategoriaSimbolo.METODO, tRet, m.getLinea(), m.getColumna());
+            for (Parametro p : m.getParametros()) {
+                Tipo tp = p.getTipo().resolver(global, errores);
+                sm.agregarParametro(new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO,
+                        tp, p.getLinea(), p.getColumna()));
+            }
+            String clave = m.getNombre() + "#" + m.getParametros().size();
+            ambClase.declararMiembroConClave(clave, sm);
         }
 
-        // Registrar constructores (clave: nombre#aridad)
+
+        // Constructores
         for (Constructor c : clase.getConstructores()) {
-            Simbolo sc = new Simbolo(c.getNombre(), CategoriaSimbolo.CONSTRUCTOR,
-                    null, c.getLinea(), c.getColumna());
-            registrarParametros(sc, c.getParametros(), global, errores);
-            ambClase.declararMiembro(sc);
+            Simbolo sc = new Simbolo(c.getNombre(), CategoriaSimbolo.CONSTRUCTOR, null, c.getLinea(), c.getColumna());
+            for (Parametro p : c.getParametros()) {
+                Tipo tp = p.getTipo().resolver(global, errores);
+                sc.agregarParametro(new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO,
+                        tp, p.getLinea(), p.getColumna()));
+            }
+            String clave = c.getNombre() + "#" + c.getParametros().size();
+            ambClase.declararMiembroConClave(clave, sc);
         }
 
         return ambClase;

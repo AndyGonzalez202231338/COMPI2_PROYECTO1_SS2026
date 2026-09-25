@@ -1,6 +1,6 @@
 package com.proyecto1;
 
-import com.proyecto1.semantico.ast.Cuadrupla;
+import com.proyecto1.semantico.ast.cuadruplas.Cuadrupla;
 import com.proyecto1.semantico.ast.GeneradorC3D;
 
 import com.proyecto1.semantico.ast.y.Programa;

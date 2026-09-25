@@ -1,120 +1,147 @@
 package com.proyecto1.codigo.c;
 
-import com.proyecto1.semantico.ast.Cuadrupla;
+import com.proyecto1.semantico.ast.cuadruplas.*;
 
 /**
- * Traduce UNA cuádrupla del C3D a su línea equivalente en C.
+ * Traduce UNA cuádrupla a su línea de C equivalente (Fase 4: C3D -> C).
  *
- * <p>Esta primera versión cubre solo las cuádruplas "planas": asignación, saltos,
- * etiquetas, return, y los operadores binarios/unarios genéricos (aritméticos,
- * relacionales y lógicos). Todo lo demás — I/O, llamadas, arreglos, campos,
- * instanciación — queda explícitamente pendiente y lanza
- * {@link UnsupportedOperationException} (no se adivina la traducción).
+ * Antes esto iba a ser un switch sobre {@code Cuadrupla.getOperador()} (un String).
+ * Con Cuadrupla como interfaz sellada + Visitor, cada tipo de instrucción tiene su
+ * propio método {@code visitar(...)}: si mañana se agrega un tipo de cuádrupla
+ * nuevo, {@link VisitanteCuadrupla} obliga a agregar el método aquí también (no
+ * compila si falta) — separación de responsabilidades real, no solo organizativa.
  *
- * <p><b>Convención de salida</b>: cada línea termina en {@code ;} cuando aplica
- * (la etiqueta lleva {@code :;} para evitar el error de C "label at end of compound
- * statement" si resulta ser la última línea de un bloque). Sin indentación — eso
- * lo añade quien ensambla el archivo completo en una fase posterior.
- *
- * <p>Los operandos ({@code arg1}, {@code arg2}, {@code resultado}) se emiten tal
- * cual: es responsabilidad del C3D haber dejado identificadores válidos de C
- * (nombres de variables, temporales "tN", etiquetas "LN", literales).
+ * Cada línea NO lleva ";" al final salvo que ya lo necesite por sintaxis de C
+ * (si/no/goto no lo llevan como sentencia simple, pero aquí SIEMPRE se agrega el
+ * ";" final porque OrquestadorC3DaC (fase posterior) las concatena tal cual, una
+ * por línea. La indentación también la pone OrquestadorC3DaC, no esta clase.
  */
-public final class TraductorCuadrupla {
+public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
 
-    /**
-     * Devuelve la línea de C correspondiente a {@code c}, sin indentación y con
-     * {@code ;} final donde aplique. Nunca devuelve null.
-     *
-     * @throws UnsupportedOperationException si el operador es de una categoría que
-     *         esta fase aún no traduce.
-     */
+    /** Traduce una cuádrupla a su línea de C. Punto de entrada único de esta clase. */
     public String traducir(Cuadrupla c) {
-        String op = c.getOperador();
-
-        switch (op) {
-            case Cuadrupla.OP_ASIGNACION:
-                return c.getResultado() + " = " + c.getArg1() + ";";
-
-            case Cuadrupla.OP_GOTO:
-                return "goto " + c.getResultado() + ";";
-
-            case Cuadrupla.OP_IF_FALSE:
-                return "if (!" + c.getArg1() + ") goto " + c.getResultado() + ";";
-
-            case Cuadrupla.OP_IF_TRUE:
-                return "if (" + c.getArg1() + ") goto " + c.getResultado() + ";";
-
-            case Cuadrupla.OP_ETIQUETA:
-                // ":;" en vez de ":" evita el error de C "label at end of compound
-                // statement" cuando la etiqueta queda como última línea de un bloque.
-                return c.getResultado() + ":;";
-
-            case Cuadrupla.OP_RETURN:
-                if (c.getArg1() != null) {
-                    return "return " + c.getArg1() + ";";
-                }
-                return "return;";
-
-            // --- Pendientes de fases posteriores ---
-            case Cuadrupla.OP_PRINT:
-            case Cuadrupla.OP_READ:
-            case Cuadrupla.OP_CALL:
-            case Cuadrupla.OP_PARAM:
-            case Cuadrupla.OP_BEGIN_FUNC:
-            case Cuadrupla.OP_END_FUNC:
-            case Cuadrupla.OP_INDEX_LOAD:
-            case Cuadrupla.OP_INDEX_STORE:
-            case Cuadrupla.OP_FIELD_LOAD:
-            case Cuadrupla.OP_FIELD_STORE:
-            case Cuadrupla.OP_NEW:
-            case Cuadrupla.OP_NEW_ARRAY:
-                throw new UnsupportedOperationException(
-                        "Traducción C pendiente (Fase 4 posterior) para operador '"
-                                + op + "': " + c);
-
-            default:
-                // Todo lo demás debe ser binaria o unaria genérica.
-                return traducirBinariaOUnaria(c);
-        }
+        return c.aceptar(this);
     }
 
-    /**
-     * Traduce un operador NO predefinido (los aritméticos/relacionales/lógicos y los
-     * unarios, cuyos operadores son strings como "+", "-", "==", "&&", "!"...).
-     *
-     * <p>Forma esperada de la cuádrupla:
-     * <ul>
-     *   <li>Binaria: {@code (op, a, b, t)} → {@code t = a op b;}</li>
-     *   <li>Unaria:  {@code (op, a, null, t)} → {@code t = op a;} (op puede ser
-     *       "!", "-", o las palabras "not"/"neg" que se normalizan a "!"/"-").</li>
-     * </ul>
-     */
-    private String traducirBinariaOUnaria(Cuadrupla c) {
-        String op = c.getOperador();
-        String arg1 = c.getArg1();
-        String arg2 = c.getArg2();
-        String resultado = c.getResultado();
+    // ---------- Aritmética / lógica / relacionales ----------
+    // El operador (+, -, ==, &&, ...) es el mismo símbolo en C, así que se copia tal
+    // cual. La única excepción es la unaria "not": en C3D el operador es la palabra
+    // "not", pero en C es "!".
 
-        if (arg1 != null && arg2 != null) {
-            return resultado + " = " + arg1 + " " + op + " " + arg2 + ";";
-        }
-        if (arg1 != null) {
-            return resultado + " = " + normalizarUnario(op) + arg1 + ";";
-        }
-        throw new UnsupportedOperationException(
-                "Cuádrupla no reconocida para traducción C: " + c);
+    @Override
+    public String visitar(CuadruplaBinaria c) {
+        return c.t() + " = " + c.a() + " " + c.operador() + " " + c.b() + ";";
     }
 
-    /**
-     * Normaliza el nombre del operador unario a su símbolo C:
-     * "not" → "!", "neg" -> "-". Cualquier otro operador se deja tal cual
-     * (así "!" y "-" que ya vienen en símbolo pasan sin cambios).
-     */
-    private static String normalizarUnario(String op) {
-        if (op == null) return "";
-        if (op.equals("not")) return "!";
-        if (op.equals("neg")) return "-";
-        return op;
+    @Override
+    public String visitar(CuadruplaUnaria c) {
+        String op = "not".equals(c.operador()) ? "!" : c.operador();
+        return c.t() + " = " + op + c.a() + ";";
+    }
+
+    @Override
+    public String visitar(CuadruplaAsignacion c) {
+        return c.destino() + " = " + c.valor() + ";";
+    }
+
+    // ---------- Control de flujo ----------
+
+    @Override
+    public String visitar(CuadruplaGoto c) {
+        return "goto " + c.etiqueta() + ";";
+    }
+
+    @Override
+    public String visitar(CuadruplaIfFalse c) {
+        return "if (!" + c.condicion() + ") goto " + c.etiqueta() + ";";
+    }
+
+    @Override
+    public String visitar(CuadruplaIfTrue c) {
+        return "if (" + c.condicion() + ") goto " + c.etiqueta() + ";";
+    }
+
+    @Override
+    public String visitar(CuadruplaEtiqueta c) {
+        // ";" extra: evita el error de C "a label can only be part of a statement"
+        // cuando la etiqueta es la última línea de un bloque (p. ej. L_fin: al final
+        // de una función, justo antes de la llave de cierre).
+        return c.etiqueta() + ":;";
+    }
+
+    @Override
+    public String visitar(CuadruplaReturn c) {
+        return c.valor() != null ? "return " + c.valor() + ";" : "return;";
+    }
+
+    // ---------- Funciones: begin_func / end_func / call / param se dejan para la
+    // fase que arme las cabeceras de función completas (necesitan la Firma
+    // registrada en GeneradorC3D, no solo esta cuádrupla suelta) ----------
+
+    @Override
+    public String visitar(CuadruplaBeginFunc c) {
+        throw pendiente("begin_func");
+    }
+
+    @Override
+    public String visitar(CuadruplaEndFunc c) {
+        throw pendiente("end_func");
+    }
+
+    @Override
+    public String visitar(CuadruplaCall c) {
+        throw pendiente("call");
+    }
+
+    @Override
+    public String visitar(CuadruplaParam c) {
+        throw pendiente("param");
+    }
+
+    // ---------- I/O, arreglos, objetos: fases posteriores ----------
+
+    @Override
+    public String visitar(CuadruplaPrint c) {
+        throw pendiente("print");
+    }
+
+    @Override
+    public String visitar(CuadruplaRead c) {
+        throw pendiente("read");
+    }
+
+    @Override
+    public String visitar(CuadruplaIndiceCarga c) {
+        throw pendiente("índice (carga)");
+    }
+
+    @Override
+    public String visitar(CuadruplaIndiceGuarda c) {
+        throw pendiente("índice (guarda)");
+    }
+
+    @Override
+    public String visitar(CuadruplaCampoCarga c) {
+        throw pendiente("campo (carga)");
+    }
+
+    @Override
+    public String visitar(CuadruplaCampoGuarda c) {
+        throw pendiente("campo (guarda)");
+    }
+
+    @Override
+    public String visitar(CuadruplaNew c) {
+        throw pendiente("new");
+    }
+
+    @Override
+    public String visitar(CuadruplaNewArray c) {
+        throw pendiente("newarr");
+    }
+
+    private static UnsupportedOperationException pendiente(String queNoEstaHecho) {
+        return new UnsupportedOperationException(
+                "TraductorCuadrupla: '" + queNoEstaHecho + "' todavía no está implementado (fase posterior)");
     }
 }

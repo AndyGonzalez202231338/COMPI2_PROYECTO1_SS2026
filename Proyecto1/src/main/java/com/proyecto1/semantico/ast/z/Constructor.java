@@ -63,7 +63,7 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
      * para que generarC3D() lo reutilice.
      */
     public Tipo verificar(AmbitoClase ambClase, ManejadorErrores errores) {
-        Simbolo simbolo = ambClase.resolverLocal(nombre);
+        Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(nombre + "#" + parametros.size());
         // Si el símbolo no existe (raro: la clase ya debería haberlo declarado en
         // declararMiembro), seguimos con un ámbito sin símbolo: el resto del método
         // ya reporta errores por otro lado.
