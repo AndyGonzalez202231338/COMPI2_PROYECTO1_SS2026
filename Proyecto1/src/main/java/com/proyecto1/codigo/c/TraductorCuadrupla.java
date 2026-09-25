@@ -2,6 +2,8 @@ package com.proyecto1.codigo.c;
 
 import com.proyecto1.semantico.ast.cuadruplas.*;
 
+import java.util.Map;
+
 /**
  * Traduce UNA cuádrupla a su línea de C equivalente (Fase 4: C3D -> C).
  *
@@ -29,6 +31,20 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     public String traducir(Cuadrupla c) {
         return c.aceptar(this);
     }
+
+    /** Mapa lugar -> tipo C (de InferenciaTiposC). Puede ser vacío. */
+    private final Map<String, String> tipos;
+
+    /** Constructor sin tipos: print/read quedan pendientes (comportamiento actual). */
+    public TraductorCuadrupla() {
+        this(Map.of());
+    }
+
+    /** Constructor con tipos: print/read traducen usando el tipo del valor/destino. */
+    public TraductorCuadrupla(Map<String, String> tipos) {
+        this.tipos = (tipos != null) ? tipos : Map.of();
+    }
+
 
     // ---------- Aritmética / lógica / relacionales ----------
     // El operador (+, -, ==, &&, ...) es el mismo símbolo en C, así que se copia tal
@@ -98,6 +114,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         throw pendiente("end_func");
     }
 
+
     @Override
     public String visitar(CuadruplaCall c) {
         throw pendiente("call");
@@ -112,13 +129,22 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
 
     @Override
     public String visitar(CuadruplaPrint c) {
-        throw pendiente("print");
+        String tipo = tipos.getOrDefault(c.valor(), "int");
+        return "printf(\"" + formatoPara(tipo) + "\\n\", " + c.valor() + ");";
     }
 
     @Override
     public String visitar(CuadruplaRead c) {
-        throw pendiente("read");
+        String tipo = tipos.getOrDefault(c.destino(), "char*");
+        if (tipo.equals("char*")) {
+            // Los strings necesitan un runtime: se asume que el orquestador inyecta
+            // rt_read_string() al principio del archivo.
+            return c.destino() + " = rt_read_string();";
+        }
+        // Numéricos y char: scanf directo. Se pasa la dirección con "&".
+        return "scanf(\"" + formatoPara(tipo) + "\", &" + c.destino() + ");";
     }
+
 
     @Override
     public String visitar(CuadruplaIndiceCarga c) {
@@ -148,6 +174,15 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     @Override
     public String visitar(CuadruplaNewArray c) {
         throw pendiente("newarr");
+    }
+
+    /** Formato printf/scanf según tipo C. */
+    private static String formatoPara(String tipoC) {
+        if (tipoC == null) return "%d";
+        if (tipoC.equals("double")) return "%lf";
+        if (tipoC.equals("char*")) return "%s";
+        if (tipoC.equals("char")) return "%c";
+        return "%d";  // int por defecto
     }
 
     private static UnsupportedOperationException pendiente(String queNoEstaHecho) {
