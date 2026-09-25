@@ -2,28 +2,58 @@ package com.proyecto1.codigo.c;
 
 import com.proyecto1.semantico.ast.cuadruplas.*;
 
-import java.util.Map;
-
 /**
- * Traduce UNA cuádrupla a su línea de C equivalente (Fase 4: C3D -> C).
+ * Traduce UNA cuádrupla del C3D a su línea equivalente en C.
  *
- * Antes esto iba a ser un switch sobre {@code Cuadrupla.getOperador()} (un String).
- * Con Cuadrupla como interfaz sellada + Visitor, cada tipo de instrucción tiene su
- * propio método {@code visitar(...)}: si mañana se agrega un tipo de cuádrupla
- * nuevo, {@link VisitanteCuadrupla} obliga a agregar el método aquí también (no
- * compila si falta) — separación de responsabilidades real, no solo organizativa.
+ * <p>El despacho es por Visitor sobre la jerarquía sellada de {@link Cuadrupla}:
+ * cada tipo de instrucción tiene su propio método {@code visitar(...)}. Si mañana
+ * se agrega un tipo de cuádrupla nuevo, {@link VisitanteCuadrupla} obliga a agregar
+ * el método aquí también (no compila si falta).
  *
- * <p><b>Convención de salida</b>: cada línea se emite CON {@code ;} final (o con
+ * <p><b>Convención de salida:</b> cada línea se emite CON {@code ;} final (o con
  * {@code :;} en el caso de las etiquetas — el {@code ;} extra evita el error de C
  * "label at end of compound statement" cuando la etiqueta queda como última línea
- * de un bloque). Es decir, el texto devuelto ya viene listo para concatenarse tal
- * cual, una línea por cuádrupla: quien ensambla el archivo (OrquestadorC3DaC, fase
- * posterior) solo necesita añadir indentación y saltos de línea.
+ * de un bloque). Sin indentación ni estructura de bloques: eso lo añade quien
+ * ensambla el archivo completo (fase posterior).
  *
- * <p>Esta clase NO maneja indentación ni estructura de bloques. Tampoco agrupa
- * cuádruplas relacionadas ({@code param} + {@code call}, {@code begin_func} +
- * cuerpo + {@code end_func}); esas agrupaciones requieren contexto y son
- * responsabilidad del orquestador, no de un traductor cuádrupla-a-cuádrupla.
+ * <p>Esta clase NO maneja indentación ni agrupa cuádruplas relacionadas
+ * ({@code param} + {@code call}, {@code begin_func} + cuerpo + {@code end_func}):
+ * esas agrupaciones requieren contexto y son responsabilidad del orquestador.
+ *
+ * <hr>
+ *
+ * <h2>Fase 4.4 — el modelo de heap</h2>
+ *
+ * <p>Esta fase introduce la traducción de las operaciones sobre objetos de
+ * Zetariano (y las estructuras de Y cuando se usan con {@code new}). El modelo de
+ * memoria subyacente se rige por cuatro decisiones:
+ *
+ * <p><b>1. {@code new} usa {@code sizeof} y no un tamaño calculado a mano.</b>
+ * La cuádrupla {@code CuadruplaNew} solo lleva el NOMBRE de la clase, nunca su
+ * tamaño en bytes. El traductor emite {@code malloc(sizeof(Clase))} y deja que el
+ * compilador de C resuelva el tamaño en base al {@code typedef struct} emitido en
+ * la Fase 4.3. Motivo: el C3D no carga con la responsabilidad de calcular layouts
+ * de structs (padding, alineación, orden de campos) — eso es precisamente lo que C
+ * ya sabe hacer.
+ *
+ * <p><b>2. El acceso a campo siempre usa {@code ->}, nunca {@code .}.</b> Tanto
+ * {@code TipoClase} como {@code TipoEstructura} se traducen SIEMPRE a punteros
+ * (ver {@link TraductorTipos#aC}). Por eso una variable {@code obj} de tipo
+ * clase/estructura contiene SIEMPRE un puntero, y el operador correcto es
+ * {@code ->} en todos los casos. Esto evita ramificar "¿es valor o referencia?"
+ * en cada acceso a campo.
+ *
+ * <p><b>3. {@code "this"} no es un caso especial.</b> Dentro de un método o
+ * constructor de Z, el receptor implícito se representa con el string literal
+ * {@code "this"}. El traductor lo trata como cualquier otro operando:
+ * {@code (=., this, edad, t)} produce {@code t = this->edad;}, exactamente igual
+ * que si {@code this} fuera una variable local. No hay rama "si obj es this".
+ *
+ * <p><b>4. Esta fase NUNCA emite {@code free}.</b> Es una decisión documentada,
+ * no un olvido. El PDF del proyecto permite aceptar los leaks de memoria como
+ * parte del alcance del compilador: no hay recolección de basura ni liberación
+ * manual. Si en el futuro se quiere añadir un GC o un {@code rt_free}, se haría
+ * en una fase separada, no aquí.
  */
 public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
 
@@ -32,28 +62,13 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         return c.aceptar(this);
     }
 
-    /** Mapa lugar -> tipo C (de InferenciaTiposC). Puede ser vacío. */
-    private final Map<String, String> tipos;
-
-    /** Constructor sin tipos: print/read quedan pendientes (comportamiento actual). */
-    public TraductorCuadrupla() {
-        this(Map.of());
-    }
-
-    /** Constructor con tipos: print/read traducen usando el tipo del valor/destino. */
-    public TraductorCuadrupla(Map<String, String> tipos) {
-        this.tipos = (tipos != null) ? tipos : Map.of();
-    }
-
-
     // ---------- Aritmética / lógica / relacionales ----------
-    // El operador (+, -, ==, &&, ...) es el mismo símbolo en C, así que se copia tal
-    // cual. La única excepción es la unaria "not": en C3D el operador es la palabra
-    // "not", pero en C es "!".
+    // El operador (+, -, ==, &&, ...) es el mismo símbolo en C, así que se copia
+    // tal cual. La única excepción es la unaria "not": en C3D el operador es la
+    // palabra "not", pero en C es "!".
 
     @Override
     public String visitar(CuadruplaBinaria c) {
-
         return c.t() + " = " + c.a() + " " + c.operador() + " " + c.b() + ";";
     }
 
@@ -88,16 +103,62 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     @Override
     public String visitar(CuadruplaEtiqueta c) {
         // ":;" en vez de ":" evita el error de C
-        //   "label at end of compound statement"
-        // que el compilador emite cuando una etiqueta es la última línea de un bloque
-        // (p. ej. L_fin: justo antes de la llave de cierre de una función).
-        // El ";" convierte la línea en "etiqueta + sentencia vacía", lo cual es válido.
+        // "label at end of compound statement" cuando la etiqueta queda como
+        // última línea de un bloque (p. ej. L_fin: justo antes de la llave de
+        // cierre de una función). El ";" convierte la línea en "etiqueta +
+        // sentencia vacía", lo cual es válido.
         return c.etiqueta() + ":;";
     }
 
     @Override
     public String visitar(CuadruplaReturn c) {
         return c.valor() != null ? "return " + c.valor() + ";" : "return;";
+    }
+
+    // ---------- Fase 4.4: heap ----------
+
+    /**
+     * {@code destino = new Clase} → {@code destino = (Clase*) malloc(sizeof(Clase));}.
+     *
+     * <p>El cast a {@code Clase*} es idiomático (aunque en C puro {@code malloc}
+     * devuelve {@code void*} convertible implícitamente): documenta la intención
+     * y hace el código aceptable también si en algún momento se compila con
+     * {@code g++}.
+     *
+     * <p>El tamaño lo resuelve {@code sizeof(Clase)} en tiempo de compilación de
+     * C, a partir del {@code typedef struct Clase {...};} emitido en la Fase 4.3.
+     * El C3D nunca calcula bytes.
+     */
+    @Override
+    public String visitar(CuadruplaNew c) {
+        return c.destino() + " = (" + c.clase() + "*) malloc(sizeof(" + c.clase() + "));";
+    }
+
+    /**
+     * {@code destino = obj.campo} → {@code destino = obj->campo;}.
+     *
+     * <p>{@code obj} puede ser el nombre de una variable local/parámetro, un
+     * temporal, o el string literal {@code "this"} cuando el acceso ocurre dentro
+     * de un método/constructor. En TODOS los casos la traducción es idéntica: no
+     * hay rama "si obj es this, entonces…".
+     */
+    @Override
+    public String visitar(CuadruplaCampoCarga c) {
+        return c.destino() + " = " + c.objeto() + "->" + c.campo() + ";";
+    }
+
+    /**
+     * {@code obj.campo = valor} → {@code obj->campo = valor;}.
+     *
+     * <p>En este record, el campo {@code valor} es lo que se guarda (no hay un
+     * "destino" separado): la escritura va directamente a la dirección
+     * {@code obj->campo}. El nombre de los campos del record
+     * ({@link CuadruplaCampoGuarda#valor()}) ya deja esto explícito, así que no
+     * hay riesgo de confundirlo con un destino como en el diseño viejo.
+     */
+    @Override
+    public String visitar(CuadruplaCampoGuarda c) {
+        return c.objeto() + "->" + c.campo() + " = " + c.valor() + ";";
     }
 
     // ---------- Funciones: begin_func / end_func / call / param se dejan para la
@@ -114,7 +175,6 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         throw pendiente("end_func");
     }
 
-
     @Override
     public String visitar(CuadruplaCall c) {
         throw pendiente("call");
@@ -125,26 +185,17 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         throw pendiente("param");
     }
 
-    // ---------- I/O, arreglos, objetos: fases posteriores ----------
+    // ---------- I/O, arreglos: fases posteriores ----------
 
     @Override
     public String visitar(CuadruplaPrint c) {
-        String tipo = tipos.getOrDefault(c.valor(), "int");
-        return "printf(\"" + formatoPara(tipo) + "\\n\", " + c.valor() + ");";
+        throw pendiente("print");
     }
 
     @Override
     public String visitar(CuadruplaRead c) {
-        String tipo = tipos.getOrDefault(c.destino(), "char*");
-        if (tipo.equals("char*")) {
-            // Los strings necesitan un runtime: se asume que el orquestador inyecta
-            // rt_read_string() al principio del archivo.
-            return c.destino() + " = rt_read_string();";
-        }
-        // Numéricos y char: scanf directo. Se pasa la dirección con "&".
-        return "scanf(\"" + formatoPara(tipo) + "\", &" + c.destino() + ");";
+        throw pendiente("read");
     }
-
 
     @Override
     public String visitar(CuadruplaIndiceCarga c) {
@@ -157,32 +208,8 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     }
 
     @Override
-    public String visitar(CuadruplaCampoCarga c) {
-        throw pendiente("campo (carga)");
-    }
-
-    @Override
-    public String visitar(CuadruplaCampoGuarda c) {
-        throw pendiente("campo (guarda)");
-    }
-
-    @Override
-    public String visitar(CuadruplaNew c) {
-        throw pendiente("new");
-    }
-
-    @Override
     public String visitar(CuadruplaNewArray c) {
         throw pendiente("newarr");
-    }
-
-    /** Formato printf/scanf según tipo C. */
-    private static String formatoPara(String tipoC) {
-        if (tipoC == null) return "%d";
-        if (tipoC.equals("double")) return "%lf";
-        if (tipoC.equals("char*")) return "%s";
-        if (tipoC.equals("char")) return "%c";
-        return "%d";  // int por defecto
     }
 
     private static UnsupportedOperationException pendiente(String queNoEstaHecho) {
