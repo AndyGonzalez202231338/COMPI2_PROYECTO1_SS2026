@@ -3,9 +3,7 @@ package com.proyecto1.semantico.ast.z;
 import com.proyecto1.semantico.ast.GeneradorC3D;
 import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
-import com.proyecto1.semantico.tabla.Ambito;
-import com.proyecto1.semantico.tabla.CategoriaSimbolo;
-import com.proyecto1.semantico.tabla.Simbolo;
+import com.proyecto1.semantico.tabla.*;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoClase;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
@@ -49,20 +47,41 @@ public final class Llamada extends NodoZ implements ExpresionZ {
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
-        // Caso 1: llamada a método de la propia clase -> "metodo(args)".
+
+        // ===== Caso 1: llamada a método de la propia clase -> "metodo(args)". =====
         if (objetivo instanceof Identificador id) {
-            Simbolo m = ambito.resolver(id.getNombre());
+            AmbitoClase ambClase = buscarAmbitoClase(ambito);
+            if (ambClase == null) {
+                errores.reportar(linea, columna,
+                        "No se puede resolver el método '" + id.getNombre() + "' fuera de una clase");
+                return TipoPrimitivo.DESCONOCIDO;
+            }
+
+            // (1) Verificar argumentos UNA sola vez, guardando sus tipos.
+            List<Tipo> tiposArgs = new ArrayList<>();
+            for (ExpresionZ a : argumentos) tiposArgs.add(a.verificar(ambito, errores));
+
+            // (2) Clave específica con tipos.
+            StringBuilder sb = new StringBuilder(id.getNombre()).append("#").append(argumentos.size());
+            for (Tipo t : tiposArgs) sb.append("#").append(t.nombre());
+            Simbolo m = ambClase.getSimboloContenedor().buscarMiembro(sb.toString());
+
+            // (3) Fallback genérico.
+            if (m == null) {
+                m = ambClase.getSimboloContenedor().buscarMiembro(
+                        id.getNombre() + "#" + argumentos.size());
+            }
+
             if (m == null || (m.getCategoria() != CategoriaSimbolo.METODO
                     && m.getCategoria() != CategoriaSimbolo.CONSTRUCTOR)) {
                 errores.reportar(linea, columna, "Método no declarado: '" + id.getNombre() + "'");
                 return TipoPrimitivo.DESCONOCIDO;
             }
             this.simboloMetodo = m;
-            // Sin cache de clase: en generarC3D lo sacamos del generador.
-            return verificarArgumentosYRetorno(m, ambito, errores);
+            return verificarArgumentosYRetorno(m, tiposArgs, errores);
         }
 
-        // Caso 2: método de otro objeto -> "obj.metodo(args)".
+        // ===== Caso 2: método de otro objeto -> "obj.metodo(args)". =====
         if (objetivo instanceof AccesoCampo ac) {
             Tipo tObj = ac.getObjeto().verificar(ambito, errores);
             if (!(tObj instanceof TipoClase tc)) {
@@ -71,7 +90,21 @@ public final class Llamada extends NodoZ implements ExpresionZ {
                             "No se puede llamar método sobre " + tObj.nombre());
                 return TipoPrimitivo.DESCONOCIDO;
             }
-            Simbolo m = tc.getDefinicion().buscarMiembro(ac.getCampo());
+
+            // (1) Verificar argumentos UNA sola vez, guardando sus tipos.
+            List<Tipo> tiposArgs = new ArrayList<>();
+            for (ExpresionZ a : argumentos) tiposArgs.add(a.verificar(ambito, errores));
+
+            // (2) Clave específica con tipos, sobre el símbolo de la clase objetivo.
+            StringBuilder sb = new StringBuilder(ac.getCampo()).append("#").append(argumentos.size());
+            for (Tipo t : tiposArgs) sb.append("#").append(t.nombre());
+            Simbolo m = tc.getDefinicion().buscarMiembro(sb.toString());
+
+            // (3) Fallback genérico.
+            if (m == null) {
+                m = tc.getDefinicion().buscarMiembro(ac.getCampo() + "#" + argumentos.size());
+            }
+
             if (m == null || m.getCategoria() != CategoriaSimbolo.METODO) {
                 errores.reportar(linea, columna,
                         "La clase '" + tc.nombre() + "' no tiene método '" + ac.getCampo() + "'");
@@ -79,29 +112,38 @@ public final class Llamada extends NodoZ implements ExpresionZ {
             }
             this.simboloMetodo = m;
             this.nombreClaseObjetivo = tc.getDefinicion().getNombre();
-            return verificarArgumentosYRetorno(m, ambito, errores);
+            return verificarArgumentosYRetorno(m, tiposArgs, errores);
         }
 
         errores.reportar(linea, columna, "Llamada inválida");
         return TipoPrimitivo.DESCONOCIDO;
     }
 
-    private Tipo verificarArgumentosYRetorno(Simbolo m, Ambito ambito, ManejadorErrores errores) {
+    /** Igual que antes pero recibe los tipos ya verificados (no vuelve a llamar verificar()). */
+    private Tipo verificarArgumentosYRetorno(Simbolo m, List<Tipo> tiposArgs,
+                                             ManejadorErrores errores) {
         List<Simbolo> params = m.getParametros();
-        if (params.size() != argumentos.size()) {
+        if (params.size() != tiposArgs.size()) {
             errores.reportar(linea, columna,
-                    "Método '" + m.getNombre() + "' espera " + params.size() +
-                            " argumentos, recibió " + argumentos.size());
+                    "Método '" + m.getNombre() + "' espera " + params.size()
+                            + " argumentos, recibió " + tiposArgs.size());
             return m.getTipo();
         }
-        for (int i = 0; i < argumentos.size(); i++) {
-            Tipo ta = argumentos.get(i).verificar(ambito, errores);
-            if (!Tipos.esAsignable(params.get(i).getTipo(), ta))
+        for (int i = 0; i < tiposArgs.size(); i++) {
+            if (!Tipos.esAsignable(params.get(i).getTipo(), tiposArgs.get(i))) {
                 errores.reportar(argumentos.get(i).getLinea(), argumentos.get(i).getColumna(),
-                        "Argumento " + (i+1) + " incompatible: se esperaba " +
-                                params.get(i).getTipo().nombre() + ", se recibió " + ta.nombre());
+                        "Argumento " + (i + 1) + " incompatible: se esperaba "
+                                + params.get(i).getTipo().nombre() + ", se recibió "
+                                + tiposArgs.get(i).nombre());
+            }
         }
         return m.getTipo();
+    }
+
+    /** Sube en la cadena de ámbitos hasta el AmbitoClase más cercano. */
+    private static AmbitoClase buscarAmbitoClase(Ambito a) {
+        while (a != null && !(a instanceof AmbitoClase)) a = a.getPadre();
+        return (a instanceof AmbitoClase ac) ? ac : null;
     }
 
     /**

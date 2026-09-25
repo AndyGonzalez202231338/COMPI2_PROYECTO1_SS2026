@@ -43,6 +43,7 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
      * Es el mismo patrón que AccesoCampo usa para cachear tipoCampo.
      */
     private AmbitoFuncion ambitoPropio;
+    private String nombreClaseReal;
 
     public Constructor(String nombre, List<Parametro> parametros, Bloque cuerpo,
                        int linea, int columna) {
@@ -63,13 +64,22 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
      * para que generarC3D() lo reutilice.
      */
     public Tipo verificar(AmbitoClase ambClase, ManejadorErrores errores) {
-        Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(nombre + "#" + parametros.size());
-        // Si el símbolo no existe (raro: la clase ya debería haberlo declarado en
-        // declararMiembro), seguimos con un ámbito sin símbolo: el resto del método
-        // ya reporta errores por otro lado.
+        // (1) Guardar el nombre REAL de la clase para usarlo al generar la etiqueta C3D.
+        //     El error por nombre incorrecto YA se reportó en AnalizadorSemanticoZ;
+        //     aquí no se vuelve a chequear (evita el mensaje duplicado).
+        this.nombreClaseReal = ambClase.getSimboloContenedor().getNombre();
+
+        // (2) Lookup con clave específica: nombreClaseReal#aridad#Tipo1#Tipo2...
+        StringBuilder sb = new StringBuilder(nombreClaseReal)
+                .append("#").append(parametros.size());
+        for (Parametro p : parametros) {
+            Tipo tp = p.getTipo().resolver(ambClase, errores);
+            sb.append("#").append(tp.nombre());
+        }
+        Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(sb.toString());
 
         AmbitoFuncion amb = new AmbitoFuncion(ambClase, simbolo);
-        this.ambitoPropio = amb;  // <-- única línea nueva
+        this.ambitoPropio = amb;
 
         for (Parametro p : parametros) {
             Tipo t = p.resolverTipo(amb, errores);
@@ -79,13 +89,15 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
                 errores.reportar(p.getLinea(), p.getColumna(),
                         "Parámetro duplicado: '" + p.getNombre() + "'");
             }
-            if (simbolo != null) simbolo.agregarParametro(sp);
+            // (3) Se ELIMINA el "if (simbolo != null) simbolo.agregarParametro(sp);"
+            //     que tenías: registrarParametros() en el analizador YA los agregó,
+            //     y hacerlo aquí duplicaba la lista en el símbolo.
         }
 
         cuerpo.verificar(amb, errores);
-        // Un constructor NO exige return; no se comprueba tuvoRetorno aquí.
         return TipoPrimitivo.VOID;
     }
+
 
     /**
      * Emite, en este orden:
@@ -107,12 +119,13 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
      * {@link Clase#generarC3D} es quien los pasa.
      */
     public ResultadoC3D generarC3D(GeneradorC3D generador, List<Atributo> atributosClase) {
-        String etiqueta = generador.etiquetaConstructor(nombre, parametros.size());
+        // Usar el nombre real de la clase (si verificar ya corrió), no el declarado.
+        String nombreParaEtiqueta = (nombreClaseReal != null) ? nombreClaseReal : nombre;
+        String etiqueta = generador.etiquetaConstructor(nombreParaEtiqueta, parametros.size());
         generador.emitirBeginFunc(etiqueta, parametros.size() + 1);
 
         Ambito anterior = generador.entrarAmbito(ambitoPropio);
 
-        // Field initializers: primero los de la clase, en orden de declaración.
         for (Atributo a : atributosClase) {
             if (a.getInicializador() != null) {
                 ResultadoC3D v = a.getInicializador().generarC3D(generador);

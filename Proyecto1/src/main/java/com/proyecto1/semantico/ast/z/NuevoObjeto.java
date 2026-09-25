@@ -37,19 +37,33 @@ public final class NuevoObjeto extends NodoZ implements ExpresionZ {
             return TipoPrimitivo.DESCONOCIDO;
         }
 
-        String clave = nombreClase + "#" + argumentos.size();
-        Simbolo ctor = c.buscarMiembro(clave);
+        // (1) Verificar argumentos UNA sola vez, guardando sus tipos.
+        List<Tipo> tiposArgs = new ArrayList<>();
+        for (ExpresionZ a : argumentos) tiposArgs.add(a.verificar(ambito, errores));
+
+        // (2) Clave específica con tipos.
+        StringBuilder sb = new StringBuilder(nombreClase).append("#").append(argumentos.size());
+        for (Tipo t : tiposArgs) sb.append("#").append(t.nombre());
+        Simbolo ctor = c.buscarMiembro(sb.toString());
+
+        // (3) Fallback a la clave genérica para poder reportar "argumento incompatible".
+        if (ctor == null) {
+            ctor = c.buscarMiembro(nombreClase + "#" + argumentos.size());
+        }
+
         if (ctor == null) {
             errores.reportar(linea, columna,
-                    "No existe constructor de '" + nombreClase + "' con " + argumentos.size() + " argumentos");
+                    "No existe constructor de '" + nombreClase + "' con "
+                            + argumentos.size() + " argumentos");
         } else {
             List<Simbolo> params = ctor.getParametros();
-            for (int i = 0; i < argumentos.size(); i++) {
-                Tipo ta = argumentos.get(i).verificar(ambito, errores);
-                if (!Tipos.esAsignable(params.get(i).getTipo(), ta))
+            for (int i = 0; i < tiposArgs.size(); i++) {
+                if (!Tipos.esAsignable(params.get(i).getTipo(), tiposArgs.get(i))) {
                     errores.reportar(argumentos.get(i).getLinea(), argumentos.get(i).getColumna(),
                             "Argumento " + (i+1) + " incompatible: se esperaba "
-                                    + params.get(i).getTipo().nombre() + ", se recibió " + ta.nombre());
+                                    + params.get(i).getTipo().nombre() + ", se recibió "
+                                    + tiposArgs.get(i).nombre());
+                }
             }
         }
         return new TipoClase(c);

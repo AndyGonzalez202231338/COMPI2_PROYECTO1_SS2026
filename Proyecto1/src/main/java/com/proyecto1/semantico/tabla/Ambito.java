@@ -1,5 +1,6 @@
 package com.proyecto1.semantico.tabla;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -15,6 +16,14 @@ public abstract class Ambito {
     protected final Ambito padre;
     protected final TablaHash<String, Simbolo> simbolos = new TablaHash<>();
 
+    /**
+     * Símbolos declarados en ESTE ámbito, en el ORDEN en que se declararon.
+     * Paralelo a {@link #simbolos} (que es un hash sin orden garantizado).
+     * Se puebla en {@link #declarar} y en métodos de subclases que puedan
+     * sobrescribir símbolos (p. ej. {@code AmbitoGlobal.reemplazar}).
+     */
+    protected final List<Simbolo> simbolosEnOrden = new ArrayList<>();
+
     protected Ambito(Ambito padre) {
         this.padre = padre;
     }
@@ -29,10 +38,9 @@ public abstract class Ambito {
     public boolean declarar(Simbolo simbolo) {
         if (simbolos.contiene(simbolo.getNombre())) return false;
         simbolos.insertar(simbolo.getNombre(), simbolo);
+        simbolosEnOrden.add(simbolo);          // <-- línea nueva: mantener el orden
         return true;
     }
-
-
 
     /** Busca solo en este ámbito (sin subir a los padres). */
     public Simbolo resolverLocal(String nombre) {
