@@ -1,6 +1,8 @@
 package com.proyecto1.semantico.ast.piglatin;
 
 import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.cuadruplas.Cuadrupla;
+import com.proyecto1.semantico.ast.cuadruplas.CuadruplaSalto;
 import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
@@ -102,8 +104,8 @@ public final class Si extends NodoPigLatin implements InstruccionPigLatin {
         return ResultadoC3D.vacio();
     }
 
-    /** Backpatching: escribe "etiqueta" como destino de la cuádrupla de salto en "indice". */
     private static void parchear(GeneradorC3D generador, int indice, String etiqueta) {
-        generador.reemplazar(indice, generador.getCuadruplas().get(indice).conResultado(etiqueta));
+        Cuadrupla actual = generador.getCuadruplas().get(indice);
+        generador.reemplazar(indice, ((CuadruplaSalto) actual).conEtiquetaDestino(etiqueta));
     }
 }

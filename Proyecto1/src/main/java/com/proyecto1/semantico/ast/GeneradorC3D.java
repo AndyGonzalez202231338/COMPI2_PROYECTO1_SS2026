@@ -1,20 +1,27 @@
 package com.proyecto1.semantico.ast;
 
+import com.proyecto1.semantico.ast.cuadruplas.*;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
-import java.util.LinkedHashMap;
-import java.util.Map;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Servicios compartidos que necesita cualquier nodo al traducirse a C3D:
  *   - pedir un temporal nuevo (t0, t1, ...),
  *   - pedir una etiqueta nueva (L0, L1, ... para saltos de si/mientras/para),
- *   - emitir cuádruplas ESTRUCTURADAS en la tabla global,
+ *   - emitir cuádruplas ESTRUCTURADAS en la tabla global (una clase concreta de
+ *     com.proyecto1.semantico.ast.cuadruplas por cada tipo de instrucción, ver
+ *     {@link Cuadrupla}),
  *   - consultar el Ámbito (tabla de símbolos) para resolver tipos de identificadores,
- *   - construir etiquetas de función/método/constructor (mangling).
+ *   - construir etiquetas de función/método/constructor (mangling),
+ *   - registrar la firma (parámetros + tipo de retorno) de cada función/método/
+ *     constructor emitido, para que la Fase 4 (C3D -> C) pueda escribir cabeceras
+ *     de función sin tener que volver a caminar el AST.
  *
  * Cada nodo recibe este generador en generarC3D(generador), de modo que ningún nodo
  * guarda estado propio ("en qué temporal voy"). Las cuádruplas viven solo en la
@@ -24,6 +31,12 @@ import java.util.List;
  * El Ámbito es opcional: si se construye sin él, getAmbito() devuelve null y los nodos
  * que lo necesitan caen a TipoPrimitivo.DESCONOCIDO. Para Z es OBLIGATORIO pasarlo
  * (Identificador y Asignación de Z lo necesitan para distinguir ATRIBUTO vs. variable).
+ *
+ * Los métodos emitirXxx(...) de más abajo son la ÚNICA forma en que un nodo del AST
+ * agrega una cuádrupla: por dentro, cada uno construye el record concreto que le
+ * corresponde (CuadruplaBinaria, CuadruplaCall, ...) — así ningún nodo de Y, Z o
+ * PigLatin necesita conocer esas clases directamente ni cambiar si su forma interna
+ * cambia, siempre que la firma del emitirXxx() se mantenga.
  */
 public class GeneradorC3D {
 
@@ -42,6 +55,31 @@ public class GeneradorC3D {
      */
     private final Deque<String> pilaInicioCiclo = new ArrayDeque<>();
     private final Deque<String> pilaFinCiclo    = new ArrayDeque<>();
+
+    /**
+     * Firma de cada función/método/constructor emitido con {@link #emitirBeginFunc}.
+     * begin_func en el C3D solo guarda (nombre, nArgs) — el CONTEO de parámetros, no
+     * sus nombres ni tipos, ni el tipo de retorno. La Fase 4 (C3D -> C) necesita eso
+     * para escribir la cabecera de cada función en C; esta tabla lo conserva junto al
+     * C3D en vez de obligar al traductor a volver a caminar el AST o la tabla de
+     * símbolos. Se llena aparte, con {@link #registrarFirma}, junto a cada llamada a
+     * emitirBeginFunc (no automáticamente: begin_func no conoce los Simbolo de los
+     * parámetros, solo el conteo).
+     */
+    private final Map<String, Firma> firmas = new LinkedHashMap<>();
+
+    /** Un parámetro dentro de una {@link Firma}: su nombre en el código fuente y su tipo. */
+    public record ParametroFirma(String nombre, Tipo tipo) {}
+
+    /**
+     * Firma completa de una función/método/constructor, indexada por la misma
+     * etiqueta que se le pasó a {@link #emitirBeginFunc}.
+     *
+     * @param esMetodo true si el primer parámetro real (no incluido en "parametros")
+     *                 es un "this"/receptor implícito de Z — la Fase 4 lo necesita
+     *                 para saber si debe anteponer "NombreClase* this" a la firma en C.
+     */
+    public record Firma(String etiqueta, List<ParametroFirma> parametros, Tipo tipoRetorno, boolean esMetodo) {}
 
     public GeneradorC3D() {
         this(null, new TablaCuadruplas());
@@ -92,6 +130,7 @@ public class GeneradorC3D {
     }
 
     // ---------- Contexto de clase (para mangling de métodos) ----------
+
     public void entrarClase(String nombreClase) {
         this.claseActual = nombreClase;
     }
@@ -148,106 +187,122 @@ public class GeneradorC3D {
         return "L" + (contadorEtiquetas++);
     }
 
-    // ---------- Emisores tipados ----------
+    // ---------- Firmas de función (Fase 4) ----------
 
-    /** Genérico para casos raros. */
-    public void emitir(String op, String arg1, String arg2, String resultado) {
-        tabla.agregar(new Cuadrupla(op, arg1, arg2, resultado));
+    /**
+     * Registra la firma de la función/método/constructor cuya etiqueta ya se pasó a
+     * emitirBeginFunc. Se llama por separado (no dentro de emitirBeginFunc) porque
+     * begin_func no conoce los Simbolo de los parámetros — cada nodo que ya arma esa
+     * lista para verificar()/generarC3D() (Funcion en Y, Constructor/Metodo en Z,
+     * FuncionPrincipal en PigLatin) es quien la tiene a mano.
+     */
+    public void registrarFirma(String etiqueta, List<ParametroFirma> parametros, Tipo tipoRetorno, boolean esMetodo) {
+        firmas.put(etiqueta, new Firma(etiqueta, parametros, tipoRetorno, esMetodo));
     }
 
+    /** Todas las firmas registradas hasta ahora, indexadas por etiqueta de begin_func. */
+    public Map<String, Firma> getFirmas() {
+        return firmas;
+    }
+
+    // ---------- Emisores tipados ----------
+    // Cada uno construye el record concreto de com.proyecto1.semantico.ast.cuadruplas
+    // que le corresponde. Ningún nodo de Y/Z/PigLatin necesita cambiar: siguen
+    // llamando a estos mismos métodos, con la misma firma que ya usaban.
+
     public void emitirAsignacion(String v, String x) {
-        emitir(Cuadrupla.OP_ASIGNACION, v, null, x);
+        tabla.agregar(new CuadruplaAsignacion(v, x));
     }
 
     public void emitirBinaria(String op, String a, String b, String t) {
-        emitir(op, a, b, t);
+        tabla.agregar(new CuadruplaBinaria(op, a, b, t));
     }
 
     public void emitirUnaria(String op, String a, String t) {
-        emitir(op, a, null, t);
+        tabla.agregar(new CuadruplaUnaria(op, a, t));
     }
 
     public void emitirGoto(String etiqueta) {
-        emitir(Cuadrupla.OP_GOTO, null, null, etiqueta);
+        tabla.agregar(new CuadruplaGoto(etiqueta));
     }
 
     public void emitirIfFalse(String condicion, String etiqueta) {
-        emitir(Cuadrupla.OP_IF_FALSE, condicion, null, etiqueta);
+        tabla.agregar(new CuadruplaIfFalse(condicion, etiqueta));
     }
 
     public void emitirIfTrue(String condicion, String etiqueta) {
-        emitir(Cuadrupla.OP_IF_TRUE, condicion, null, etiqueta);
+        tabla.agregar(new CuadruplaIfTrue(condicion, etiqueta));
     }
 
     public void emitirEtiqueta(String etiqueta) {
-        emitir(Cuadrupla.OP_ETIQUETA, null, null, etiqueta);
+        tabla.agregar(new CuadruplaEtiqueta(etiqueta));
     }
 
     public void emitirPrint(String v) {
-        emitir(Cuadrupla.OP_PRINT, v, null, null);
+        tabla.agregar(new CuadruplaPrint(v));
     }
 
     public void emitirRead(String x) {
-        emitir(Cuadrupla.OP_READ, null, null, x);
+        tabla.agregar(new CuadruplaRead(x));
     }
 
     /** t = call f(nArgs argumentos); t puede ser null si no se usa el valor. */
     public void emitirCall(String f, int nArgs, String t) {
-        emitir(Cuadrupla.OP_CALL, f, String.valueOf(nArgs), t);
+        tabla.agregar(new CuadruplaCall(f, nArgs, t));
     }
 
     /** param v : empuja v como argumento de la próxima call. Orden = orden fuente. */
     public void emitirParam(String v) {
-        emitir(Cuadrupla.OP_PARAM, v, null, null);
+        tabla.agregar(new CuadruplaParam(v));
     }
 
     public void emitirReturn(String v) {
-        emitir(Cuadrupla.OP_RETURN, v, null, null);
+        tabla.agregar(new CuadruplaReturn(v));
     }
 
     public void emitirBeginFunc(String nombre, int nArgs) {
-        emitir(Cuadrupla.OP_BEGIN_FUNC, nombre, String.valueOf(nArgs), null);
+        tabla.agregar(new CuadruplaBeginFunc(nombre, nArgs));
     }
 
     public void emitirEndFunc() {
-        emitir(Cuadrupla.OP_END_FUNC, null, null, null);
+        tabla.agregar(new CuadruplaEndFunc());
     }
 
-    // ---------- Fase 1.6: arreglos y campos ----------
+    // ---------- Arreglos y campos ----------
 
-    /** t = arr[i]  →  (=[], arr, i, t). Fase 4 aplica base + i*tamañoElemento. */
+    /** t = arr[i]  →  CuadruplaIndiceCarga. Fase 4 aplica base + i*tamañoElemento. */
     public void emitirCargaIndice(String arr, String idx, String t) {
-        emitir(Cuadrupla.OP_INDEX_LOAD, arr, idx, t);
+        tabla.agregar(new CuadruplaIndiceCarga(arr, idx, t));
     }
 
-    /** arr[i] = v  →  ([]=, arr, i, v). */
+    /** arr[i] = v  →  CuadruplaIndiceGuarda. */
     public void emitirGuardarIndice(String arr, String idx, String v) {
-        emitir(Cuadrupla.OP_INDEX_STORE, arr, idx, v);
+        tabla.agregar(new CuadruplaIndiceGuarda(arr, idx, v));
     }
 
-    /** t = obj.f  →  (=., obj, f, t). El campo va por NOMBRE, no por offset. */
+    /** t = obj.f  →  CuadruplaCampoCarga. El campo va por NOMBRE, no por offset. */
     public void emitirCargaCampo(String obj, String campo, String t) {
-        emitir(Cuadrupla.OP_FIELD_LOAD, obj, campo, t);
+        tabla.agregar(new CuadruplaCampoCarga(obj, campo, t));
     }
 
-    /** obj.f = v  →  (.=, obj, f, v). */
+    /** obj.f = v  →  CuadruplaCampoGuarda. */
     public void emitirGuardarCampo(String obj, String campo, String v) {
-        emitir(Cuadrupla.OP_FIELD_STORE, obj, campo, v);
+        tabla.agregar(new CuadruplaCampoGuarda(obj, campo, v));
     }
 
-    // ---------- Fase Z.0: objetos de Z ----------
+    // ---------- Objetos y arreglos dinámicos ----------
 
     /**
-     * t = new NombreClase  →  (new, NombreClase, null, t).
+     * t = new NombreClase  →  CuadruplaNew.
      * Fase 4 lo traduce a {@code t = malloc(sizeof(NombreClase))}.
      */
     public void emitirNew(String nombreClase, String t) {
-        emitir(Cuadrupla.OP_NEW, nombreClase, null, t);
+        tabla.agregar(new CuadruplaNew(nombreClase, t));
     }
 
-    /** t = new Tipo[tamaño]  →  (newarr, Tipo, tamaño, t). Fase 4: malloc(tamaño * sizeof(Tipo)). */
+    /** t = new Tipo[tamaño]  →  CuadruplaNewArray. Fase 4: malloc(tamaño * sizeof(Tipo)). */
     public void emitirNewArray(String tipoDescriptor, String tamano, String t) {
-        emitir(Cuadrupla.OP_NEW_ARRAY, tipoDescriptor, tamano, t);
+        tabla.agregar(new CuadruplaNewArray(tipoDescriptor, tamano, t));
     }
 
     /**
@@ -292,45 +347,4 @@ public class GeneradorC3D {
     public List<Cuadrupla> getCuadruplas() {
         return tabla.getCuadruplas();
     }
-
-    // ---------- Fase 4: firmas de funciones (para generar cabeceras C) ----------
-
-    /**
-     * Un parámetro formal de la firma: nombre + tipo. Se registra una vez por cada
-     * parámetro, en orden, cuando el nodo correspondiente (Funcion(Y), Constructor(Z),
-     * Metodo(Z), FuncionPrincipal(PigLatin)) emite su begin_func. El traductor a C lo
-     * usa para escribir la lista de parámetros de la función (p. ej. {@code int a, char* b}).
-     */
-    public record ParametroFirma(String nombre, Tipo tipo) {}
-
-    /**
-     * Firma completa de una función/método/constructor:
-     *   - etiqueta: nombre manglado ("Persona_getEdad", "Persona_init@2", "main", ...).
-     *   - parametros: en orden; para Z incluye el "this" implícito al principio.
-     *   - tipoRetorno: tipo del valor devuelto, o VOID si no devuelve.
-     *   - esMetodo: true si tiene "this" implícito (Z); false para funciones sueltas
-     *     (Y, PigLatin main).
-     */
-    public record Firma(String etiqueta, List<ParametroFirma> parametros,
-                        Tipo tipoRetorno, boolean esMetodo) {}
-
-    /**
-     * Firmas registradas por los nodos cuando emiten begin_func. LinkedHashMap para
-     * preservar el orden de declaración (útil para generar el archivo C en el mismo
-     * orden en que se escribió el fuente). El traductor a C lo lee para escribir
-     * prototipos y cabeceras.
-     */
-    private final Map<String, Firma> firmas = new LinkedHashMap<>();
-
-    /**
-     * Registra la firma de una función/método/constructor. Se llama desde el
-     * generarC3D del nodo correspondiente INMEDIATAMENTE antes de emitir el begin_func
-     * (mismo etiqueta, mismos parámetros, mismo tipoRetorno).
-     */
-    public void registrarFirma(String etiqueta, List<ParametroFirma> params,
-                               Tipo tipoRetorno, boolean esMetodo) {
-        firmas.put(etiqueta, new Firma(etiqueta, params, tipoRetorno, esMetodo));
-    }
-
-    public Map<String, Firma> getFirmas() { return firmas; }
 }

@@ -2,6 +2,7 @@ package com.proyecto1.semantico.ast.z;
 
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoArreglo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
@@ -41,6 +42,21 @@ public final class Indice extends NodoZ implements ExpresionZ {
                 errores.reportar(linea, columna, "Se indexó algo que no es arreglo: " + tArr.nombre());
             return TipoPrimitivo.DESCONOCIDO;
         }
+
+        if (arreglo instanceof Identificador idArr) {
+            Simbolo sArr = ambito.resolver(idArr.getNombre());
+            if (sArr != null && sArr.esArregloDeTamanoFijo()
+                    && indice instanceof Literal litIdx
+                    && litIdx.getCategoria() == CategoriaLiteral.ENTERO) {
+                int idx = ((Long) litIdx.getValor()).intValue();
+                int size = sArr.getTamanosArreglo().get(0);
+                if (idx < 0 || idx >= size) {
+                    errores.reportar(indice.getLinea(), indice.getColumna(),
+                            "Índice " + idx + " fuera de rango (tamaño " + size + ")");
+                }
+            }
+        }
+
         return ta.getBase();
     }
 }

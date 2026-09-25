@@ -68,7 +68,13 @@ public final class Metodo extends NodoZ {
     }
 
     public void verificar(AmbitoClase ambClase, ManejadorErrores errores) {
-        Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(nombre);
+        StringBuilder sb = new StringBuilder(nombre).append("#").append(parametros.size());
+        for (Parametro p : parametros) {
+            Tipo tp = p.getTipo().resolver(ambClase, errores);
+            sb.append("#").append(tp.nombre());
+        }
+        Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(sb.toString());
+
         AmbitoFuncion amb = new AmbitoFuncion(ambClase, simbolo);
         this.ambitoPropio = amb;   // <-- única línea nueva respecto al original
 

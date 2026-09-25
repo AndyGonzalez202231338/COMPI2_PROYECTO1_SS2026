@@ -37,4 +37,12 @@ public abstract class AmbitoContenedor extends Ambito {
         simboloContenedor.agregarMiembro(miembro);
         return true;
     }
+
+    //util para diferenciar parametros en constructores y no confundirlos
+    public boolean declararMiembroConClave(String clave, Simbolo miembro) {
+        if (simbolos.contiene(clave)) return false;
+        simbolos.insertar(clave, miembro);
+        simboloContenedor.agregarMiembroConClave(clave, miembro);
+        return true;
+    }
 }

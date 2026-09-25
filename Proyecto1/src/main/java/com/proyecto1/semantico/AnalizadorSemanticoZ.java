@@ -1,9 +1,6 @@
 package com.proyecto1.semantico;
 
-import com.proyecto1.semantico.ast.z.Atributo;
-import com.proyecto1.semantico.ast.z.Clase;
-import com.proyecto1.semantico.ast.z.Constructor;
-import com.proyecto1.semantico.ast.z.Metodo;
+import com.proyecto1.semantico.ast.z.*;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.AmbitoClase;
 import com.proyecto1.semantico.tabla.AmbitoGlobal;
@@ -18,20 +15,6 @@ public class AnalizadorSemanticoZ {
         return analizar(clase, new AmbitoGlobal());
     }
 
-    /**
-     * Igual que {@link #analizar(Clase)} pero llenando el {@code global} que entrega quien
-     * llama. Así, al terminar, quien llamó conserva la clase ya resuelta (con sus atributos
-     * y métodos) -- es lo que necesita un .pig para poder importarla, y lo que necesita
-     * {@link com.proyecto1.servicio.CargadorClasesZ} para que las clases HERMANAS del mismo
-     * proyecto (otros .z, sin "import": se ven entre sí como en Java) puedan resolverse
-     * mutuamente incluso con referencias circulares (Nodo &lt;-&gt; Pila).
-     *
-     * <p>Internamente se hace en dos pasos reutilizables por separado ({@link #registrarFirma}
-     * y {@link #registrarMiembros}): así {@link com.proyecto1.servicio.CargadorClasesZ} puede
-     * pre-registrar SOLO las FIRMAS de las clases hermanas (sin verificar sus cuerpos, que no
-     * son responsabilidad de este archivo) antes de que este método registre y verifique la
-     * clase que sí se está compilando.
-     */
     public ManejadorErrores analizar(Clase clase, AmbitoGlobal global) {
         ManejadorErrores errores = new ManejadorErrores();
 
@@ -51,18 +34,6 @@ public class AnalizadorSemanticoZ {
         return errores;
     }
 
-    /**
-     * PRIMERA PASADA (parte 1): registra el NOMBRE de la clase (bare, sin miembros) en
-     * {@code global}. Es lo mínimo para que otra clase (hermana o esta misma) pueda resolver
-     * el nombre como TIPO ("Nodo siguiente;") sin necesitar sus atributos/métodos todavía —
-     * por eso {@link com.proyecto1.servicio.CargadorClasesZ} registra los NOMBRES de TODAS
-     * las clases hermanas (llamando esto por cada una) antes de registrar los miembros de
-     * NINGUNA: así una referencia mutua (Nodo con un campo "Pila", Pila con un campo "Nodo")
-     * encuentra el nombre sin importar el orden en que se escanearon los archivos.
-     *
-     * @return el {@link Simbolo} de la clase ya declarado en {@code global}, o {@code null}
-     *         si el nombre ya existía (clase duplicada; ya reportado en {@code errores}).
-     */
     public Simbolo registrarFirma(Clase clase, AmbitoGlobal global, ManejadorErrores errores) {
         Simbolo sClase = new Simbolo(clase.getNombre(), CategoriaSimbolo.CLASE,
                 null, clase.getLinea(), clase.getColumna());
@@ -74,71 +45,84 @@ public class AnalizadorSemanticoZ {
         return sClase;
     }
 
-    /**
-     * PRIMERA PASADA (parte 2): registra atributos/métodos/constructores de {@code clase}
-     * (solo sus FIRMAS -- tipos de retorno, tipos de atributos -- resueltos contra
-     * {@code global}; NO se verifican los CUERPOS de los métodos aquí). Requiere que
-     * {@link #registrarFirma} ya se haya llamado (para tener {@code sClase}) y que, si
-     * {@code clase} referencia otras clases por nombre, esas ya estén registradas en
-     * {@code global} (ver el Javadoc de {@link #registrarFirma}).
-     *
-     * @return el {@link AmbitoClase} recién creado, con los miembros ya declarados en su
-     *         propia tabla (necesario para "this" implícito: ver {@link com.proyecto1.semantico.ast.z.Identificador}).
-     *         Cuando se llama para pre-registrar una clase HERMANA (no la que se está
-     *         compilando), este ámbito se descarta: lo único que importa es el efecto
-     *         colateral de {@code declararMiembro}, que además guarda cada miembro en
-     *         {@code sClase.agregarMiembro(...)} (ahí es donde después lo encuentra, por
-     *         ejemplo, {@code AccesoCampo} con "objeto.miembro").
-     */
-    public AmbitoClase registrarMiembros(Clase clase, Simbolo sClase, AmbitoGlobal global, ManejadorErrores errores) {
+    public AmbitoClase registrarMiembros(Clase clase, Simbolo sClase,
+                                         AmbitoGlobal global, ManejadorErrores errores) {
         AmbitoClase ambClase = new AmbitoClase(global, sClase);
 
-        // Registrar atributos (sin verificar inicializadores todavía)
+        // === ATRIBUTOS ===
         for (Atributo a : clase.getAtributos()) {
             Simbolo sa = new Simbolo(a.getNombre(), CategoriaSimbolo.ATRIBUTO,
                     a.getTipo().resolver(global, errores),
                     a.getLinea(), a.getColumna());
-            ambClase.declararMiembro(sa);
+            if (!ambClase.declararMiembro(sa)) {
+                errores.reportar(a.getLinea(), a.getColumna(),
+                        "Atributo duplicado: '" + a.getNombre() + "'");
+            }
         }
 
-        // Registrar métodos (clave: nombre#aridad)
+        // === MÉTODOS ===
         for (Metodo m : clase.getMetodos()) {
-            Tipo tRet = m.esVoid() ? TipoPrimitivo.VOID : m.getTipoRetorno().resolver(global, errores);
+            Tipo tRet = m.esVoid() ? TipoPrimitivo.VOID
+                    : m.getTipoRetorno().resolver(global, errores);
             Simbolo sm = new Simbolo(m.getNombre(), CategoriaSimbolo.METODO,
                     tRet, m.getLinea(), m.getColumna());
             registrarParametros(sm, m.getParametros(), global, errores);
-            ambClase.declararMiembro(sm);
+
+            // Clave ESPECÍFICA: nombre#aridad#Tipo1#Tipo2...
+            String claveEsp = construirClaveConTipos(m.getNombre(), sm.getParametros());
+            if (!ambClase.declararMiembroConClave(claveEsp, sm)) {
+                errores.reportar(m.getLinea(), m.getColumna(),
+                        "Método duplicado: '" + m.getNombre() + "' con "
+                                + m.getParametros().size() + " parámetros");
+            }
+            // Clave GENÉRICA (nombre#aridad): primer método con esa aridad "gana".
+            // Sirve solo como fallback para emitir "argumento incompatible" con la
+            // firma más parecida cuando el match exacto por tipos falle.
+            ambClase.declararMiembroConClave(m.getNombre() + "#" + m.getParametros().size(), sm);
         }
 
-        // Registrar constructores (clave: nombre#aridad)
+        // === CONSTRUCTORES ===
+        String nombreClase = clase.getNombre();
         for (Constructor c : clase.getConstructores()) {
-            Simbolo sc = new Simbolo(c.getNombre(), CategoriaSimbolo.CONSTRUCTOR,
+
+            // ERROR 3: el constructor DEBE llamarse igual que la clase (ÚNICO sitio).
+            if (!c.getNombre().equals(nombreClase)) {
+                errores.reportar(c.getLinea(), c.getColumna(),
+                        "El constructor debe llamarse '" + nombreClase
+                                + "', no '" + c.getNombre() + "'");
+            }
+
+            // Se registra bajo el NOMBRE DE LA CLASE (no el declarado) para que
+            // "new NombreClase(...)" resuelva aunque el usuario se equivoque al nombrar.
+            Simbolo sc = new Simbolo(nombreClase, CategoriaSimbolo.CONSTRUCTOR,
                     null, c.getLinea(), c.getColumna());
             registrarParametros(sc, c.getParametros(), global, errores);
-            ambClase.declararMiembro(sc);
+
+            String claveEsp = construirClaveConTipos(nombreClase, sc.getParametros());
+            if (!ambClase.declararMiembroConClave(claveEsp, sc)) {
+                errores.reportar(c.getLinea(), c.getColumna(),
+                        "Constructor duplicado: '" + nombreClase + "' con "
+                                + c.getParametros().size() + " parámetros");
+            }
+            ambClase.declararMiembroConClave(nombreClase + "#" + c.getParametros().size(), sc);
         }
 
         return ambClase;
     }
 
-    /**
-     * Agrega a {@code simbolo} (un método o constructor) sus parámetros, en orden, con el
-     * tipo ya resuelto contra {@code global}. Es PARTE de la firma (junto con el nombre y el
-     * tipo de retorno) y por eso vive aquí -- ANTES, esto solo pasaba dentro de
-     * {@code Metodo.verificar}/{@code Constructor.verificar}, que es la SEGUNDA pasada; una
-     * clase hermana (ver {@link com.proyecto1.servicio.CargadorClasesZ}) nunca llega a esa
-     * segunda pasada (no se verifican cuerpos ajenos), así que sus métodos quedaban con la
-     * aridad registrada en 0 -- cualquier llamada con argumentos, aunque fuera correcta,
-     * reportaba "método espera 0 argumentos". Los nombres de los parámetros NO se declaran
-     * aquí como variables locales (eso sigue pasando en verificar(), que sí necesita un
-     * ámbito de body real para reportar "parámetro duplicado" con su línea/columna); aquí
-     * solo se guarda su TIPO, que es lo único que otra clase puede llegar a necesitar.
-     */
-    private void registrarParametros(Simbolo simbolo, java.util.List<com.proyecto1.semantico.ast.z.Parametro> parametros,
+    /** nombre#aridad#Tipo1#Tipo2...  ("int[]" o "Persona" se usan tal cual, vía Tipo.nombre()). */
+    private static String construirClaveConTipos(String nombreBase, java.util.List<Simbolo> params) {
+        StringBuilder sb = new StringBuilder(nombreBase).append("#").append(params.size());
+        for (Simbolo p : params) sb.append("#").append(p.getTipo().nombre());
+        return sb.toString();
+    }
+
+    private void registrarParametros(Simbolo simbolo, java.util.List<Parametro> parametros,
                                      AmbitoGlobal global, ManejadorErrores errores) {
-        for (com.proyecto1.semantico.ast.z.Parametro p : parametros) {
+        for (Parametro p : parametros) {
             Tipo t = p.resolverTipo(global, errores);
-            simbolo.agregarParametro(new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO, t, p.getLinea(), p.getColumna()));
+            simbolo.agregarParametro(new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO,
+                    t, p.getLinea(), p.getColumna()));
         }
     }
 }
