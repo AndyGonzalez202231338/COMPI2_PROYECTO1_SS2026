@@ -27,12 +27,18 @@ import java.util.*;
  *       ("main" en PigLatin, la función con el nombre configurado en Y).</li>
  * </ol>
  *
+ * <p><b>Fase 4.6:</b> el runtime completo (lectura de strings, concat, strcmp,
+ * print tipado) viene de {@link RuntimeC#codigo()}, que se inyecta al principio
+ * del archivo. Las llamadas al runtime que Z emite como {@code call rt_print} /
+ * {@code call rt_println} / {@code call rt_readln} se resuelven aquí mismo, ANTES
+ * de aplicar el prefijo de lenguaje (porque no son funciones del usuario).
+ *
  * <p><b>Renombrado de funciones:</b> todas las funciones del C3D se prefijan con
- * {@code prefijoLenguaje} para evitar colisiones con las funciones de la
- * biblioteca estándar de C ({@code printf}, {@code malloc}, ...) y con el propio
- * {@code main} de C. Así una función {@code "main"} del C3D pasa a ser
- * {@code "y_main"} o {@code "pig_main"} en el C. El {@code main} real de C es un
- * wrapper que llama a la función de entrada ya prefijada.
+ * {@code prefijoLenguaje} para evitar colisiones con las funciones de la biblioteca
+ * estándar de C ({@code printf}, {@code malloc}, ...) y con el propio {@code main}
+ * de C. Así una función {@code "main"} del C3D pasa a ser {@code "y_main"} o
+ * {@code "pig_main"} en el C. El {@code main} real de C es un wrapper que llama a
+ * la función de entrada ya prefijada.
  */
 public final class OrquestadorC3DaC {
 
@@ -63,16 +69,17 @@ public final class OrquestadorC3DaC {
 
     // ---------- API pública ----------
 
-    /** Genera el archivo C completo: includes + runtime + prototipos + funciones + main. */
+    /** Genera el archivo C completo: runtime + structs + prototipos + funciones + main. */
     public String generarArchivoCompleto() {
         List<FuncionCompilada> funciones = dividirPorFuncion();
 
         StringBuilder sb = new StringBuilder();
-        sb.append("/* Archivo generado automáticamente por OrquestadorC3DaC */\n");
-        sb.append("#include <stdio.h>\n");
-        sb.append("#include <stdlib.h>\n");
-        sb.append("#include <string.h>\n\n");
-        sb.append(runtimeReadString());
+        sb.append("/* Archivo generado automáticamente por OrquestadorC3DaC */\n\n");
+
+        // Runtime completo (incluye <stdio.h>, <stdlib.h>, <string.h> y las
+        // funciones rt_*). Se inyecta ANTES que nada para que cualquier
+        // función del programa pueda usarlo sin prototipos previos.
+        sb.append(RuntimeC.codigo());
         sb.append("\n");
 
         // Structs/classes ANTES de los prototipos: las firmas de función pueden usar
@@ -134,7 +141,6 @@ public final class OrquestadorC3DaC {
 
         // Declaraciones locales inferidas
         Map<String, String> tipos = new HashMap<>();
-        // Arrancamos los tipos del registro de parámetros (el inferidor los añade también)
         GeneradorC3D.Firma firma = firmas.get(fc.begin().nombre());
         if (firma != null) {
             for (GeneradorC3D.ParametroFirma p : firma.parametros()) {
@@ -192,8 +198,8 @@ public final class OrquestadorC3DaC {
 
     /**
      * Traduce el cuerpo de una función. Las cuádruplas "planas" las delega a
-     * {@link TraductorCuadrupla}; las que necesitan contexto (param + call, print,
-     * read) las maneja aquí.
+     * {@link TraductorCuadrupla}; las que necesitan contexto ({@code param} +
+     * {@code call}) las maneja aquí, agrupando los params previos al call.
      */
     private String cuerpoATexto(List<Cuadrupla> cuerpo, Map<String, String> tipos) {
         StringBuilder sb = new StringBuilder();
@@ -206,22 +212,73 @@ public final class OrquestadorC3DaC {
                 continue;
             }
             if (c instanceof CuadruplaCall call) {
-                sb.append("    ").append(traducirCall(call, paramsPendientes)).append("\n");
+                sb.append("    ").append(traducirCall(call, paramsPendientes, tipos)).append("\n");
                 paramsPendientes.clear();
                 continue;
             }
-            // El resto: print/read los maneja TraductorCuadrupla con tipos; planas también.
+            // El resto: print/read (Y, PigLatin) los maneja TraductorCuadrupla con tipos;
+            // las planas también.
             sb.append("    ").append(tr.traducir(c)).append("\n");
         }
         return sb.toString();
     }
 
-    /** Construye {@code t = f(a, b, c);} o {@code f(a, b, c);} a partir de los params. */
-    private String traducirCall(CuadruplaCall call, List<String> params) {
-        String nombre = prefijoLenguaje + call.funcion();
+    /**
+     * Construye la línea C de una llamada. Tres casos:
+     * <ol>
+     *   <li>{@code rt_print} / {@code rt_println} (emitidos por Z con UN argumento):
+     *       se traduce a la variante tipada {@code rt_print_<tipo>(arg);} donde el
+     *       tipo se consulta en el mapa de tipos del argumento.</li>
+     *   <li>{@code rt_readln} (emitido por Z sin argumentos, con destino opcional):
+     *       se traduce a {@code destino = rt_read_string();} o a
+     *       {@code rt_read_string();} si el destino es null.</li>
+     *   <li>Cualquier otra función: llamada normal, con el prefijo de lenguaje
+     *       aplicado al nombre, y los params ya acumulados en orden.</li>
+     * </ol>
+     */
+    private String traducirCall(CuadruplaCall call, List<String> params, Map<String, String> tipos) {
+        String fname = call.funcion();
+
+        // Caso 1: rt_print / rt_println
+        if ("rt_print".equals(fname) || "rt_println".equals(fname)) {
+            String arg = params.isEmpty() ? "" : params.get(0);
+            String tipo = tipos.getOrDefault(arg, "int");
+            String sufijo = sufijoTipo(tipo);
+            String fn = "rt_print".equals(fname) ? "rt_print_" + sufijo : "rt_println_" + sufijo;
+            return fn + "(" + arg + ");";
+        }
+
+        // Caso 2: rt_readln
+        if ("rt_readln".equals(fname)) {
+            return (call.destino() != null)
+                    ? call.destino() + " = rt_read_string();"
+                    : "rt_read_string();";
+        }
+
+        // Caso 3: llamada normal a función del usuario.
+        String nombre = prefijoLenguaje + fname;
         String args = String.join(", ", params);
         String expr = nombre + "(" + args + ")";
         return (call.destino() != null) ? call.destino() + " = " + expr + ";" : expr + ";";
+    }
+
+    /**
+     * Sufijo que el runtime usa para elegir la función tipada. Mapeo:
+     * <ul>
+     *   <li>{@code "int"} / {@code "bool"} → {@code "int"} (impresos igual)</li>
+     *   <li>{@code "double"} → {@code "double"}</li>
+     *   <li>{@code "char"} → {@code "char"}</li>
+     *   <li>{@code "char*"} → {@code "string"}</li>
+     *   <li>Punteros a structs/clases → {@code "string"} (se imprimen como "(null)" o similar,
+     *       porque no tenemos toString automático).</li>
+     * </ul>
+     */
+    private static String sufijoTipo(String tipoC) {
+        if (tipoC == null) return "int";
+        if (tipoC.equals("double")) return "double";
+        if (tipoC.equals("char"))   return "char";
+        if (tipoC.equals("char*"))  return "string";
+        return "int"; // int, bool, y fallback
     }
 
     // ---------- main de C ----------
@@ -249,34 +306,11 @@ public final class OrquestadorC3DaC {
         return sb.toString();
     }
 
-    // ---------- Runtime mínimo ----------
-
-    /**
-     * Helper de runtime para leer strings. Se inyecta siempre en el archivo; si el
-     * programa no usa {@code read} con strings, el compilador de C puede descartarlo
-     * con {@code -Wunused-function} o similar.
-     */
-    private static String runtimeReadString() {
-        return """
-                /* Runtime mínimo */
-                static char* rt_read_string(void) {
-                    char buf[1024];
-                    if (fgets(buf, sizeof(buf), stdin) == NULL) return NULL;
-                    size_t n = strlen(buf);
-                    if (n > 0 && buf[n-1] == '\\n') buf[n-1] = '\\0';
-                    char* r = (char*)malloc(n + 1);
-                    if (r) strcpy(r, buf);
-                    return r;
-                }
-                """;
-    }
-
     // ---------- Tipos internos a C ----------
 
     /**
      * Traduce un {@link Tipo} a su representación en C.
-     * Mismo mapeo que {@link InferenciaTiposC}, replicado aquí para no acoplar el
-     * orquestador a los detalles internos de esa clase.
+     * Mismo mapeo que {@link InferenciaTiposC} y {@link TraductorTipos}.
      */
     private static String tipoAC(Tipo t) {
         if (t == null) return "void";
