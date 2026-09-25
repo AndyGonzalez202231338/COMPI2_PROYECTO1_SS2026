@@ -6,7 +6,7 @@ public record CuadruplaGoto(String etiqueta) implements CuadruplaSalto {
     public String getEtiquetaDestino() { return etiqueta; }
 
     @Override
-    public CuadruplaSalto conResultado(String nuevaEtiquetaDestino) {
+    public CuadruplaSalto conEtiquetaDestino(String nuevaEtiquetaDestino) {
         return new CuadruplaGoto(nuevaEtiquetaDestino);
     }
 

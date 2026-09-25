@@ -11,10 +11,17 @@ import com.proyecto1.semantico.ast.cuadruplas.*;
  * nuevo, {@link VisitanteCuadrupla} obliga a agregar el método aquí también (no
  * compila si falta) — separación de responsabilidades real, no solo organizativa.
  *
- * Cada línea NO lleva ";" al final salvo que ya lo necesite por sintaxis de C
- * (si/no/goto no lo llevan como sentencia simple, pero aquí SIEMPRE se agrega el
- * ";" final porque OrquestadorC3DaC (fase posterior) las concatena tal cual, una
- * por línea. La indentación también la pone OrquestadorC3DaC, no esta clase.
+ * <p><b>Convención de salida</b>: cada línea se emite CON {@code ;} final (o con
+ * {@code :;} en el caso de las etiquetas — el {@code ;} extra evita el error de C
+ * "label at end of compound statement" cuando la etiqueta queda como última línea
+ * de un bloque). Es decir, el texto devuelto ya viene listo para concatenarse tal
+ * cual, una línea por cuádrupla: quien ensambla el archivo (OrquestadorC3DaC, fase
+ * posterior) solo necesita añadir indentación y saltos de línea.
+ *
+ * <p>Esta clase NO maneja indentación ni estructura de bloques. Tampoco agrupa
+ * cuádruplas relacionadas ({@code param} + {@code call}, {@code begin_func} +
+ * cuerpo + {@code end_func}); esas agrupaciones requieren contexto y son
+ * responsabilidad del orquestador, no de un traductor cuádrupla-a-cuádrupla.
  */
 public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
 
@@ -30,6 +37,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
 
     @Override
     public String visitar(CuadruplaBinaria c) {
+
         return c.t() + " = " + c.a() + " " + c.operador() + " " + c.b() + ";";
     }
 
@@ -63,9 +71,11 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
 
     @Override
     public String visitar(CuadruplaEtiqueta c) {
-        // ";" extra: evita el error de C "a label can only be part of a statement"
-        // cuando la etiqueta es la última línea de un bloque (p. ej. L_fin: al final
-        // de una función, justo antes de la llave de cierre).
+        // ":;" en vez de ":" evita el error de C
+        //   "label at end of compound statement"
+        // que el compilador emite cuando una etiqueta es la última línea de un bloque
+        // (p. ej. L_fin: justo antes de la llave de cierre de una función).
+        // El ";" convierte la línea en "etiqueta + sentencia vacía", lo cual es válido.
         return c.etiqueta() + ":;";
     }
 

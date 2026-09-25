@@ -160,11 +160,8 @@ public final class Si extends NodoY implements InstruccionY {
         return ResultadoC3D.vacio();
     }
 
-    /** Backpatching: escribe "etiqueta" como destino de la cuádrupla de salto en "indice". */
     private static void parchear(GeneradorC3D generador, int indice, String etiqueta) {
-        //darles a las cuadruplas sus etiquetas de salida
-        //(del arreglo de indices que deben de salir, cuadrupas buscadas con el indice se le pasa etiqueta salida)
         Cuadrupla actual = generador.getCuadruplas().get(indice);
-        generador.reemplazar(indice, ((CuadruplaSalto) actual).conResultado(etiqueta));
+        generador.reemplazar(indice, ((CuadruplaSalto) actual).conEtiquetaDestino(etiqueta));
     }
 }

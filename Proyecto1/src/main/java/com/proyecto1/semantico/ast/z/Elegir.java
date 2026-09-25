@@ -149,6 +149,6 @@ public final class Elegir extends NodoZ implements InstruccionZ {
     /** Backpatching: escribe "etiqueta" como destino de la cuádrupla de salto en "indice". */
     private static void parchear(GeneradorC3D generador, int indice, String etiqueta) {
         Cuadrupla actual = generador.getCuadruplas().get(indice);
-        generador.reemplazar(indice, ((CuadruplaSalto) actual).conResultado(etiqueta));
+        generador.reemplazar(indice, ((CuadruplaSalto) actual).conEtiquetaDestino(etiqueta));
     }
 }

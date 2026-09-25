@@ -6,7 +6,7 @@ public record CuadruplaIfTrue(String condicion, String etiqueta) implements Cuad
     public String getEtiquetaDestino() { return etiqueta; }
 
     @Override
-    public CuadruplaSalto conResultado(String nuevaEtiquetaDestino) {
+    public CuadruplaSalto conEtiquetaDestino(String nuevaEtiquetaDestino) {
         return new CuadruplaIfTrue(condicion, nuevaEtiquetaDestino);
     }
 
