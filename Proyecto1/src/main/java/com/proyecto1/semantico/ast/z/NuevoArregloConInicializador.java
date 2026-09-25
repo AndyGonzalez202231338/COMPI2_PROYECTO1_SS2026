@@ -7,11 +7,17 @@ import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoArreglo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * {@code NEW tipoBase (CORIZQ CORDER)+ LLAVEIZQ initializerList? LLAVEDER}
  * (#primarioArregloConInicializador): "new int[]{1, 2, 3}" o "new int[][]{{1,2},{3,4}}".
+ *
+ * <p>SIEMPRE se emite con estrategia FLAT: las dimensiones del literal anidado
+ * son constantes conocidas en compile-time, así que no hay razón para jagged.
+ * El literal se "aplanan" a UN solo bloque contiguo, y cada elemento hoja se
+ * guarda con una cuádrupla {@code []=} usando un índice aplanado constante.
  */
 public final class NuevoArregloConInicializador extends NodoZ implements ExpresionZ {
 
@@ -35,56 +41,92 @@ public final class NuevoArregloConInicializador extends NodoZ implements Expresi
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         Tipo base = tipoElemento.resolver(ambito, errores);
         for (ExpresionZ e : elementos) e.verificar(ambito, errores);
-        for (int i = 0; i < dimensiones; i++) base = new TipoArreglo(base);
+        // Deducción de dimensiones del literal anidado (siempre conocidas).
+        List<Integer> dims = deducirDimensiones(elementos, dimensiones);
+        for (int i = dims.size() - 1; i >= 0; i--) {
+            base = new TipoArreglo(base, dims.get(i));
+        }
         return base;
     }
 
-    /**
-     * Emite el arreglo jagged construido por sus elementos:
-     * <ol>
-     *   <li>Calcula el tamaño del nivel externo ({@code elementos.size()}).</li>
-     *   <li>Elige el descriptor de tipo del elemento:
-     *       <ul>
-     *         <li>Si {@code dimensiones == 1}: escalar, "int" → guarda VALORES.</li>
-     *         <li>Si {@code dimensiones > 1}: "int[]" (o "Persona[]"…) → guarda
-     *             REFERENCIAS a sub-arreglos; cada elemento ya producirá su propio
-     *             newarr al llamar a su {@code generarC3D}.</li>
-     *       </ul>
-     *   </li>
-     *   <li>Emite {@code (newarr, descriptor, tamaño, t)}.</li>
-     *   <li>Por cada elemento, genera su C3D y lo guarda en el slot correspondiente
-     *       con {@code ([]=, t, i, v)}. Si el elemento es un sub-arreglo (1D anidado
-     *       o {@code NuevoArregloConInicializador}), {@code v} es la referencia que
-     *       ese sub-nodo ya generó.</li>
-     * </ol>
-     *
-     * <p>No hay caso especial para "escalar vs sub-arreglo": el mismo
-     * {@code ([]=, t, i, v)} funciona en los dos casos. La diferencia (guardar valor
-     * o guardar puntero) la resuelve Fase 4 mirando el tipo del slot.
-     */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
-        String descriptor = descriptorDeElemento();
-        String tam = String.valueOf(elementos.size());
-        String arr = generador.nuevoTemporal();
-        generador.emitirNewArray(descriptor, tam, arr);
+        List<Integer> dims = deducirDimensiones(elementos, dimensiones);
 
-        for (int i = 0; i < elementos.size(); i++) {
-            ResultadoC3D v = elementos.get(i).generarC3D(generador);
-            generador.emitirGuardarIndice(arr, String.valueOf(i), v.getLugar());
-        }
+        // 1) Un solo newarr con todas las dimensiones (flat).
+        List<String> tamanosStr = new ArrayList<>();
+        for (int d : dims) tamanosStr.add(String.valueOf(d));
+
+        String arr = generador.nuevoTemporal();
+        generador.emitirNewArray(tipoElemento.getNombreBase(), tamanosStr, arr);
+
+        // 2) Recorrer el literal anidado y emitir un []= por hoja, con índice
+        //    aplanado constante (calculado en compile-time).
+        int[] dimsArr = new int[dims.size()];
+        for (int i = 0; i < dims.size(); i++) dimsArr[i] = dims.get(i);
+        asignarFlat(generador, arr, dimsArr, 0, elementos, 0);
 
         Tipo tipoResultado = verificar(null, null);
         return ResultadoC3D.temporal(arr, tipoResultado);
     }
 
+    // ---------- Helpers ----------
+
     /**
-     * "int" si es 1D; "int[]" si es 2D; "int[][]" si es 3D; idem para clases.
-     * El sufijo "[]" indica a Fase 4 que ese nivel guarda referencias, no valores.
+     * Deduce las dimensiones del literal anidado, en orden del externo al interno.
+     * Lanza {@link IllegalStateException} si encuentra inconsistencias (sub-listas
+     * de distinto tamaño → arreglo irregular, no soportado en flat).
      */
-    private String descriptorDeElemento() {
-        String base = tipoElemento.getNombreBase();
-        if (dimensiones == 1) return base;
-        return base + "[]".repeat(dimensiones - 1);
+    private static List<Integer> deducirDimensiones(List<ExpresionZ> elems, int dimensiones) {
+        List<Integer> dims = new ArrayList<>();
+        dims.add(elems.size());
+        if (dimensiones > 1 && !elems.isEmpty()) {
+            for (ExpresionZ e : elems) {
+                if (!(e instanceof NuevoArregloConInicializador sub)) {
+                    throw new IllegalStateException(
+                            "Arreglo multidimensional: se esperaba sub-lista, se encontró "
+                                    + e.getClass().getSimpleName());
+                }
+                List<Integer> subDims = deducirDimensiones(sub.getElementos(), dimensiones - 1);
+                if (dims.size() == 1) {
+                    dims.addAll(subDims);
+                } else {
+                    // Chequear consistencia: todas las sub-listas deben tener las mismas dims internas.
+                    for (int k = 1; k < subDims.size(); k++) {
+                        if (!subDims.get(k).equals(dims.get(k))) {
+                            throw new IllegalStateException(
+                                    "Arreglo multidimensional irregular: sub-listas de tamaños distintos");
+                        }
+                    }
+                }
+            }
+        }
+        return dims;
+    }
+
+    /**
+     * Recorre el literal anidado y emite una cuádrupla {@code []=} por cada hoja,
+     * con el índice aplanado calculado en compile-time.
+     *
+     * <p>{@code baseOffset} es el offset acumulado del sub-arreglo actual; cada
+     * elemento del nivel {@code nivel} suma {@code i * peso} donde
+     * {@code peso = dims[nivel+1] * ... * dims[n-1]}.
+     */
+    private static void asignarFlat(GeneradorC3D g, String arr, int[] dims, int nivel,
+                                    List<ExpresionZ> elems, int baseOffset) {
+        int weight = 1;
+        for (int k = nivel + 1; k < dims.length; k++) weight *= dims[k];
+        boolean esUltimaDimension = (nivel == dims.length - 1);
+
+        for (int i = 0; i < elems.size(); i++) {
+            int offsetActual = baseOffset + i * weight;
+            if (esUltimaDimension) {
+                ResultadoC3D v = elems.get(i).generarC3D(g);
+                g.emitirGuardarIndice(arr, String.valueOf(offsetActual), v.getLugar());
+            } else {
+                NuevoArregloConInicializador sub = (NuevoArregloConInicializador) elems.get(i);
+                asignarFlat(g, arr, dims, nivel + 1, sub.getElementos(), offsetActual);
+            }
+        }
     }
 }

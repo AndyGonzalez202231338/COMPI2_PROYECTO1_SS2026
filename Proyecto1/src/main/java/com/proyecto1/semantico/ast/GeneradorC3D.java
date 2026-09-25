@@ -4,11 +4,7 @@ import com.proyecto1.semantico.ast.cuadruplas.*;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Servicios compartidos que necesita cualquier nodo al traducirse a C3D:
@@ -300,9 +296,14 @@ public class GeneradorC3D {
         tabla.agregar(new CuadruplaNew(nombreClase, t));
     }
 
-    /** t = new Tipo[tamaño]  →  CuadruplaNewArray. Fase 4: malloc(tamaño * sizeof(Tipo)). */
+    /** t = new Tipo[t1][t2]...[tn]  →  CuadruplaNewArray. Fase 4: malloc con el producto de tamaños. */
+    public void emitirNewArray(String tipoDescriptor, java.util.List<String> tamanos, String t) {
+        tabla.agregar(new CuadruplaNewArray(tipoDescriptor, tamanos, t));
+    }
+
+    /** Atajo 1D: t = new Tipo[n]. Equivale a emitirNewArray(tipo, List.of(n), t). */
     public void emitirNewArray(String tipoDescriptor, String tamano, String t) {
-        tabla.agregar(new CuadruplaNewArray(tipoDescriptor, tamano, t));
+        emitirNewArray(tipoDescriptor, java.util.List.of(tamano), t);
     }
 
     /**

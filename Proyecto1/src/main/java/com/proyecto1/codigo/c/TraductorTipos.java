@@ -48,15 +48,31 @@ public final class TraductorTipos {
      *   <li>{@link TipoArreglo} → {@code aC(tipoBase) + "*"}</li>
      * </ul>
      */
+    /**
+     * Traduce {@code tipo} a su representación en C:
+     * <ul>
+     *   <li>{@code ENTERO} → {@code "int"}</li>
+     *   <li>{@code FLOTANTE} → {@code "double"}</li>
+     *   <li>{@code CARACTER} → {@code "char"}</li>
+     *   <li>{@code CADENA} → {@code "char*"}</li>
+     *   <li>{@code BOOL} → {@code "int"} (C no tiene bool nativo antes de C99;
+     *       mantener int uniforma la ABI)</li>
+     *   <li>{@code VOID} → {@code "void"}</li>
+     *   <li>Cualquier otro caso (incluye {@code DESCONOCIDO}, {@code NULO}) → {@code "int"}</li>
+     *   <li>{@link TipoClase} → {@code "<NombreClase>*"}</li>
+     *   <li>{@link TipoEstructura} → {@code "<NombreEstructura>*"}</li>
+     *   <li>{@link TipoArreglo} → {@code aC(tipoBase) + "*"}</li>
+     * </ul>
+     */
     public static String aC(Tipo tipo) {
         if (tipo == null) return "int";
 
-        if (tipo == TipoPrimitivo.ENTERO)      return "int";
-        if (tipo == TipoPrimitivo.FLOTANTE)    return "double";
-        if (tipo == TipoPrimitivo.CARACTER)    return "char";
-        if (tipo == TipoPrimitivo.CADENA)      return "char*";
-        if (tipo == TipoPrimitivo.BOOL)        return "int";
-        if (tipo == TipoPrimitivo.VOID)        return "void";
+        if (tipo == TipoPrimitivo.ENTERO)   return "int";
+        if (tipo == TipoPrimitivo.FLOTANTE) return "double";
+        if (tipo == TipoPrimitivo.CARACTER) return "char";
+        if (tipo == TipoPrimitivo.CADENA)   return "char*";
+        if (tipo == TipoPrimitivo.BOOL)     return "int";
+        if (tipo == TipoPrimitivo.VOID)     return "void";
 
         if (tipo instanceof TipoClase tc)
             return tc.getDefinicion().getNombre() + "*";
