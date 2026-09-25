@@ -121,13 +121,12 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
      * {@code destino = new Clase} → {@code destino = (Clase*) malloc(sizeof(Clase));}.
      *
      * <p>El cast a {@code Clase*} es idiomático (aunque en C puro {@code malloc}
-     * devuelve {@code void*} convertible implícitamente): documenta la intención
-     * y hace el código aceptable también si en algún momento se compila con
-     * {@code g++}.
+     * devuelve {@code void*} convertible implícitamente): documenta la intención y
+     * hace el código aceptable si en algún momento se compila con {@code g++}.
      *
-     * <p>El tamaño lo resuelve {@code sizeof(Clase)} en tiempo de compilación de
-     * C, a partir del {@code typedef struct Clase {...};} emitido en la Fase 4.3.
-     * El C3D nunca calcula bytes.
+     * <p>El tamaño lo resuelve {@code sizeof(Clase)} en tiempo de compilación de C,
+     * a partir del {@code typedef struct Clase {...};} emitido en la Fase 4.3. El
+     * C3D nunca calcula bytes.
      */
     @Override
     public String visitar(CuadruplaNew c) {
@@ -139,8 +138,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
      *
      * <p>{@code obj} puede ser el nombre de una variable local/parámetro, un
      * temporal, o el string literal {@code "this"} cuando el acceso ocurre dentro
-     * de un método/constructor. En TODOS los casos la traducción es idéntica: no
-     * hay rama "si obj es this, entonces…".
+     * de un método/constructor. En TODOS los casos la traducción es idéntica.
      */
     @Override
     public String visitar(CuadruplaCampoCarga c) {
@@ -152,9 +150,8 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
      *
      * <p>En este record, el campo {@code valor} es lo que se guarda (no hay un
      * "destino" separado): la escritura va directamente a la dirección
-     * {@code obj->campo}. El nombre de los campos del record
-     * ({@link CuadruplaCampoGuarda#valor()}) ya deja esto explícito, así que no
-     * hay riesgo de confundirlo con un destino como en el diseño viejo.
+     * {@code obj->campo}. El nombre del campo del record deja esto explícito, así
+     * que no hay riesgo de confundirlo con un destino.
      */
     @Override
     public String visitar(CuadruplaCampoGuarda c) {
@@ -207,9 +204,33 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         throw pendiente("índice (guarda)");
     }
 
+    /**
+     * {@code destino = new tipoElemento[t1][t2]...[tn]}.
+     *
+     * <p>Emitido SOLO para el nivel externo de un arreglo (flat o jagged). La
+     * traducción es un malloc del producto de los tamaños por sizeof(tipoElemento):
+     *
+     *     destino = (tipoElemento*) malloc((t1 * t2 * ... * tn) * sizeof(tipoElemento));
+     *
+     * <p>Esta cuádrupla es agnóstica a flat vs. jagged:
+     * <ul>
+     *   <li>En FLAT, tipoElemento es el tipo ESCALAR ("int") y tamanos contiene
+     *       TODAS las dimensiones. El malloc reserva el bloque completo.</li>
+     *   <li>En JAGGED, tipoElemento es el tipo del SIGUIENTE nivel ("int*" para
+     *       int[n][m]) y tamanos contiene SOLO el tamaño del nivel externo. Los
+     *       niveles internos se construyen con cuádruplas adicionales emitidas por
+     *       NuevoArregloConTamano (bucles con más newarr).</li>
+     * </ul>
+     * El cast "(tipoElemento*)" es idiomático (aunque en C puro malloc devuelve
+     * void* convertible implícitamente): documenta la intención y funciona si en
+     * algún momento se compila con g++.
+     */
     @Override
     public String visitar(CuadruplaNewArray c) {
-        throw pendiente("newarr");
+        java.util.List<String> ts = c.tamanos();
+        String producto = (ts.size() == 1) ? ts.get(0) : String.join(" * ", ts);
+        return c.destino() + " = (" + c.tipoElemento() + "*) malloc(("
+                + producto + ") * sizeof(" + c.tipoElemento() + "));";
     }
 
     private static UnsupportedOperationException pendiente(String queNoEstaHecho) {

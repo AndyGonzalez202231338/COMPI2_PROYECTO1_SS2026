@@ -14,6 +14,14 @@ import java.util.List;
 /**
  * {@code NEW tipoBase (CORIZQ expression CORDER)+} (#primarioArregloConTamano):
  * "new int[5]" o "new int[3][3]". Los tamaños son expresiones en runtime.
+ *
+ * <p>Estrategia elegida en compile-time según {@link TipoArreglo#esAplanable()}:
+ * <ul>
+ *   <li>FLAT: un solo {@code newarr} con el producto de tamaños, siempre que
+ *       todas las dimensiones internas (d2..dn) sean literales.</li>
+ *   <li>JAGGED: un {@code newarr} por nivel, con bucles anidados que rellenan los
+ *       sub-arreglos. Se usa cuando alguna dimensión interna es runtime.</li>
+ * </ul>
  */
 public final class NuevoArregloConTamano extends NodoZ implements ExpresionZ {
 
@@ -40,72 +48,82 @@ public final class NuevoArregloConTamano extends NodoZ implements ExpresionZ {
                 errores.reportar(tam.getLinea(), tam.getColumna(),
                         "Tamaño de arreglo debe ser entero, se recibió " + tTam.nombre());
         }
-        for (int i = 0; i < tamanos.size(); i++) base = new TipoArreglo(base);
+        // Construir el TipoArreglo de dentro hacia fuera, marcando longitud cuando
+        // el tamaño es un literal. Ejemplos:
+        //   new int[3][4]   -> TipoArreglo(TipoArreglo(ENTERO, 4), 3)
+        //   new int[n][3]   -> TipoArreglo(TipoArreglo(ENTERO, 3), -1)
+        //   new int[3][n]   -> TipoArreglo(TipoArreglo(ENTERO, -1), 3)
+        //   new int[n][m]   -> TipoArreglo(TipoArreglo(ENTERO, -1), -1)
+        for (int i = tamanos.size() - 1; i >= 0; i--) {
+            ExpresionZ tam = tamanos.get(i);
+            int longitud = TipoArreglo.LONGITUD_DESCONOCIDA;
+            if (tam instanceof Literal lit && lit.getCategoria() == CategoriaLiteral.ENTERO) {
+                longitud = ((Long) lit.getValor()).intValue();
+            }
+            base = new TipoArreglo(base, longitud);
+        }
         return base;
     }
 
-    /**
-     * Emite: evalúa todos los tamaños en orden (efectos laterales una sola vez), luego
-     * la asignación recursiva del arreglo jagged.
-     *
-     * <p>Caso 1D ({@code new int[n]}): UNA cuádrupla
-     * {@code (newarr, "int", n, t)} y se devuelve {@code t}.
-     *
-     * <p>Caso N-D ({@code new int[n][m]}):
-     * <ol>
-     *   <li>Asigna el arreglo externo: {@code t0 = newarr("int[]", n)} (los elementos
-     *       son referencias, no ints).</li>
-     *   <li>Emite un bucle {@code for i in 0..n} que, por cada slot, hace
-     *       {@code t0[i] = allocRec(nivel+1)} — recursivamente el mismo tratamiento
-     *       hasta llegar a la última dimensión, donde es 1D.</li>
-     * </ol>
-     */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
-        // Evaluar cada tamaño en orden, guardando el resultado.
+        // 1) Evaluar cada tamaño en orden, guardar sus lugares.
         List<ResultadoC3D> tamRes = new ArrayList<>();
         for (ExpresionZ tam : tamanos) {
             tamRes.add(tam.generarC3D(generador));
         }
 
-        String resultado = allocArregloRec(generador, tamRes, 0, tipoElemento.getNombreBase());
-
         Tipo tipoResultado = verificar(null, null);
+        TipoArreglo tipoArr = (tipoResultado instanceof TipoArreglo ta) ? ta : null;
+
+        // 2) Rama FLAT si es aplanable.
+        if (tipoArr != null && tipoArr.esAplanable()) {
+            List<String> tamanosStr = new ArrayList<>();
+            for (ResultadoC3D tam : tamRes) tamanosStr.add(tam.getLugar());
+
+            String t = generador.nuevoTemporal();
+            generador.emitirNewArray(tipoElemento.getNombreBase(), tamanosStr, t);
+            return ResultadoC3D.temporal(t, tipoResultado);
+        }
+
+        // 3) Rama JAGGED.
+        String resultado = allocArregloJagged(generador, tamRes, 0, tipoElemento.getNombreBase());
         return ResultadoC3D.temporal(resultado, tipoResultado);
     }
 
     /**
-     * Asigna (recursivamente) el arreglo del nivel {@code nivel} con los tamaños
+     * Asigna recursivamente el arreglo del nivel {@code nivel} con los tamaños
      * {@code tamRes}. Devuelve el temporal con la referencia al arreglo creado.
      *
      * <ul>
-     *   <li>Si {@code nivel == tamRes.size()-1} (última dimensión): es un arreglo 1D
-     *       de {@code tipoBaseEscalar}, se emite directo sin bucle.</li>
-     *   <li>Si no: se asigna el arreglo externo y se rellena con un bucle que llama
-     *       recursivamente a {@code allocArregloRec(nivel+1)} por cada slot.</li>
+     *   <li>Última dimensión: {@code newarr} directo (sin bucle), con el tipo
+     *       escalar como descriptor.</li>
+     *   <li>Niveles anteriores: {@code newarr} del tipo puntero correspondiente
+     *       ("int*" para 2D, "int**" para 3D, ...) y un bucle que rellena cada
+     *       slot llamándose recursivamente.</li>
      * </ul>
      */
-    private String allocArregloRec(GeneradorC3D g, List<ResultadoC3D> tamRes,
-                                   int nivel, String tipoBaseEscalar) {
+    private String allocArregloJagged(GeneradorC3D g, List<ResultadoC3D> tamRes,
+                                      int nivel, String tipoBaseEscalar) {
         ResultadoC3D tam = tamRes.get(nivel);
         boolean esUltimaDimension = (nivel == tamRes.size() - 1);
 
-        // Descriptor del tipo de los elementos que guardará este arreglo:
-        //   - Última dimensión -> tipo escalar (int, Persona, ...)
-        //   - Si no           -> tipo con tantos "[]" como dimensiones restantes
-        // El "[]" indica a Fase 4 que el elemento es una REFERENCIA (puntero), no valor.
+        // Descriptor del tipo de los elementos de ESTE nivel:
+        //   - Última dimensión: tipo escalar ("int").
+        //   - Nivel intermedio: tipo puntero con tantos "*" como dimensiones restantes.
+        //     Ej. int[n][m] -> nivel 0 usa "int*"; int[a][b][c] -> nivel 0 "int**", nivel 1 "int*".
         String descriptor = esUltimaDimension
                 ? tipoBaseEscalar
-                : tipoBaseEscalar + "[]".repeat(tamRes.size() - nivel - 1);
+                : tipoBaseEscalar + "*".repeat(tamRes.size() - nivel - 1);
 
         String arr = g.nuevoTemporal();
         g.emitirNewArray(descriptor, tam.getLugar(), arr);
 
         if (esUltimaDimension) {
-            return arr;   // 1D: nada más que hacer
+            return arr;   // última dimensión: nada que rellenar
         }
 
-        // Bucle i = 0; i < tam; i++: arr[i] = allocArregloRec(nivel+1)
+        // Bucle i = 0; i < tam; i++: arr[i] = allocArregloJagged(nivel+1)
         String i = g.nuevoTemporal();
         g.emitirAsignacion("0", i);
 
@@ -117,7 +135,7 @@ public final class NuevoArregloConTamano extends NodoZ implements ExpresionZ {
         g.emitirBinaria("<", i, tam.getLugar(), cond);
         g.emitirIfFalse(cond, L1);
 
-        String inner = allocArregloRec(g, tamRes, nivel + 1, tipoBaseEscalar);
+        String inner = allocArregloJagged(g, tamRes, nivel + 1, tipoBaseEscalar);
         g.emitirGuardarIndice(arr, i, inner);
 
         String next = g.nuevoTemporal();
