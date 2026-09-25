@@ -15,6 +15,7 @@ public class Simbolo {
 
     // Solo para FUNCION / METODO / CONSTRUCTOR: sus parámetros, en orden.
     private final List<Simbolo> parametros = new ArrayList<>();
+    private final List<Simbolo> miembrosEnOrden = new ArrayList<>();
 
     /**
      * Solo para ESTRUCTURA / CLASE: sus miembros (campos/atributos/métodos/constructores),
@@ -80,11 +81,9 @@ public class Simbolo {
         return miembros;
     }
 
-    private final List<Simbolo> miembrosEnOrden = new ArrayList<>();
-
-    public boolean agregarMiembro(Simbolo miembro) {
-        boolean nuevo = miembros.insertar(miembro.getNombre(), miembro);
-        if (nuevo) miembrosEnOrden.add(miembro);
+    public boolean agregarMiembro(Simbolo m) {
+        boolean nuevo = miembros.insertar(m.getNombre(), m);
+        if (nuevo) miembrosEnOrden.add(m);
         return nuevo;
     }
     // util para la sobrecarga de datos en constructores

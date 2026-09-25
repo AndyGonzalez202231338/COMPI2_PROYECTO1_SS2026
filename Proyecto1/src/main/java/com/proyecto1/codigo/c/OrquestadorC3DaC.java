@@ -2,6 +2,7 @@ package com.proyecto1.codigo.c;
 
 import com.proyecto1.semantico.ast.GeneradorC3D;
 import com.proyecto1.semantico.ast.cuadruplas.*;
+import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
@@ -39,15 +40,25 @@ public final class OrquestadorC3DaC {
     private final Map<String, GeneradorC3D.Firma> firmas;
     private final String prefijoLenguaje;   // ej. "y_", "pig_"
     private final String nombreFuncionEntrada; // nombre en el C3D ("main", "principal", ...)
+    private final List<Simbolo> definicionesTipo;
 
     public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
                             Map<String, GeneradorC3D.Firma> firmas,
                             String prefijoLenguaje,
                             String nombreFuncionEntrada) {
+        this(cuadruplas, firmas, prefijoLenguaje, nombreFuncionEntrada, List.of());
+    }
+
+    public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
+                            Map<String, GeneradorC3D.Firma> firmas,
+                            String prefijoLenguaje,
+                            String nombreFuncionEntrada,
+                            List<Simbolo> definicionesTipo) {
         this.cuadruplas = cuadruplas != null ? cuadruplas : List.of();
         this.firmas = firmas != null ? firmas : Map.of();
         this.prefijoLenguaje = (prefijoLenguaje != null) ? prefijoLenguaje : "";
         this.nombreFuncionEntrada = nombreFuncionEntrada;
+        this.definicionesTipo = (definicionesTipo != null) ? definicionesTipo : List.of();
     }
 
     // ---------- API pública ----------
@@ -63,6 +74,11 @@ public final class OrquestadorC3DaC {
         sb.append("#include <string.h>\n\n");
         sb.append(runtimeReadString());
         sb.append("\n");
+
+        // Structs/classes ANTES de los prototipos: las firmas de función pueden usar
+        // "Persona*" como tipo de parámetro o retorno, y necesitan el typedef visible.
+        sb.append(new GeneradorStructsC().generar(definicionesTipo));
+        if (!definicionesTipo.isEmpty()) sb.append("\n");
 
         // Prototipos
         sb.append("/* Prototipos */\n");
