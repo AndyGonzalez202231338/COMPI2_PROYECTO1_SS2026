@@ -109,7 +109,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     public String visitar(CuadruplaPrint c) {
         String valor = c.valor();
         String tipo = tipoEfectivo(valor);
-        return "printf(\"" + formatoPrintf(tipo) + "\", " + valor + ");";
+        return "printf(\"" + formatoPrintf(tipo) + "\\n\", " + valor + ");";
     }
 
     @Override
