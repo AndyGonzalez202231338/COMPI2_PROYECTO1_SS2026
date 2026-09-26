@@ -47,7 +47,8 @@ import java.nio.file.Path;
  *
  * <p><b>Fase 4:</b> si el análisis semántico terminó SIN errores, se genera también
  * el C3D del AST verificado y se guarda en {@link ResultadoAnalisis#getGeneradorC3D()}.
- * Además se escribe el archivo .c al lado del fuente y se imprimen las cuádruplas.
+ * Además se escribe el archivo .c al lado del fuente y se acumulan las cuádruplas
+ * para el archivo consolidado del proyecto.
  *
  * <p><b>Prototipos de funciones importadas / hermanas:</b> cuando un `.pig` importa
  * funciones de `.y` o métodos/clases de `.z`, o cuando un `.z` referencia a otra
@@ -58,10 +59,27 @@ import java.nio.file.Path;
  * {@link GeneradorC3D.Firma} ya armada. No se pasan {@link Simbolo}s directos
  * porque el símbolo de un método/constructor de Z guarda el nombre plano, no la
  * etiqueta manglada que usa el C3D.
+ *
+ * <p><b>C3D consolidado:</b> cuando el análisis arranca desde un `.pig`, el
+ * acumulador se resetea y se van acumulando las cuádruplas de todos los archivos
+ * (incluidos los .y/.z importados que el {@code CargadorImports} analiza
+ * recursivamente). Al terminar el `.pig`, se vuelca todo a un único
+ * {@code <nombrePig>_C3D.txt} al lado del fuente. Si se analiza un .y o .z suelto,
+ * no se genera consolidado (no tiene sentido: solo tendría sus propias cuádruplas).
  */
 public class ServicioAnalisis {
 
     private final File raizProyecto;
+
+    /**
+     * Acumulador del C3D consolidado del proyecto. Se resetea al empezar el análisis
+     * de un .pig (que es el punto de entrada del proyecto) y se vuelca a un archivo
+     * al terminarlo. Es ThreadLocal para no mezclar análisis concurrentes; estático
+     * para compartirse entre instancias de ServicioAnalisis (CargadorImports crea
+     * la suya, pero el acumulador es el mismo).
+     */
+    private static final ThreadLocal<StringBuilder> acumuladorC3D =
+            ThreadLocal.withInitial(StringBuilder::new);
 
     public ServicioAnalisis() {
         this(null);
@@ -73,15 +91,26 @@ public class ServicioAnalisis {
 
     public ResultadoAnalisis analizar(File archivo, String texto) {
         String extension = extensionDe(archivo);
+        boolean esRaiz = "pig".equals(extension);
+        if (esRaiz) {
+            acumuladorC3D.get().setLength(0);   // arranca el consolidado del proyecto
+        }
         try {
-            return switch (extension) {
+            ResultadoAnalisis resultado = switch (extension) {
                 case "y" -> analizarY(texto, archivo);
                 case "z" -> analizarZ(texto, archivo);
                 case "pig" -> analizarPigLatin(texto, archivo);
                 default -> ResultadoAnalisis.extensionNoSoportada(archivo.getName());
             };
+            if (esRaiz) {
+                escribirConsolidadoC3D(archivo);
+            }
+            return resultado;
         } catch (Exception ex) {
             String detalle = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+            if (esRaiz) {
+                escribirConsolidadoC3D(archivo);
+            }
             return ResultadoAnalisis.errorInterno(etiquetaLenguaje(extension), detalle);
         }
     }
@@ -118,7 +147,7 @@ public class ServicioAnalisis {
                             + generadorC3D.getCuadruplas().size() + " cuádruplas, "
                             + generadorC3D.getFirmas().size() + " función(es).");
 
-                    imprimirCuadruplas(generadorC3D, "Y?");
+                    imprimirCuadruplas(generadorC3D, "Y?", archivo);
                     generarArchivoC(generadorC3D, archivo, "_", null, ambitoGlobal, Map.of());
 
                 } catch (Exception exC3D) {
@@ -189,7 +218,7 @@ public class ServicioAnalisis {
                     Map<String, GeneradorC3D.Firma> firmasHermanas =
                             recolectarFirmasImportadas(ambitoInterno, clase.getNombre());
 
-                    imprimirCuadruplas(generadorC3D, "Zetariano");
+                    imprimirCuadruplas(generadorC3D, "Zetariano", archivo);
                     generarArchivoC(generadorC3D, archivo, "_", null, ambitoInterno, firmasHermanas);
 
                 } catch (Exception exC3D) {
@@ -250,8 +279,8 @@ public class ServicioAnalisis {
                     Map<String, GeneradorC3D.Firma> firmasExternas =
                             recolectarFirmasImportadas(imports.getAmbitoGlobal(), null);
 
-                    imprimirCuadruplas(generadorC3D, "PigLatin");
-                    // ⚠️ Ahora pasamos globalPig (con las globales del .pig + padre de imports)
+                    imprimirCuadruplas(generadorC3D, "PigLatin", archivo);
+                    // Ahora pasamos globalPig (con las globales del .pig + padre de imports)
                     // como ambitoGlobalUsado. Ese es el ámbito que OrquestadorC3DaC usa para
                     // declarar las variables globales y como fuente de tipos para InferenciaTiposC.
                     generarArchivoC(generadorC3D, archivo, "_", "main",
@@ -295,12 +324,46 @@ public class ServicioAnalisis {
         return lineas;
     }
 
-    /** Imprime la tabla de cuádruplas en stdout (para depurar). */
-    private static void imprimirCuadruplas(GeneradorC3D generadorC3D, String lenguaje) {
-        System.out.println("=== Cuádruplas (" + lenguaje + ") ===");
+    /**
+     * Imprime la tabla de cuádruplas en stdout Y la acumula en el buffer global para
+     * el archivo consolidado del proyecto. Se llama una vez por cada archivo
+     * analizado (.y, .z, .pig) — el resultado final en el .txt tiene una sección por
+     * archivo, con el lenguaje y el nombre del archivo en el encabezado.
+     */
+    private static void imprimirCuadruplas(GeneradorC3D generadorC3D, String lenguaje, File archivo) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Cuádruplas (").append(lenguaje).append(" — ")
+                .append(archivo.getName()).append(") ===\n");
         int k = 0;
         for (Cuadrupla c : generadorC3D.getCuadruplas()) {
-            System.out.printf("%3d: %s%n", k++, c.toStringLegible());
+            sb.append(String.format("%3d: %s%n", k++, c.toStringLegible()));
+        }
+        sb.append("=== Fin (").append(generadorC3D.getCuadruplas().size())
+                .append(" cuádruplas) ===\n\n");
+
+        // A consola (como antes).
+        System.out.print(sb);
+        // Al acumulador del proyecto.
+        acumuladorC3D.get().append(sb);
+    }
+
+    /**
+     * Escribe el C3D acumulado de TODO el proyecto (los .y/.z importados + el .pig)
+     * en un único archivo {@code <nombrePig>_C3D.txt} al lado del .pig.
+     *
+     * <p>Se invoca desde {@link #analizar(File, String)} cuando el archivo analizado
+     * es un .pig (el punto de entrada del proyecto) — es el único que tiene la
+     * visión completa de los imports.
+     */
+    private static void escribirConsolidadoC3D(File archivoPig) {
+        try {
+            String ruta = archivoPig.getAbsolutePath();
+            int punto = ruta.lastIndexOf('.');
+            String salida = (punto >= 0 ? ruta.substring(0, punto) : ruta) + "_C3D.txt";
+            Files.writeString(Path.of(salida), acumuladorC3D.get().toString());
+            System.out.println("[C3D] Archivo consolidado: " + salida);
+        } catch (Exception e) {
+            System.out.println("[C3D] Error al escribir consolidado: " + e.getMessage());
         }
     }
 
@@ -332,7 +395,7 @@ public class ServicioAnalisis {
                     nombreFuncionEntrada,
                     tipos,
                     externas,
-                    ambitoGlobalUsado   // <-- NUEVO argumento
+                    ambitoGlobalUsado
             );
             String codigoC = orch.generarArchivoCompleto();
 

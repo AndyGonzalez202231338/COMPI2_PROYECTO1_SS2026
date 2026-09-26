@@ -4,12 +4,16 @@ import com.proyecto1.semantico.ast.GeneradorC3D;
 import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
 import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoClase;
 import com.proyecto1.semantico.tipos.TipoEstructura;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * {@code expresionAsignacion} (#expresionAsignacionDef), cuando trae operador.
@@ -21,6 +25,13 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
     private final ExpresionPigLatin objetivo;
     private final String operador; // "=", "+=", "-=", "*=", "/=", "%="
     private final ExpresionPigLatin valor;
+
+    /**
+     * Tipo del lvalue, cacheado por verificar(). Se usa para saber si el RHS
+     * {@code {...}} es un literal POSICIONAL de estructura/clase (en cuyo caso se
+     * valida campo por campo y se expande inline en el C3D) o un arreglo normal.
+     */
+    private Tipo tipoLValueCache;
 
     public Asignacion(ExpresionPigLatin objetivo, String operador, ExpresionPigLatin valor,
                       int linea, int columna) {
@@ -37,6 +48,51 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         Tipo tIzq = objetivo.verificar(ambito, errores);
+        this.tipoLValueCache = tIzq;
+
+        // Caso especial: "lvalue = {v1, v2, ...}" donde lvalue es estructura/clase.
+        // El RHS {...} se ve como InicializadorArreglo (por gramática), pero
+        // semánticamente es un literal POSICIONAL de estructura, no un arreglo.
+        // Validamos campo por campo contra los campos reales del tipo del lvalue,
+        // sin llamar a InicializadorArreglo.verificar (que daría "Elemento
+        // incompatible" entre tipos distintos).
+        if (operador.equals("=")
+                && valor instanceof InicializadorArreglo lit
+                && (tIzq instanceof TipoEstructura || tIzq instanceof TipoClase)) {
+
+            Simbolo defStruct = (tIzq instanceof TipoEstructura te)
+                    ? te.getDefinicion()
+                    : ((TipoClase) tIzq).getDefinicion();
+
+            List<Simbolo> campos = new ArrayList<>();
+            for (Simbolo m : defStruct.getMiembrosEnOrden()) {
+                if (m.getCategoria() == CategoriaSimbolo.CAMPO
+                        || m.getCategoria() == CategoriaSimbolo.ATRIBUTO) {
+                    campos.add(m);
+                }
+            }
+            List<ExpresionPigLatin> valores = lit.getElementos();
+
+            if (campos.size() != valores.size()) {
+                errores.reportar(linea, columna,
+                        "Estructura '" + defStruct.getNombre() + "' espera " + campos.size()
+                                + " valores, se recibieron " + valores.size());
+            } else {
+                for (int i = 0; i < valores.size(); i++) {
+                    Tipo tVal = valores.get(i).verificar(ambito, errores);
+                    Tipo tCampo = campos.get(i).getTipo();
+                    if (!Tipos.esAsignable(tCampo, tVal)) {
+                        errores.reportar(valores.get(i).getLinea(), valores.get(i).getColumna(),
+                                "Campo " + (i + 1) + " ('" + campos.get(i).getNombre()
+                                        + "') espera " + tCampo.nombre()
+                                        + ", se recibió " + tVal.nombre());
+                    }
+                }
+            }
+            return tIzq;    // ya no cae al chequeo genérico de esAsignable
+        }
+
+        // Camino normal: chequeo genérico de compatibilidad.
         Tipo tDer = valor.verificar(ambito, errores);
 
         if (!operador.equals("=")) {
@@ -58,20 +114,52 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
     /**
      * Emite:
      * <ul>
-     *   <li>{@code x = v}: el C3D del RHS y la escritura en el lugar del lvalue.</li>
-     *   <li>{@code x op= v}: lee el valor actual, emite la binaria, guarda el resultado.</li>
+     *   <li><b>Literal de estructura</b> ({@code lvalue = {v1, v2, ...}} donde el
+     *       tipo del lvalue es estructura/clase): expansión inline —
+     *       {@code t = new Tipo; t.campo_i = v_i; lvalue = t}. No se emite el
+     *       {@code newarr} que haría {@code InicializadorArreglo.generarC3D}.</li>
+     *   <li>{@code x = v} normal.</li>
+     *   <li>{@code x op= v}: leer, operar, guardar.</li>
      * </ul>
      *
-     * <p><b>Auto-malloc de slots (arr[i]):</b> cuando el lvalue es
-     * {@code arr[i].campo} y el elemento del arreglo es una estructura/clase, se
-     * emite un chequeo de NULL + {@code malloc} del slot ANTES de escribir el campo.
-     * Sin esto, {@code personas[0].nombre = "Carlos"} escribiría sobre un puntero
-     * basura del array recién reservado, produciendo segfault en runtime.
+     * <p>El auto-malloc de slots ({@code arr[i].campo = ...}) sigue funcionando:
+     * {@link #resolverLValue} garantiza que el slot {@code arr[i]} esté allocado
+     * antes de devolver el lvalue, y este método escribe el campo sobre esa base.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
         LValue lv = resolverLValue(objetivo, generador);
 
+        // Literal de estructura: expandir inline.
+        if (operador.equals("=")
+                && valor instanceof InicializadorArreglo lit
+                && (tipoLValueCache instanceof TipoEstructura || tipoLValueCache instanceof TipoClase)) {
+
+            Simbolo defStruct = (tipoLValueCache instanceof TipoEstructura te)
+                    ? te.getDefinicion()
+                    : ((TipoClase) tipoLValueCache).getDefinicion();
+
+            String t = generador.nuevoTemporal();
+            generador.emitirNew(defStruct.getNombre(), t);
+
+            List<Simbolo> campos = new ArrayList<>();
+            for (Simbolo m : defStruct.getMiembrosEnOrden()) {
+                if (m.getCategoria() == CategoriaSimbolo.CAMPO
+                        || m.getCategoria() == CategoriaSimbolo.ATRIBUTO) {
+                    campos.add(m);
+                }
+            }
+            List<ExpresionPigLatin> valores = lit.getElementos();
+            for (int i = 0; i < campos.size() && i < valores.size(); i++) {
+                ResultadoC3D v = valores.get(i).generarC3D(generador);
+                generador.emitirGuardarCampo(t, campos.get(i).getNombre(), v.getLugar());
+            }
+
+            guardarEn(lv, t, generador);
+            return ResultadoC3D.temporal(t, tipoLValueCache);
+        }
+
+        // Camino normal.
         if (operador.equals("=")) {
             ResultadoC3D rhs = valor.generarC3D(generador);
             guardarEn(lv, rhs.getLugar(), generador);
@@ -119,7 +207,8 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
         if (objetivo instanceof Indice ind) {
             ResultadoC3D base = ind.getArreglo().generarC3D(generador);
             ResultadoC3D idx  = ind.getIndice().generarC3D(generador);
-            Tipo tipo = TipoPrimitivo.DESCONOCIDO;
+            Tipo tipo = (ind.getTipoElemento() != null)
+                    ? ind.getTipoElemento() : TipoPrimitivo.DESCONOCIDO;
             return new LValue(base.getLugar(), null, idx.getLugar(), tipo);
         }
 
@@ -157,7 +246,6 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
         String nombreTipo = nombreDeTipoInstanciable(tipoElem);
 
         // Si el elemento no es estructura/clase, no hay nada que allocar.
-        // Usamos el camino normal: leer el elemento y tratar ese temporal como base.
         if (nombreTipo == null) {
             String t = generador.nuevoTemporal();
             generador.emitirCargaIndice(arr, idx, t);
@@ -191,8 +279,6 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
 
     /**
      * Nombre de clase/estructura si el tipo es instanciable con malloc; null si no.
-     * {@code TipoEstructura} y {@code TipoClase} devuelven el nombre del símbolo;
-     * cualquier otro tipo (primitivo, arreglo, desconocido) devuelve null.
      */
     private static String nombreDeTipoInstanciable(Tipo t) {
         if (t instanceof TipoEstructura te) return te.getDefinicion().getNombre();
