@@ -16,6 +16,11 @@ package com.proyecto1.codigo.c;
  *       (nuestro lenguaje admite {@code null}, {@code strcmp} de la libc no).
  *       Es lo que usa el traductor cuando traduce {@code ==} / {@code !=} sobre
  *       {@code char*}.</li>
+ *   <li>{@code rt_int_to_string(n)} y {@code rt_double_to_string(d)}: convierten un
+ *       valor numérico a un {@code char*} nuevo en heap. Se usan cuando una
+ *       concatenación {@code a + b} mezcla un string con un número: en vez de pasarle
+ *       el número crudo a {@code rt_concat} (que espera {@code const char*}), el
+ *       traductor envuelve el operando numérico en su conversión.</li>
  *   <li>{@code rt_print_int}, {@code rt_print_double}, {@code rt_print_string} y sus
  *       variantes {@code rt_println_*}: impresión tipada sin formato. El orquestador
  *       las usa para traducir las llamadas {@code rt_print} / {@code rt_println}
@@ -72,6 +77,27 @@ public final class RuntimeC {
                     if (a == NULL) return -1;
                     if (b == NULL) return  1;
                     return strcmp(a, b);
+                }
+
+                /* ==== Conversión de numéricos a string (para concatenaciones mixtas) ==== */
+                /* Convierte un int a un char* nuevo en heap (llamador libera o ignora). */
+                static char* rt_int_to_string(int n) {
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "%d", n);
+                    size_t len = strlen(buf);
+                    char* r = (char*)malloc(len + 1);
+                    if (r) memcpy(r, buf, len + 1);
+                    return r;
+                }
+
+                /* Convierte un double a un char* nuevo en heap (formato %g, sin ceros extra). */
+                static char* rt_double_to_string(double d) {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "%g", d);
+                    size_t len = strlen(buf);
+                    char* r = (char*)malloc(len + 1);
+                    if (r) memcpy(r, buf, len + 1);
+                    return r;
                 }
 
                 /* ==== Impresión tipada (para las llamadas rt_print* de Z) ==== */

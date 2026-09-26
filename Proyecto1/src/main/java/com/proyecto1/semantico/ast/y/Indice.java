@@ -1,5 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
+import com.proyecto1.semantico.ast.ResultadoC3D;
 import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.Simbolo;
@@ -59,5 +61,23 @@ public final class Indice extends NodoY implements ExpresionY {
         }
 
         return tipoElemento;
+    }
+
+    /**
+     * Emite: C3D del arreglo, C3D del índice, y UNA cuádrupla {@code (=[], base, idx, t)}.
+     * Devuelve {@code ResultadoC3D.temporal(t, tipoElemento)}.
+     *
+     * <p>En Y los arreglos son de tamaño fijo y no hay ramificación flat/jagged:
+     * la composición directa (una cuádrupla por índice) cubre todos los casos,
+     * porque el lenguaje no tiene arreglos dinámicos con dimensiones runtime.
+     */
+    @Override
+    public ResultadoC3D generarC3D(GeneradorC3D generador) {
+        ResultadoC3D base = arreglo.generarC3D(generador);
+        ResultadoC3D idx  = indice.generarC3D(generador);
+        String t = generador.nuevoTemporal();
+        generador.emitirCargaIndice(base.getLugar(), idx.getLugar(), t);
+        Tipo tipo = (tipoElemento != null) ? tipoElemento : TipoPrimitivo.DESCONOCIDO;
+        return ResultadoC3D.temporal(t, tipo);
     }
 }

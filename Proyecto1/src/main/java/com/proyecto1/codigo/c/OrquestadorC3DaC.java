@@ -10,8 +10,7 @@ import java.util.*;
 
 /**
  * Ensambla un archivo C completo a partir de las cuádruplas y firmas de un programa
- * de Y o de PigLatin (Z tiene particularidades — this, mangling de métodos — que se
- * tratan en una fase aparte).
+ * de Y, PigLatin o Zetariano.
  *
  * <p><b>Responsabilidades:</b>
  * <ol>
@@ -22,49 +21,99 @@ import java.util.*;
  *       (delegadas a {@link InferenciaTiposC}) y su cuerpo (delegado a
  *       {@link TraductorCuadrupla}, salvo {@code param}/{@code call}, que se
  *       manejan agrupados aquí).</li>
- *   <li>Emitir prototipos de todas las funciones.</li>
- *   <li>Emitir un {@code main} de C que llama a la función de entrada del lenguaje
- *       ("main" en PigLatin, la función con el nombre configurado en Y).</li>
+ *   <li>Emitir prototipos de todas las funciones propias y de las funciones
+ *       IMPORTADAS (las que un .pig usa de un .y o .z, sin definirlas él).</li>
+ *   <li>Emitir un {@code main} de C. Dos estrategias:
+ *     <ul>
+ *       <li><b>Y / PigLatin</b>: llama por nombre a la función de entrada del C3D.</li>
+ *       <li><b>Zetariano</b> (factory {@link #paraZetariano}): instancia una clase
+ *           y llama a un método de entrada por convención.</li>
+ *     </ul>
+ *   </li>
  * </ol>
  *
- * <p><b>Fase 4.6:</b> el runtime completo (lectura de strings, concat, strcmp,
- * print tipado) viene de {@link RuntimeC#codigo()}, que se inyecta al principio
- * del archivo. Las llamadas al runtime que Z emite como {@code call rt_print} /
- * {@code call rt_println} / {@code call rt_readln} se resuelven aquí mismo, ANTES
- * de aplicar el prefijo de lenguaje (porque no son funciones del usuario).
+ * <p><b>Fase 4.6:</b> el runtime completo viene de {@link RuntimeC#codigo()}, que
+ * se inyecta al principio del archivo. Las llamadas al runtime que Z emite como
+ * {@code call rt_print} / {@code call rt_println} / {@code call rt_readln} se
+ * resuelven aquí mismo, ANTES de aplicar el prefijo de lenguaje.
  *
- * <p><b>Renombrado de funciones:</b> todas las funciones del C3D se prefijan con
- * {@code prefijoLenguaje} para evitar colisiones con las funciones de la biblioteca
- * estándar de C ({@code printf}, {@code malloc}, ...) y con el propio {@code main}
- * de C. Así una función {@code "main"} del C3D pasa a ser {@code "y_main"} o
- * {@code "pig_main"} en el C. El {@code main} real de C es un wrapper que llama a
- * la función de entrada ya prefijada.
+ * <p><b>Prototipos de funciones importadas:</b> se pasan como {@code Map<String,
+ * Firma>} (no como {@code List<Simbolo>}) porque el {@code Simbolo} de un método
+ * o constructor de Z guarda el nombre PLANO ("saludar", "Estudiante"), no la
+ * etiqueta MANGLADA que usa el C3D ("Estudiante_saludar", "Estudiante_init_a2").
+ * Pasar la {@link GeneradorC3D.Firma} ya construida (con la etiqueta correcta,
+ * parámetros tipados y tipo de retorno) evita tener que reconstruir el mangling
+ * aquí.
  */
 public final class OrquestadorC3DaC {
 
     private final List<Cuadrupla> cuadruplas;
     private final Map<String, GeneradorC3D.Firma> firmas;
-    private final String prefijoLenguaje;   // ej. "y_", "pig_"
-    private final String nombreFuncionEntrada; // nombre en el C3D ("main", "principal", ...)
+    private final String prefijoLenguaje;
+    private final String nombreFuncionEntrada;
+    private final String claseEntradaZ;
+    private final String metodoEntradaZ;
     private final List<Simbolo> definicionesTipo;
+    private final Map<String, GeneradorC3D.Firma> firmasExternas;
 
-    public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
-                            Map<String, GeneradorC3D.Firma> firmas,
-                            String prefijoLenguaje,
-                            String nombreFuncionEntrada) {
-        this(cuadruplas, firmas, prefijoLenguaje, nombreFuncionEntrada, List.of());
+    // ---------- Constructores ----------
+
+    /**
+     * Constructor central: asigna los 8 campos. Todos los demás delegan aquí.
+     */
+    private OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
+                             Map<String, GeneradorC3D.Firma> firmas,
+                             String prefijoLenguaje,
+                             String nombreFuncionEntrada,
+                             String claseEntradaZ,
+                             String metodoEntradaZ,
+                             List<Simbolo> definicionesTipo,
+                             Map<String, GeneradorC3D.Firma> firmasExternas) {
+        this.cuadruplas = cuadruplas != null ? cuadruplas : List.of();
+        this.firmas = firmas != null ? firmas : Map.of();
+        this.prefijoLenguaje = (prefijoLenguaje != null) ? prefijoLenguaje : "";
+        this.nombreFuncionEntrada = nombreFuncionEntrada;
+        this.claseEntradaZ = claseEntradaZ;
+        this.metodoEntradaZ = metodoEntradaZ;
+        this.definicionesTipo = (definicionesTipo != null) ? definicionesTipo : List.of();
+        this.firmasExternas = (firmasExternas != null) ? firmasExternas : Map.of();
     }
 
+    /** Constructor Y / PigLatin sin funciones externas. */
     public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
                             Map<String, GeneradorC3D.Firma> firmas,
                             String prefijoLenguaje,
                             String nombreFuncionEntrada,
                             List<Simbolo> definicionesTipo) {
-        this.cuadruplas = cuadruplas != null ? cuadruplas : List.of();
-        this.firmas = firmas != null ? firmas : Map.of();
-        this.prefijoLenguaje = (prefijoLenguaje != null) ? prefijoLenguaje : "";
-        this.nombreFuncionEntrada = nombreFuncionEntrada;
-        this.definicionesTipo = (definicionesTipo != null) ? definicionesTipo : List.of();
+        this(cuadruplas, firmas, prefijoLenguaje, nombreFuncionEntrada,
+                null, null, definicionesTipo, Map.of());
+    }
+
+    /** Constructor Y / PigLatin con firmas externas importadas (típico de PigLatin). */
+    public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
+                            Map<String, GeneradorC3D.Firma> firmas,
+                            String prefijoLenguaje,
+                            String nombreFuncionEntrada,
+                            List<Simbolo> definicionesTipo,
+                            Map<String, GeneradorC3D.Firma> firmasExternas) {
+        this(cuadruplas, firmas, prefijoLenguaje, nombreFuncionEntrada,
+                null, null, definicionesTipo, firmasExternas);
+    }
+
+    /**
+     * Factory para un programa ZETARIANO: sin función de entrada nombrada (Z no
+     * tiene "main" propio), en su lugar arma un {@code main()} de C que instancia
+     * {@code claseEntrada} (constructor sin argumentos) y llama a
+     * {@code metodoEntrada} sobre ese objeto.
+     */
+    public static OrquestadorC3DaC paraZetariano(List<Cuadrupla> cuadruplas,
+                                                 Map<String, GeneradorC3D.Firma> firmas,
+                                                 String prefijoLenguaje,
+                                                 List<Simbolo> definicionesTipo,
+                                                 String claseEntrada,
+                                                 String metodoEntrada) {
+        return new OrquestadorC3DaC(cuadruplas, firmas, prefijoLenguaje,
+                null, claseEntrada, metodoEntrada, definicionesTipo, Map.of());
     }
 
     // ---------- API pública ----------
@@ -76,21 +125,21 @@ public final class OrquestadorC3DaC {
         StringBuilder sb = new StringBuilder();
         sb.append("/* Archivo generado automáticamente por OrquestadorC3DaC */\n\n");
 
-        // Runtime completo (incluye <stdio.h>, <stdlib.h>, <string.h> y las
-        // funciones rt_*). Se inyecta ANTES que nada para que cualquier
-        // función del programa pueda usarlo sin prototipos previos.
         sb.append(RuntimeC.codigo());
         sb.append("\n");
 
-        // Structs/classes ANTES de los prototipos: las firmas de función pueden usar
-        // "Persona*" como tipo de parámetro o retorno, y necesitan el typedef visible.
         sb.append(new GeneradorStructsC().generar(definicionesTipo));
         if (!definicionesTipo.isEmpty()) sb.append("\n");
 
-        // Prototipos
+        // Prototipos de funciones propias
         sb.append("/* Prototipos */\n");
         for (FuncionCompilada fc : funciones) {
             sb.append(prototipo(fc)).append(";\n");
+        }
+
+        // Prototipos de funciones importadas (no tienen definición en este archivo).
+        for (GeneradorC3D.Firma f : firmasExternas.values()) {
+            sb.append(cabeceraDesdeFirma(f)).append(";\n");
         }
         sb.append("\n");
 
@@ -101,13 +150,14 @@ public final class OrquestadorC3DaC {
         }
 
         // main wrapper
-        sb.append(mainWrapper(funciones));
+        if (nombreFuncionEntrada != null || claseEntradaZ != null) {
+            sb.append(mainWrapper(funciones));
+        }
         return sb.toString();
     }
 
     // ---------- División por función ----------
 
-    /** Una función del C3D: su begin_func y las cuádruplas de su cuerpo (sin end_func). */
     private record FuncionCompilada(CuadruplaBeginFunc begin, List<Cuadrupla> cuerpo) {}
 
     private List<FuncionCompilada> dividirPorFuncion() {
@@ -123,7 +173,7 @@ public final class OrquestadorC3DaC {
                 resultado.add(new FuncionCompilada(bf, cuadruplas.subList(i + 1, j)));
                 i = j + 1;
             } else {
-                i++; // cuádruplas fuera de toda función (no debería pasar): se ignoran
+                i++;
             }
         }
         return resultado;
@@ -139,7 +189,6 @@ public final class OrquestadorC3DaC {
         StringBuilder sb = new StringBuilder();
         sb.append(cabecera(fc, true)).append(" {\n");
 
-        // Declaraciones locales inferidas
         Map<String, String> tipos = new HashMap<>();
         GeneradorC3D.Firma firma = firmas.get(fc.begin().nombre());
         if (firma != null) {
@@ -148,8 +197,7 @@ public final class OrquestadorC3DaC {
             }
         }
 
-        InferenciaTiposC inf = new InferenciaTiposC(fc.cuerpo(), firma, firmas);
-        // El inferidor ya conoce los tipos de parámetros y locales; volcamos todo al mapa.
+        InferenciaTiposC inf = new InferenciaTiposC(fc.cuerpo(), firma, firmas, definicionesTipo);
         tipos.putAll(inf.getDeclaraciones());
 
         for (String linea : inf.comoLineasDeC()) {
@@ -159,18 +207,11 @@ public final class OrquestadorC3DaC {
             sb.append("\n");
         }
 
-        // Cuerpo
         sb.append(cuerpoATexto(fc.cuerpo(), tipos));
-
         sb.append("}\n");
         return sb.toString();
     }
 
-    /**
-     * Cabecera C de una función: {@code tipoRetorno <prefijo>nombre(params)}.
-     * Si {@code conNombre}, incluye el nombre (definición); si no, es un prototipo
-     * (mismo texto, ambos casos son idénticos en C).
-     */
     private String cabecera(FuncionCompilada fc, boolean conNombre) {
         GeneradorC3D.Firma firma = firmas.get(fc.begin().nombre());
         String tipoRet = (firma != null && firma.tipoRetorno() != null)
@@ -194,13 +235,32 @@ public final class OrquestadorC3DaC {
         return sb.toString();
     }
 
+    /**
+     * Cabecera C de una función importada, construida desde su {@link GeneradorC3D.Firma}.
+     * Misma forma que {@link #cabecera} pero sin necesitar la cuádrupla begin_func —
+     * la firma ya trae la etiqueta manglada, los parámetros tipados y el retorno.
+     */
+    private String cabeceraDesdeFirma(GeneradorC3D.Firma firma) {
+        String tipoRet = (firma.tipoRetorno() != null)
+                ? tipoAC(firma.tipoRetorno()) : "void";
+        StringBuilder sb = new StringBuilder();
+        sb.append(tipoRet).append(" ").append(prefijoLenguaje).append(firma.etiqueta()).append("(");
+        List<GeneradorC3D.ParametroFirma> params = firma.parametros();
+        if (params.isEmpty()) {
+            sb.append("void");
+        } else {
+            List<String> ps = new ArrayList<>();
+            for (GeneradorC3D.ParametroFirma p : params) {
+                ps.add(tipoAC(p.tipo()) + " " + p.nombre());
+            }
+            sb.append(String.join(", ", ps));
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
     // ---------- Traducción del cuerpo con contexto ----------
 
-    /**
-     * Traduce el cuerpo de una función. Las cuádruplas "planas" las delega a
-     * {@link TraductorCuadrupla}; las que necesitan contexto ({@code param} +
-     * {@code call}) las maneja aquí, agrupando los params previos al call.
-     */
     private String cuerpoATexto(List<Cuadrupla> cuerpo, Map<String, String> tipos) {
         StringBuilder sb = new StringBuilder();
         TraductorCuadrupla tr = new TraductorCuadrupla(tipos);
@@ -216,30 +276,14 @@ public final class OrquestadorC3DaC {
                 paramsPendientes.clear();
                 continue;
             }
-            // El resto: print/read (Y, PigLatin) los maneja TraductorCuadrupla con tipos;
-            // las planas también.
             sb.append("    ").append(tr.traducir(c)).append("\n");
         }
         return sb.toString();
     }
 
-    /**
-     * Construye la línea C de una llamada. Tres casos:
-     * <ol>
-     *   <li>{@code rt_print} / {@code rt_println} (emitidos por Z con UN argumento):
-     *       se traduce a la variante tipada {@code rt_print_<tipo>(arg);} donde el
-     *       tipo se consulta en el mapa de tipos del argumento.</li>
-     *   <li>{@code rt_readln} (emitido por Z sin argumentos, con destino opcional):
-     *       se traduce a {@code destino = rt_read_string();} o a
-     *       {@code rt_read_string();} si el destino es null.</li>
-     *   <li>Cualquier otra función: llamada normal, con el prefijo de lenguaje
-     *       aplicado al nombre, y los params ya acumulados en orden.</li>
-     * </ol>
-     */
     private String traducirCall(CuadruplaCall call, List<String> params, Map<String, String> tipos) {
         String fname = call.funcion();
 
-        // Caso 1: rt_print / rt_println
         if ("rt_print".equals(fname) || "rt_println".equals(fname)) {
             String arg = params.isEmpty() ? "" : params.get(0);
             String tipo = tipos.getOrDefault(arg, "int");
@@ -248,50 +292,37 @@ public final class OrquestadorC3DaC {
             return fn + "(" + arg + ");";
         }
 
-        // Caso 2: rt_readln
         if ("rt_readln".equals(fname)) {
             return (call.destino() != null)
                     ? call.destino() + " = rt_read_string();"
                     : "rt_read_string();";
         }
 
-        // Caso 3: llamada normal a función del usuario.
         String nombre = prefijoLenguaje + fname;
         String args = String.join(", ", params);
         String expr = nombre + "(" + args + ")";
         return (call.destino() != null) ? call.destino() + " = " + expr + ";" : expr + ";";
     }
 
-    /**
-     * Sufijo que el runtime usa para elegir la función tipada. Mapeo:
-     * <ul>
-     *   <li>{@code "int"} / {@code "bool"} → {@code "int"} (impresos igual)</li>
-     *   <li>{@code "double"} → {@code "double"}</li>
-     *   <li>{@code "char"} → {@code "char"}</li>
-     *   <li>{@code "char*"} → {@code "string"}</li>
-     *   <li>Punteros a structs/clases → {@code "string"} (se imprimen como "(null)" o similar,
-     *       porque no tenemos toString automático).</li>
-     * </ul>
-     */
     private static String sufijoTipo(String tipoC) {
         if (tipoC == null) return "int";
         if (tipoC.equals("double")) return "double";
         if (tipoC.equals("char"))   return "char";
         if (tipoC.equals("char*"))  return "string";
-        return "int"; // int, bool, y fallback
+        return "int";
     }
 
     // ---------- main de C ----------
 
-    /**
-     * Emite el {@code main} de C. Busca una función cuyo nombre en el C3D coincida
-     * con {@link #nombreFuncionEntrada}; si existe, el main la llama y devuelve 0.
-     * Si no existe, emite un main vacío que devuelve 0.
-     *
-     * <p>La función de entrada SIEMPRE se prefija (queda como {@code <prefijo>main}),
-     * así que C's {@code main} no colisiona con ella.
-     */
     private String mainWrapper(List<FuncionCompilada> funciones) {
+        if (claseEntradaZ != null) {
+            return mainWrapperZetariano();
+        }
+        if (nombreFuncionEntrada == null) return "";
+        return mainWrapperFuncionNombrada(funciones);
+    }
+
+    private String mainWrapperFuncionNombrada(List<FuncionCompilada> funciones) {
         boolean existeEntrada = funciones.stream()
                 .anyMatch(fc -> fc.begin().nombre().equals(nombreFuncionEntrada));
 
@@ -306,12 +337,56 @@ public final class OrquestadorC3DaC {
         return sb.toString();
     }
 
+    /**
+     * Estrategia Zetariano: genera un {@code main()} que instancia
+     * {@code claseEntradaZ} (constructor sin argumentos) y llama a
+     * {@code metodoEntradaZ} sobre el objeto. Valida que exista el constructor y
+     * que el método de entrada tenga aridad 1 (solo "this").
+     */
+    private String mainWrapperZetariano() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("/* Punto de entrada (Zetariano: instancia ").append(claseEntradaZ)
+                .append(" y llama a ").append(metodoEntradaZ).append(") */\n");
+        sb.append("int main(void) {\n");
+
+        String etiquetaCtor = GeneradorC3D.etiquetaConstructor(claseEntradaZ, 0);
+        if (!firmas.containsKey(etiquetaCtor)) {
+            sb.append("    /* ERROR: la clase '").append(claseEntradaZ)
+                    .append("' no tiene un constructor sin argumentos (se esperaba '")
+                    .append(etiquetaCtor).append("'). */\n");
+            sb.append("    return 1;\n}\n");
+            return sb.toString();
+        }
+
+        String etiquetaMetodo = GeneradorC3D.etiquetaMetodo(claseEntradaZ, metodoEntradaZ);
+        GeneradorC3D.Firma firmaMetodo = firmas.get(etiquetaMetodo);
+        if (firmaMetodo == null) {
+            sb.append("    /* ERROR: el método de entrada '").append(metodoEntradaZ)
+                    .append("' no existe en la clase '").append(claseEntradaZ).append("'. */\n");
+            sb.append("    return 1;\n}\n");
+            return sb.toString();
+        }
+        if (firmaMetodo.parametros().size() != 1) {
+            sb.append("    /* ERROR: el método de entrada '").append(metodoEntradaZ)
+                    .append("' no puede recibir parámetros propios (tiene ")
+                    .append(firmaMetodo.parametros().size() - 1).append("). */\n");
+            sb.append("    return 1;\n}\n");
+            return sb.toString();
+        }
+
+        String obj = "obj";
+        sb.append("    ").append(claseEntradaZ).append("* ").append(obj)
+                .append(" = (").append(claseEntradaZ).append("*) malloc(sizeof(")
+                .append(claseEntradaZ).append("));\n");
+        sb.append("    ").append(prefijoLenguaje).append(etiquetaCtor).append("(").append(obj).append(");\n");
+        sb.append("    ").append(prefijoLenguaje).append(etiquetaMetodo).append("(").append(obj).append(");\n");
+        sb.append("    return 0;\n");
+        sb.append("}\n");
+        return sb.toString();
+    }
+
     // ---------- Tipos internos a C ----------
 
-    /**
-     * Traduce un {@link Tipo} a su representación en C.
-     * Mismo mapeo que {@link InferenciaTiposC} y {@link TraductorTipos}.
-     */
     private static String tipoAC(Tipo t) {
         if (t == null) return "void";
         if (t == TipoPrimitivo.ENTERO)      return "int";

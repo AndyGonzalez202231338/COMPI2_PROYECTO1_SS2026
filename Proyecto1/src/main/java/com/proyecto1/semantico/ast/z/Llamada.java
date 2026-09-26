@@ -220,10 +220,16 @@ public final class Llamada extends NodoZ implements ExpresionZ {
         }
         String etiqueta = generador.etiquetaMetodo(clase, metodo);
 
+        boolean esVoid = (simboloMetodo != null
+                && simboloMetodo.getTipo() != null
+                && simboloMetodo.getTipo().esVoid());
+
+        if (esVoid) {
+            generador.emitirCall(etiqueta, argumentos.size() + 1, null);
+            return ResultadoC3D.vacio();
+        }
         String t = generador.nuevoTemporal();
         generador.emitirCall(etiqueta, argumentos.size() + 1, t);
-
-        // Tipo del resultado: cacheado por verificar().
         Tipo tipo = (simboloMetodo != null && simboloMetodo.getTipo() != null)
                 ? simboloMetodo.getTipo()
                 : TipoPrimitivo.DESCONOCIDO;

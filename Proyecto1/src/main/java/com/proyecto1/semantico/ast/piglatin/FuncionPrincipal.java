@@ -56,6 +56,7 @@ public final class FuncionPrincipal extends NodoPigLatin {
      * {@code Constructor}.
      */
     public ResultadoC3D generarC3D(GeneradorC3D generador, List<InstruccionPigLatin> variablesGlobales) {
+        generador.registrarFirma("main", List.of(), TipoPrimitivo.VOID, false);
         generador.emitirBeginFunc("main", 0);
 
         for (InstruccionPigLatin decl : variablesGlobales) {

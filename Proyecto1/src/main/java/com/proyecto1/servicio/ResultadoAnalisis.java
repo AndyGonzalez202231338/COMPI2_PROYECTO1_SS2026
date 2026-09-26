@@ -1,5 +1,6 @@
 package com.proyecto1.servicio;
 
+import com.proyecto1.semantico.ast.GeneradorC3D;
 import com.proyecto1.semantico.errores.ErrorSemantico;
 import com.proyecto1.semantico.tabla.AmbitoGlobal;
 
@@ -17,6 +18,12 @@ import java.util.List;
  * categorías en vez de inventar ErrorLexico/ErrorSintactico casi idénticas: lo que
  * distingue a un error léxico de uno semántico aquí es en QUÉ LISTA cae, no la
  * forma de la clase que lo representa.
+ *
+ * <p><b>Fase 4:</b> cuando el análisis semántico termina sin errores, el servicio
+ * genera además el C3D del programa y lo guarda en {@link #getGeneradorC3D()}. Es
+ * {@code null} cuando NO se generó C3D (hubo errores, o el análisis no llegó hasta
+ * semántico, o la propia generación de C3D lanzó una excepción — ver
+ * {@link ServicioAnalisis}).
  */
 public final class ResultadoAnalisis {
 
@@ -27,17 +34,20 @@ public final class ResultadoAnalisis {
     private final List<ErrorSemantico> advertencias;
     private final int cantidadLineas;
     private final AmbitoGlobal ambitoGlobal; // solo .y/.z que llegaron hasta el análisis semántico; si no, null
+    private final GeneradorC3D generadorC3D; // null si no se generó C3D (por errores o por fallo del generador)
 
     private ResultadoAnalisis(String lenguaje, List<ErrorSemantico> erroresLexicos,
                               List<ErrorSemantico> erroresSintacticos, List<ErrorSemantico> erroresSemanticos,
-                              List<ErrorSemantico> advertencias, int cantidadLineas, AmbitoGlobal ambitoGlobal) {
-        this.ambitoGlobal = ambitoGlobal;
+                              List<ErrorSemantico> advertencias, int cantidadLineas, AmbitoGlobal ambitoGlobal,
+                              GeneradorC3D generadorC3D) {
         this.lenguaje = lenguaje;
         this.erroresLexicos = erroresLexicos;
         this.erroresSintacticos = erroresSintacticos;
         this.erroresSemanticos = erroresSemanticos;
         this.advertencias = advertencias;
         this.cantidadLineas = cantidadLineas;
+        this.ambitoGlobal = ambitoGlobal;
+        this.generadorC3D = generadorC3D;
     }
 
     public static ResultadoAnalisis conErrores(String lenguaje, List<ErrorSemantico> erroresLexicos,
@@ -53,7 +63,7 @@ public final class ResultadoAnalisis {
                                                List<ErrorSemantico> erroresSemanticos,
                                                List<ErrorSemantico> advertencias, int cantidadLineas) {
         return new ResultadoAnalisis(lenguaje, erroresLexicos, erroresSintacticos, erroresSemanticos,
-                advertencias, cantidadLineas, null);
+                advertencias, cantidadLineas, null, null);
     }
 
     /**
@@ -67,21 +77,45 @@ public final class ResultadoAnalisis {
                                                List<ErrorSemantico> advertencias, int cantidadLineas,
                                                AmbitoGlobal ambitoGlobal) {
         return new ResultadoAnalisis(lenguaje, erroresLexicos, erroresSintacticos, erroresSemanticos,
-                advertencias, cantidadLineas, ambitoGlobal);
+                advertencias, cantidadLineas, ambitoGlobal, null);
+    }
+
+    /**
+     * Devuelve una copia de {@code base} con el {@link GeneradorC3D} seteado. Se usa
+     * desde {@link ServicioAnalisis} cuando el análisis semántico terminó limpio y la
+     * generación de C3D también: en ese caso el resultado base ya tiene todos los
+     * errores/advertencias y el ámbito, y solo le falta el generador.
+     *
+     * <p>Este factory evita duplicar la lista de parámetros de los otros factories
+     * (que son muchos y no queremos que se desincronicen): cualquier cambio futuro a
+     * los campos del DTO se hace en el constructor privado y los factories existentes
+     * siguen funcionando porque pasan {@code null} para el generador.
+     */
+    public static ResultadoAnalisis conC3D(ResultadoAnalisis base, GeneradorC3D generadorC3D) {
+        return new ResultadoAnalisis(
+                base.lenguaje,
+                base.erroresLexicos,
+                base.erroresSintacticos,
+                base.erroresSemanticos,
+                base.advertencias,
+                base.cantidadLineas,
+                base.ambitoGlobal,
+                generadorC3D
+        );
     }
 
     /** Para cuando el lexer/parser/analizador lanzó una excepción inesperada (no debería pasar, pero no debe tumbar la UI). */
     public static ResultadoAnalisis errorInterno(String lenguaje, String mensaje) {
         ErrorSemantico error = new ErrorSemantico(0, 0, "Error interno: " + mensaje);
         return new ResultadoAnalisis(lenguaje, Collections.emptyList(), Collections.emptyList(),
-                List.of(error), Collections.emptyList(), 0, null);
+                List.of(error), Collections.emptyList(), 0, null, null);
     }
 
     public static ResultadoAnalisis extensionNoSoportada(String nombreArchivo) {
         ErrorSemantico error = new ErrorSemantico(0, 0,
                 "No se reconoce el tipo de archivo de '" + nombreArchivo + "' (se esperaba .y, .z o .pig).");
         return new ResultadoAnalisis("Desconocido", Collections.emptyList(), Collections.emptyList(),
-                List.of(error), Collections.emptyList(), 0, null);
+                List.of(error), Collections.emptyList(), 0, null, null);
     }
 
     public boolean isExito() { return getTotalErrores() == 0; }
@@ -99,6 +133,19 @@ public final class ResultadoAnalisis {
 
     /** Ámbito global del .y/.z analizado (null si no hubo análisis semántico, p. ej. por errores de sintaxis, o si es un .pig). */
     public AmbitoGlobal getAmbitoGlobal() { return ambitoGlobal; }
+
+    /**
+     * Generador de C3D del programa, ya ejecutado sobre el AST verificado. Es null
+     * cuando NO se generó C3D:
+     * <ul>
+     *   <li>Hubo errores (léxicos, sintácticos o semánticos).</li>
+     *   <li>El análisis no llegó hasta la fase semántica (p. ej. errores de sintaxis).</li>
+     *   <li>La generación de C3D lanzó una excepción (ver {@link ServicioAnalisis}).</li>
+     * </ul>
+     * Si no es null, el generador ya tiene todas las cuádruplas y firmas del
+     * programa, listas para que la Fase 4 (C3D -> C) las consuma.
+     */
+    public GeneradorC3D getGeneradorC3D() { return generadorC3D; }
 
     /** Mensaje corto, sin prefijos de presentación (esos los agrega quien imprima en consola). */
     public String getMensajeResumen() {

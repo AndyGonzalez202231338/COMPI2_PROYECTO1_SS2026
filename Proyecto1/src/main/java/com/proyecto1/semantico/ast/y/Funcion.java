@@ -10,6 +10,7 @@ import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class Funcion extends NodoY {
@@ -18,6 +19,8 @@ public final class Funcion extends NodoY {
     private final List<Parametro> parametros;
     private final NodoTipoRef tipoRetorno;
     private final Bloque cuerpo;
+    private List<Tipo> tiposParamsCache;
+    private Tipo tipoRetornoCache;
 
     public Funcion(String nombre, List<Parametro> parametros, NodoTipoRef tipoRetorno,
                    Bloque cuerpo, int linea, int columna) {
@@ -38,16 +41,20 @@ public final class Funcion extends NodoY {
         Simbolo simbolo = ambito.resolverLocal(nombre);
         AmbitoFuncion amb = new AmbitoFuncion(ambito, simbolo);
 
+        tiposParamsCache = new ArrayList<>();
         for (Parametro p : parametros) {
             Tipo t = p.resolverTipo(amb, errores);
-            Simbolo sp = new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO,
-                    t, p.getLinea(), p.getColumna());
-            if (!amb.declarar(sp)) {
+            tiposParamsCache.add(t);
+            Simbolo sp = new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO, t,
+                    p.getLinea(), p.getColumna());
+            if (!amb.declarar(sp))
                 errores.reportar(p.getLinea(), p.getColumna(),
                         "Parámetro duplicado: '" + p.getNombre() + "'");
-            }
             simbolo.agregarParametro(sp);
         }
+        tipoRetornoCache = (tipoRetorno == null)
+                ? TipoPrimitivo.VOID
+                : tipoRetorno.resolver(amb, errores);
 
         cuerpo.verificar(amb, errores);
 
@@ -79,9 +86,18 @@ public final class Funcion extends NodoY {
          */
         //begin_func prueba 0
         //cuadruplas(prueba, 0)
+        // Registrar firma ANTES del begin_func.
+        List<GeneradorC3D.ParametroFirma> pfs = new ArrayList<>();
+        for (int i = 0; i < parametros.size(); i++) {
+            Tipo t = (tiposParamsCache != null && i < tiposParamsCache.size())
+                    ? tiposParamsCache.get(i) : TipoPrimitivo.DESCONOCIDO;
+            pfs.add(new GeneradorC3D.ParametroFirma(parametros.get(i).getNombre(), t));
+        }
+        Tipo tipoRet = (tipoRetornoCache != null) ? tipoRetornoCache : TipoPrimitivo.VOID;
+        generador.registrarFirma(nombre, pfs, tipoRet, false);
+
         generador.emitirBeginFunc(nombre, parametros.size());
-        cuerpo.generarC3D(generador); //al cuerpo de la funcion se trabaja su C3D
-        //end_func muestra donde temrino ese ambito
+        cuerpo.generarC3D(generador);
         generador.emitirEndFunc();
         return ResultadoC3D.vacio();
     }

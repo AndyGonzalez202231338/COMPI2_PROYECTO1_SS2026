@@ -74,24 +74,40 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     @Override
     public String visitar(CuadruplaBinaria c) {
         String op = c.operador();
-        String aTipo = tipos.getOrDefault(c.a(), "int");
-        String bTipo = tipos.getOrDefault(c.b(), "int");
+        String aTipo = tipoEfectivo(c.a());
+        String bTipo = tipoEfectivo(c.b());
         boolean aEsString = "char*".equals(aTipo);
         boolean bEsString = "char*".equals(bTipo);
 
-        // Concatenación de strings.
+        // Concatenación si alguno de los operandos es string.
         if ("+".equals(op) && (aEsString || bEsString)) {
-            return c.t() + " = rt_concat(" + c.a() + ", " + c.b() + ");";
+            String aLugar = aEsString ? c.a() : convertirAString(c.a(), aTipo);
+            String bLugar = bEsString ? c.b() : convertirAString(c.b(), bTipo);
+            return c.t() + " = rt_concat(" + aLugar + ", " + bLugar + ");";
         }
 
         // Comparación de strings por contenido.
         if (("==".equals(op) || "!=".equals(op)) && aEsString && bEsString) {
-            String comparador = "==".equals(op) ? "== 0" : "!= 0";
-            return c.t() + " = (rt_strcmp(" + c.a() + ", " + c.b() + ") " + comparador + ");";
+            String cmp = "==".equals(op) ? "== 0" : "!= 0";
+            return c.t() + " = (rt_strcmp(" + c.a() + ", " + c.b() + ") " + cmp + ");";
         }
 
         // Caso general.
         return c.t() + " = " + c.a() + " " + op + " " + c.b() + ";";
+    }
+
+    /**
+     * Tipo C efectivo de un operando, con detección de literales por forma.
+     * Los literales string/char NO están en el mapa de tipos (nunca son destino de
+     * una cuádrupla), así que hay que reconocerlos por su sintaxis.
+     */
+    private String tipoEfectivo(String lugar) {
+        if (lugar == null) return "int";
+        if (lugar.length() >= 2 && lugar.startsWith("\"") && lugar.endsWith("\"")) return "char*";
+        if (lugar.length() >= 2 && lugar.startsWith("'") && lugar.endsWith("'")) return "char";
+        if ("true".equals(lugar) || "false".equals(lugar)) return "int";
+        if ("null".equals(lugar)) return "void*";
+        return tipos.getOrDefault(lugar, "int");
     }
 
     @Override
@@ -164,8 +180,18 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
      */
     @Override
     public String visitar(CuadruplaPrint c) {
-        String tipo = tipos.getOrDefault(c.valor(), "int");
-        return "printf(\"" + formatoPrintf(tipo) + "\", " + c.valor() + ");";
+        String valor = c.valor();
+        String tipo;
+        if (valor != null && valor.length() >= 2
+                && valor.startsWith("\"") && valor.endsWith("\"")) {
+            tipo = "char*";   // literal string
+        } else if (valor != null && valor.length() >= 2
+                && valor.startsWith("'") && valor.endsWith("'")) {
+            tipo = "char";    // literal char
+        } else {
+            tipo = tipos.getOrDefault(valor, "int");
+        }
+        return "printf(\"" + formatoPrintf(tipo) + "\", " + valor + ");";
     }
 
     /**
@@ -253,5 +279,11 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     private static UnsupportedOperationException pendiente(String queNoEstaHecho) {
         return new UnsupportedOperationException(
                 "TraductorCuadrupla: '" + queNoEstaHecho + "' todavía no está implementado (fase posterior)");
+    }
+
+    /** Envuelve un valor numérico en su conversión a string del runtime. */
+    private static String convertirAString(String lugar, String tipoC) {
+        if ("double".equals(tipoC)) return "rt_double_to_string(" + lugar + ")";
+        return "rt_int_to_string(" + lugar + ")";
     }
 }

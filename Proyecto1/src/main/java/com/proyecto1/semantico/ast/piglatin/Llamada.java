@@ -75,7 +75,25 @@ public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
                             "No se puede llamar método sobre " + tObj.nombre());
                 return TipoPrimitivo.DESCONOCIDO;
             }
-            Simbolo m = tc.getDefinicion().buscarMiembro(ac.getCampo());
+
+            // Los métodos de una CLASE ya no se guardan bajo su nombre simple (ver
+            // AnalizadorSemanticoZ.registrarMiembros y AmbitoContenedor.declararMiembroConClave):
+            // se sobrecargan por firma, con clave "nombre#aridad#Tipo1#Tipo2..." y una clave
+            // genérica "nombre#aridad" como respaldo. Este es el mismo esquema (y el mismo orden
+            // de intentos) que ya usa Llamada(Z) para resolver "obj.metodo(args)" -- antes de este
+            // cambio, este método seguía buscando por nombre simple, que ya no existe para nada
+            // que no sea un ATRIBUTO (esos sí conservan su clave simple).
+            List<Tipo> tiposArgs = new ArrayList<>();
+            for (ExpresionPigLatin a : argumentos) tiposArgs.add(a.verificar(ambito, errores));
+
+            StringBuilder claveEspecifica = new StringBuilder(ac.getCampo()).append("#").append(argumentos.size());
+            for (Tipo t : tiposArgs) claveEspecifica.append("#").append(t.nombre());
+            Simbolo m = tc.getDefinicion().buscarMiembro(claveEspecifica.toString());
+
+            if (m == null) {
+                m = tc.getDefinicion().buscarMiembro(ac.getCampo() + "#" + argumentos.size());
+            }
+
             if (m == null || m.getCategoria() != CategoriaSimbolo.METODO) {
                 errores.reportar(linea, columna,
                         "La clase '" + tc.nombre() + "' no tiene método '" + ac.getCampo() + "'");
@@ -83,7 +101,11 @@ public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
             }
             this.simboloResuelto = m;
             this.nombreClaseObjetivo = tc.getDefinicion().getNombre();
-            return verificarArgumentosYRetorno(m, ambito, errores);
+            // Los argumentos YA se verificaron arriba (se necesitaban sus tipos para la clave);
+            // no repetirlos -- misma razón por la que Llamada(Z) tiene su propio
+            // verificarArgumentosYRetorno(Simbolo, List<Tipo>, ManejadorErrores) en vez de
+            // volver a llamar a.verificar(...) por cada argumento.
+            return verificarArgumentosYRetorno(m, tiposArgs, errores);
         }
 
         errores.reportar(linea, columna, "Llamada inválida");
@@ -91,19 +113,25 @@ public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
     }
 
     private Tipo verificarArgumentosYRetorno(Simbolo f, Ambito ambito, ManejadorErrores errores) {
+        List<Tipo> tiposArgs = new ArrayList<>();
+        for (ExpresionPigLatin a : argumentos) tiposArgs.add(a.verificar(ambito, errores));
+        return verificarArgumentosYRetorno(f, tiposArgs, errores);
+    }
+
+    /** Igual que la de arriba pero recibe los tipos YA verificados (caso "obj.m(args)": ya se necesitaban antes, para la clave de sobrecarga). */
+    private Tipo verificarArgumentosYRetorno(Simbolo f, List<Tipo> tiposArgs, ManejadorErrores errores) {
         List<Simbolo> params = f.getParametros();
-        if (params.size() != argumentos.size()) {
+        if (params.size() != tiposArgs.size()) {
             errores.reportar(linea, columna,
                     "Función '" + f.getNombre() + "' espera " + params.size() +
-                            " argumentos, recibió " + argumentos.size());
+                            " argumentos, recibió " + tiposArgs.size());
             return f.getTipo();
         }
-        for (int i = 0; i < argumentos.size(); i++) {
-            Tipo ta = argumentos.get(i).verificar(ambito, errores);
-            if (!Tipos.esAsignable(params.get(i).getTipo(), ta))
+        for (int i = 0; i < tiposArgs.size(); i++) {
+            if (!Tipos.esAsignable(params.get(i).getTipo(), tiposArgs.get(i)))
                 errores.reportar(argumentos.get(i).getLinea(), argumentos.get(i).getColumna(),
                         "Argumento " + (i+1) + " incompatible: se esperaba " +
-                                params.get(i).getTipo().nombre() + ", se recibió " + ta.nombre());
+                                params.get(i).getTipo().nombre() + ", se recibió " + tiposArgs.get(i).nombre());
         }
         return f.getTipo();
     }
