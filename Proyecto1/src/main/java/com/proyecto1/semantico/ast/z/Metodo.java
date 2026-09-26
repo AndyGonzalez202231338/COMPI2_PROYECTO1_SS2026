@@ -9,7 +9,10 @@ import com.proyecto1.semantico.tabla.AmbitoFuncion;
 import com.proyecto1.semantico.tabla.CategoriaSimbolo;
 import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoClase;
+import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -122,6 +125,34 @@ public final class Metodo extends NodoZ {
      */
     public ResultadoC3D generarC3D(GeneradorC3D generador, String nombreClase) {
         String etiqueta = generador.etiquetaMetodo(nombreClase, nombre);
+
+        // --- Registrar la firma ANTES del begin_func ---
+        // "this" primero (TipoClase del contenedor), luego los formales en orden.
+        List<GeneradorC3D.ParametroFirma> pfs = new ArrayList<>();
+
+        Simbolo simboloClase = null;
+        if (ambitoPropio != null && ambitoPropio.getPadre() instanceof AmbitoClase ac) {
+            simboloClase = ac.getSimboloContenedor();
+        }
+        Tipo tipoThis = (simboloClase != null)
+                ? new TipoClase(simboloClase)
+                : TipoPrimitivo.DESCONOCIDO;
+        pfs.add(new GeneradorC3D.ParametroFirma("this", tipoThis));
+
+        for (Parametro p : parametros) {
+            Simbolo sp = (ambitoPropio != null) ? ambitoPropio.resolverLocal(p.getNombre()) : null;
+            Tipo tp = (sp != null && sp.getTipo() != null) ? sp.getTipo() : TipoPrimitivo.DESCONOCIDO;
+            pfs.add(new GeneradorC3D.ParametroFirma(p.getNombre(), tp));
+        }
+
+        // Tipo de retorno: AmbitoFuncion ya lo tiene resuelto (lo usa Retorno.verificar).
+        Tipo tipoRet = (ambitoPropio != null) ? ambitoPropio.getTipoRetorno() : TipoPrimitivo.VOID;
+        if (tipoRet == null) tipoRet = TipoPrimitivo.VOID;
+
+        // Un método SÍ es método de clase (tiene "this").
+        generador.registrarFirma(etiqueta, pfs, tipoRet, true);
+        // --- fin registro de firma ---
+
         generador.emitirBeginFunc(etiqueta, parametros.size() + 1);
 
         Ambito anterior = generador.entrarAmbito(ambitoPropio);

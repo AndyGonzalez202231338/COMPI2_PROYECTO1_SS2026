@@ -309,26 +309,43 @@ public class GeneradorC3D {
     /**
      * Etiqueta para un método de una clase Z: "Clase_metodo".
      * Los métodos NO se sobrecargan en Z (declararMiembro los guarda por nombre plano).
+     *
+     * <p>Es {@code static} (no depende de ningún estado de esta instancia) para que
+     * la Fase 4 ({@code OrquestadorC3DaC}, al armar el {@code main()} de un programa
+     * Zetariano) pueda construir la misma etiqueta sin necesitar un {@code
+     * GeneradorC3D} a mano — solo el nombre de la clase y el método.
      */
-    public String etiquetaMetodo(String clase, String metodo) {
+    public static String etiquetaMetodo(String clase, String metodo) {
         return clase + "_" + metodo;
     }
 
     /**
-     * Etiqueta para un constructor de una clase Z: "Clase_init@N".
-     * Los constructores SÍ se sobrecargan por aridad, de ahí el sufijo "@N".
+     * Etiqueta para un constructor de una clase Z: "Clase_init_aN" (N = aridad).
+     * Los constructores SÍ se sobrecargan por aridad, de ahí el sufijo.
+     *
+     * <p><b>Por qué "_aN" y no "@N"</b>: la etiqueta de un constructor termina siendo,
+     * tal cual, el NOMBRE DE LA FUNCIÓN en el C generado (ver
+     * {@code CuadruplaBeginFunc.nombre()} y cada {@code CuadruplaCall.funcion()} que
+     * la referencia) — y {@code @} no es un carácter válido en un identificador de C.
+     * Antes esta etiqueta era {@code "Clase_init@N"}, lo cual compilaba bien como C3D
+     * pero generaba C inválido en CUALQUIER llamada a un constructor. Es un cambio de
+     * formato, no de significado: sigue siendo "nombre de clase + aridad", legible y
+     * sin colisión entre aridades distintas del mismo constructor.
+     *
+     * <p>Es {@code static} por el mismo motivo que {@link #etiquetaMetodo}: la Fase 4
+     * necesita poder reconstruir esta etiqueta (para buscar el constructor de 0
+     * argumentos de la clase de entrada al armar {@code main()}) sin una instancia.
      *
      * <p><b>Deuda detectada</b>: hoy {@code Constructor.verificar} intenta resolver el
-     * constructor buscando por {@code nombre + "@" + aridad}, pero
-     * {@code AmbitoContenedor.declararMiembro} los guarda por nombre plano. Es una
-     * incoherencia preexistente entre esas dos clases (no de C3D). Antes de generar
-     * C3D con constructores sobrecargados, hay que decidir cuál de las dos se arregla:
-     * o {@code declararMiembro} usa la clave {@code nombre@aridad} al declararlos, o
-     * {@code Constructor.verificar} busca por nombre plano. La etiqueta de este helper
-     * asume lo primero (sobrecarga permitida).
+     * constructor buscando por {@code nombre + "@" + aridad} (con el separador viejo),
+     * pero {@code AmbitoContenedor.declararMiembro} los guarda por nombre plano. Es una
+     * incoherencia preexistente entre esas dos clases (no de C3D, y no la resuelve este
+     * cambio). Antes de generar C3D con constructores sobrecargados, hay que decidir
+     * cuál de las dos se arregla: o {@code declararMiembro} usa una clave única al
+     * declararlos, o {@code Constructor.verificar} busca por nombre plano.
      */
-    public String etiquetaConstructor(String clase, int aridad) {
-        return clase + "_init@" + aridad;
+    public static String etiquetaConstructor(String clase, int aridad) {
+        return clase + "_init_a" + aridad;
     }
 
     // ---------- Acceso a la tabla / backpatching ----------

@@ -22,6 +22,13 @@ public final class DeclaracionArreglo extends NodoPigLatin implements Instruccio
     private final NodoTipoRef tipo;
     private final InicializadorArreglo inicializador; // null si no hay "= { ... }"
 
+    /**
+     * Tipo base del arreglo, cacheado por verificar() (donde hay ámbito para
+     * resolver tipos de clase). Sin este cache, generarC3D() tendría que volver
+     * a resolver el NodoTipoRef con ámbito null y fallaría para clases.
+     */
+    private Tipo tipoBaseCache;
+
     public DeclaracionArreglo(String nombre, int tamano, NodoTipoRef tipo, InicializadorArreglo inicializador,
                               int linea, int columna) {
         super(linea, columna);
@@ -39,6 +46,8 @@ public final class DeclaracionArreglo extends NodoPigLatin implements Instruccio
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
         Tipo base = tipo.resolver(ambito, errores);
+        this.tipoBaseCache = base;
+
         Tipo tArr = new TipoArreglo(base);
 
         Simbolo s = new Simbolo(nombre, CategoriaSimbolo.VARIABLE, tArr, linea, columna);
@@ -56,14 +65,13 @@ public final class DeclaracionArreglo extends NodoPigLatin implements Instruccio
     /**
      * Emite:
      * <ul>
-     *   <li><b>Con inicializador</b>: primero el C3D del inicializador
-     *       ({@link InicializadorArreglo}, que ya deja el temporal {@code tArr} lleno
-     *       con las cuádruplas {@code tArr[i] = v_i}), y luego {@code (nombre = tArr)}
-     *       — una única asignación. NO se vuelve a iterar los elementos: el
-     *       inicializador ya dejó todas sus escrituras emitidas.</li>
-     *   <li><b>Sin inicializador</b>: no emite NADA. La reserva de las celdas es
-     *       responsabilidad de Fase 4, que la deduce del {@link TipoArreglo} y del
-     *       {@code getTamanosArreglo()} del símbolo (misma decisión que en Y).</li>
+     *   <li><b>Con inicializador</b>: el C3D del inicializador (que ya reserva
+     *       el bloque con {@code newarr} y llena los elementos) y luego la
+     *       asignación {@code nombre = t}.</li>
+     *   <li><b>Sin inicializador</b>: reserva el bloque AQUÍ con un {@code newarr}
+     *       y lo asigna a la variable. Sin esta rama, {@code series arr[N] : T;}
+     *       dejaría {@code arr} como puntero basura y cualquier acceso
+     *       {@code arr[i]} explotaría con segfault en runtime.</li>
      * </ul>
      * Devuelve {@code ResultadoC3D.vacio()}.
      */
@@ -72,7 +80,48 @@ public final class DeclaracionArreglo extends NodoPigLatin implements Instruccio
         if (inicializador != null) {
             ResultadoC3D v = inicializador.generarC3D(generador);
             generador.emitirAsignacion(v.getLugar(), nombre);
+            return ResultadoC3D.vacio();
         }
+
+        // Sin inicializador: reservar el bloque.
+        String descriptor = descriptorElemento();
+        java.util.List<String> tamanos = java.util.List.of(String.valueOf(tamano));
+        String t = generador.nuevoTemporal();
+        generador.emitirNewArray(descriptor, tamanos, t);
+        generador.emitirAsignacion(t, nombre);
         return ResultadoC3D.vacio();
+    }
+
+    /**
+     * Descriptor C del tipo de los ELEMENTOS del arreglo (no del arreglo).
+     * Ejemplos:
+     * <ul>
+     *   <li>{@code numerus}  → "int"      (el arreglo será {@code int*})</li>
+     *   <li>{@code Persona}  → "Persona*" (el arreglo será {@code Persona**})</li>
+     *   <li>{@code textum}   → "char*"    (el arreglo será {@code char**})</li>
+     * </ul>
+     * Se usa como argumento del {@code newarr}, que en C emite
+     * {@code (T*) malloc(N * sizeof(T))}. Para que el destino sea {@code T*},
+     * {@code T} debe ser el tipo del elemento, no el del arreglo.
+     */
+    private String descriptorElemento() {
+        return tipoAC(tipoBaseCache);
+    }
+
+    /** Mismo mapeo que el resto del proyecto. */
+    private static String tipoAC(Tipo t) {
+        if (t == null) return "int";
+        if (t == TipoPrimitivo.ENTERO)   return "int";
+        if (t == TipoPrimitivo.FLOTANTE) return "double";
+        if (t == TipoPrimitivo.CARACTER) return "char";
+        if (t == TipoPrimitivo.CADENA)   return "char*";
+        if (t == TipoPrimitivo.BOOL)     return "int";
+        if (t instanceof com.proyecto1.semantico.tipos.TipoClase tc)
+            return tc.getDefinicion().getNombre() + "*";
+        if (t instanceof com.proyecto1.semantico.tipos.TipoEstructura te)
+            return te.getDefinicion().getNombre() + "*";
+        if (t instanceof TipoArreglo ta)
+            return tipoAC(ta.getBase()) + "*";
+        return "int";
     }
 }

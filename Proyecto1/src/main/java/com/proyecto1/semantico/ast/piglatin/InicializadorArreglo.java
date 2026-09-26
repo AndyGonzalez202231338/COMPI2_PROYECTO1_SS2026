@@ -6,28 +6,25 @@ import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoArreglo;
+import com.proyecto1.semantico.tipos.TipoClase;
+import com.proyecto1.semantico.tipos.TipoEstructura;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 import java.util.List;
 
 /**
- * {@code inicializadorArreglo} (#inicializadorArregloDef): {@code { expresion (, expresion)* }}.
- * Cumple dos roles, igual que {@code ListaLiteral} en Y:
- * <ul>
- *   <li>Estructural: como inicializador de {@link DeclaracionArreglo} y de la
- *       variante ESTRUCTURA de {@link DeclaracionVariable}.</li>
- *   <li>Como expresión: {@code primaria} también la referencia directamente
- *       ({@code #primariaListaLiteral}), por lo que implementa {@link ExpresionPigLatin}
- *       para poder aparecer en cualquier lugar donde se espera una expresión.</li>
- * </ul>
+ * {@code inicializadorArreglo} (#inicializadorArregloDef): {@code { expr, expr, ... }}.
+ *
+ * <p>Cuando se usa como inicializador, reserva el arreglo (un solo {@code newarr}
+ * flat) y escribe cada elemento en su posición con {@code []=}.
  */
 public final class InicializadorArreglo extends NodoPigLatin implements ExpresionPigLatin {
 
     private final List<ExpresionPigLatin> elementos;
 
     /** TipoArreglo(tipoElemento), cacheado por verificar(). */
-    private Tipo tipoArreglo;
+    private TipoArreglo tipoArreglo;
 
     public InicializadorArreglo(List<ExpresionPigLatin> elementos, int linea, int columna) {
         super(linea, columna);
@@ -35,7 +32,7 @@ public final class InicializadorArreglo extends NodoPigLatin implements Expresio
     }
 
     public List<ExpresionPigLatin> getElementos() { return elementos; }
-    public Tipo getTipoArreglo() { return tipoArreglo; }
+    public TipoArreglo getTipoArreglo()          { return tipoArreglo; }
 
     @Override
     public Tipo verificar(Ambito ambito, ManejadorErrores errores) {
@@ -48,30 +45,53 @@ public final class InicializadorArreglo extends NodoPigLatin implements Expresio
                         "Elemento incompatible: " + t.nombre() + " vs " + tipoElem.nombre());
         }
         if (tipoElem == null) tipoElem = TipoPrimitivo.DESCONOCIDO;
-        tipoArreglo = new TipoArreglo(tipoElem);
+        tipoArreglo = new TipoArreglo(tipoElem, elementos.size());
         return tipoArreglo;
     }
 
     /**
-     * Emite: pide un temporal nuevo {@code tArr} (que representa el arreglo en
-     * construcción), y por cada elemento en orden genera su C3D y emite
-     * {@code ([]=, tArr, i, v)} con {@code i} como literal entero.
-     *
-     * <p>NO se emite ningún {@code newarr} ni allocación: la reserva la resuelve
-     * Fase 4, que ve el {@link TipoArreglo} del resultado (o el tamaño del símbolo
-     * en la declaración) y reserva la memoria adecuada. Aquí solo se dejan las
-     * cuádruplas de escritura por posición, exactamente igual que {@code ListaLiteral(Y)}.
-     *
-     * <p>Devuelve {@code temporal(tArr, tipoArreglo)}.
+     * Emite:
+     * <ol>
+     *   <li>{@code (newarr, descriptorBase, [N], t)}: un solo malloc del bloque
+     *       contiguo. {@code descriptorBase} es el tipo C del ELEMENTO, no del
+     *       arreglo (p. ej. {@code "int"} para un arreglo de enteros).</li>
+     *   <li>Por cada elemento en orden: {@code ([]=, t, i, v)} con índice constante.</li>
+     * </ol>
+     * Devuelve {@code temporal(t, tipoArreglo)}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
-        String tArr = generador.nuevoTemporal();
+        Tipo baseElem = (tipoArreglo != null) ? tipoArreglo.getBase() : TipoPrimitivo.DESCONOCIDO;
+        String descriptor = descriptorBase(baseElem);
+
+        List<String> tamanos = List.of(String.valueOf(elementos.size()));
+        String arr = generador.nuevoTemporal();
+        generador.emitirNewArray(descriptor, tamanos, arr);
+
         for (int i = 0; i < elementos.size(); i++) {
             ResultadoC3D v = elementos.get(i).generarC3D(generador);
-            generador.emitirGuardarIndice(tArr, String.valueOf(i), v.getLugar());
+            generador.emitirGuardarIndice(arr, String.valueOf(i), v.getLugar());
         }
-        Tipo tipo = (tipoArreglo != null) ? tipoArreglo : TipoPrimitivo.DESCONOCIDO;
-        return ResultadoC3D.temporal(tArr, tipo);
+
+        Tipo tipoResultado = (tipoArreglo != null) ? tipoArreglo : TipoPrimitivo.DESCONOCIDO;
+        return ResultadoC3D.temporal(arr, tipoResultado);
+    }
+
+    /**
+     * Descriptor C del tipo de un elemento (no del arreglo). Igual que el mapeo de
+     * {@code TraductorTipos.aC}, pero local para no acoplar el AST al paquete del
+     * traductor C.
+     */
+    private static String descriptorBase(Tipo t) {
+        if (t == null) return "int";
+        if (t == TipoPrimitivo.ENTERO)   return "int";
+        if (t == TipoPrimitivo.FLOTANTE) return "double";
+        if (t == TipoPrimitivo.CARACTER) return "char";
+        if (t == TipoPrimitivo.CADENA)   return "char*";
+        if (t == TipoPrimitivo.BOOL)     return "int";
+        if (t instanceof TipoClase tc)      return tc.getDefinicion().getNombre() + "*";
+        if (t instanceof TipoEstructura te) return te.getDefinicion().getNombre() + "*";
+        if (t instanceof TipoArreglo ta)    return descriptorBase(ta.getBase()) + "*";
+        return "int";
     }
 }

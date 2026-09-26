@@ -9,8 +9,10 @@ import com.proyecto1.semantico.tabla.AmbitoFuncion;
 import com.proyecto1.semantico.tabla.CategoriaSimbolo;
 import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoClase;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -122,6 +124,32 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
         // Usar el nombre real de la clase (si verificar ya corrió), no el declarado.
         String nombreParaEtiqueta = (nombreClaseReal != null) ? nombreClaseReal : nombre;
         String etiqueta = generador.etiquetaConstructor(nombreParaEtiqueta, parametros.size());
+
+        // --- Registrar la firma ANTES del begin_func ---
+        // "this" primero (TipoClase del contenedor), luego los formales en orden.
+        List<GeneradorC3D.ParametroFirma> pfs = new ArrayList<>();
+
+        Simbolo simboloClase = null;
+        if (ambitoPropio != null && ambitoPropio.getPadre() instanceof AmbitoClase ac) {
+            simboloClase = ac.getSimboloContenedor();
+        }
+        Tipo tipoThis = (simboloClase != null)
+                ? new TipoClase(simboloClase)
+                : TipoPrimitivo.DESCONOCIDO;
+        pfs.add(new GeneradorC3D.ParametroFirma("this", tipoThis));
+
+        for (Parametro p : parametros) {
+            // El parámetro ya está declarado en ambitoPropio por verificar(): lo leemos de ahí
+            // en vez de volver a resolver el NodoTipoRef (que requeriría un ManejadorErrores).
+            Simbolo sp = (ambitoPropio != null) ? ambitoPropio.resolverLocal(p.getNombre()) : null;
+            Tipo tp = (sp != null && sp.getTipo() != null) ? sp.getTipo() : TipoPrimitivo.DESCONOCIDO;
+            pfs.add(new GeneradorC3D.ParametroFirma(p.getNombre(), tp));
+        }
+
+        // Un constructor NO retorna valor y SÍ es método de clase (tiene "this").
+        generador.registrarFirma(etiqueta, pfs, TipoPrimitivo.VOID, true);
+        // --- fin registro de firma ---
+
         generador.emitirBeginFunc(etiqueta, parametros.size() + 1);
 
         Ambito anterior = generador.entrarAmbito(ambitoPropio);

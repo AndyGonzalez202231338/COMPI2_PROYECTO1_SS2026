@@ -43,20 +43,28 @@ public class AmbitoGlobal extends Ambito {
 
     /**
      * Tipos definidos por el usuario (estructuras de Y y clases de Z), en orden de
-     * declaración. Se usa para emitir los {@code typedef struct} del C generado
-     * (Fase 4.3) — el orden importa porque cada struct puede contener punteros a
-     * otros tipos, y aunque las forward decls hacen que el orden no sea estrictamente
-     * necesario, mantener el orden del fuente hace el C más legible.
+     * declaración, SUBIENDO POR LA CADENA DE PADRES. En PigLatin las estructuras y
+     * clases vienen del ámbito de imports (el padre), no del propio .pig; sin subir
+     * por la cadena, `getTiposDefinidos()` devolvería una lista vacía y el archivo .c
+     * del .pig no tendría los typedef struct que sus prototipos necesitan.
+     *
+     * La deduplicación por nombre se hace con un LinkedHashMap: si el mismo tipo
+     * aparece en el hijo y en el padre (por ejemplo, si el .pig redeclarara algo),
+     * gana la versión del hijo (se inserta primero y el putIfAbsent la conserva).
      */
     public List<Simbolo> getTiposDefinidos() {
-        List<Simbolo> out = new ArrayList<>();
-        for (Simbolo s : simbolosEnOrden) {
-            CategoriaSimbolo c = s.getCategoria();
-            if (c == CategoriaSimbolo.ESTRUCTURA || c == CategoriaSimbolo.CLASE) {
-                out.add(s);
+        java.util.LinkedHashMap<String, Simbolo> porNombre = new java.util.LinkedHashMap<>();
+        Ambito actual = this;
+        while (actual != null) {
+            for (Simbolo s : actual.simbolosLocales()) {
+                CategoriaSimbolo c = s.getCategoria();
+                if (c == CategoriaSimbolo.ESTRUCTURA || c == CategoriaSimbolo.CLASE) {
+                    porNombre.putIfAbsent(s.getNombre(), s);
+                }
             }
+            actual = actual.getPadre();
         }
-        return Collections.unmodifiableList(out);
+        return java.util.Collections.unmodifiableList(new java.util.ArrayList<>(porNombre.values()));
     }
 
     @Override
