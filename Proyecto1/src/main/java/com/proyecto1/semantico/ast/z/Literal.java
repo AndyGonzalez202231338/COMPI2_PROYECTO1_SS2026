@@ -55,7 +55,7 @@ public final class Literal extends NodoZ implements ExpresionZ {
             case ENTERO, FLOTANTE, BOOLEANO -> String.valueOf(valor);
             case CARACTER -> "'" + escapar(String.valueOf(valor), '\'') + "'";
             case CADENA   -> "\"" + escapar(String.valueOf(valor), '"') + "\"";
-            case NULO     -> "null";
+            case NULO     -> "NULL";
         };
         return ResultadoC3D.valor(texto, tipoDeCategoria());
     }

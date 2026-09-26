@@ -188,21 +188,39 @@ public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
             generador.emitirParam(lugar);
         }
 
-        // 4) Llamada. La firma y la etiqueta dependen del caso.
-        String t = generador.nuevoTemporal();
-        if (objetivo instanceof Identificador id) {
-            generador.emitirCall(id.getNombre(), argumentos.size(), t);
-        } else {
-            AccesoCampo ac = (AccesoCampo) objetivo;
-            String clase = (nombreClaseObjetivo != null) ? nombreClaseObjetivo : "?";
-            String etiqueta = generador.etiquetaMetodo(clase, ac.getCampo());
-            generador.emitirCall(etiqueta, argumentos.size() + 1, t);
-        }
-
-        // 5) Tipo del resultado: cacheado por verificar().
-        Tipo tipo = (simboloResuelto != null && simboloResuelto.getTipo() != null)
+        // 4) ¿El método devuelve void? Si es así, el call va SIN destino y
+        //    devolvemos vacio() (nadie consume el resultado: verificar() ya
+        //    rechazó que un void se use en contexto de expresión).
+        Tipo tipoRetorno = (simboloResuelto != null && simboloResuelto.getTipo() != null)
                 ? simboloResuelto.getTipo()
                 : TipoPrimitivo.DESCONOCIDO;
-        return ResultadoC3D.temporal(t, tipo);
+        boolean esVoid = tipoRetorno.esVoid();
+
+        // 5) Emitir la llamada con la etiqueta correcta según el caso.
+        if (objetivo instanceof Identificador id) {
+            if (esVoid) {
+                generador.emitirCall(id.getNombre(), argumentos.size(), null);
+                return ResultadoC3D.vacio();
+            }
+            String t = generador.nuevoTemporal();
+            generador.emitirCall(id.getNombre(), argumentos.size(), t);
+            return ResultadoC3D.temporal(t, tipoRetorno);
+        }
+
+        // Caso "obj.m(args)": receptor ya evaluado, +1 al número de argumentos.
+        if (objetivo instanceof AccesoCampo ac) {
+            String clase = (nombreClaseObjetivo != null) ? nombreClaseObjetivo : "?";
+            String etiqueta = generador.etiquetaMetodo(clase, ac.getCampo());
+            if (esVoid) {
+                generador.emitirCall(etiqueta, argumentos.size() + 1, null);
+                return ResultadoC3D.vacio();
+            }
+            String t = generador.nuevoTemporal();
+            generador.emitirCall(etiqueta, argumentos.size() + 1, t);
+            return ResultadoC3D.temporal(t, tipoRetorno);
+        }
+
+        throw new UnsupportedOperationException(
+                "Llamada con objetivo " + objetivo.getClass().getSimpleName() + ": no soportado en C3D");
     }
 }

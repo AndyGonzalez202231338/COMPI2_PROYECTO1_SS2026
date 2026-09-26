@@ -49,13 +49,15 @@ import java.nio.file.Path;
  * el C3D del AST verificado y se guarda en {@link ResultadoAnalisis#getGeneradorC3D()}.
  * Además se escribe el archivo .c al lado del fuente y se imprimen las cuádruplas.
  *
- * <p><b>Prototipos de funciones importadas:</b> cuando un .pig importa funciones de
- * .y o métodos/clases de .z, el orquestador necesita los PROTOTIPOS de esas funciones
- * para no fallar con "implicit declaration" al compilar. Esos prototipos se
- * construyen desde el ámbito de imports como un {@code Map<String, Firma>}: la
- * clave es la etiqueta MANGLADA y el valor la {@link GeneradorC3D.Firma} ya armada.
- * No se pasan {@link Simbolo}s directos porque el símbolo de un método/constructor
- * de Z guarda el nombre plano, no la etiqueta manglada que usa el C3D.
+ * <p><b>Prototipos de funciones importadas / hermanas:</b> cuando un `.pig` importa
+ * funciones de `.y` o métodos/clases de `.z`, o cuando un `.z` referencia a otra
+ * clase `.z` (por ejemplo `Pila.z` usa `Nodo.z`), el orquestador necesita los
+ * PROTOTIPOS de esas funciones para no fallar con "implicit declaration" al
+ * compilar. Esos prototipos se construyen desde el ámbito correspondiente como un
+ * {@code Map<String, Firma>}: la clave es la etiqueta MANGLADA y el valor la
+ * {@link GeneradorC3D.Firma} ya armada. No se pasan {@link Simbolo}s directos
+ * porque el símbolo de un método/constructor de Z guarda el nombre plano, no la
+ * etiqueta manglada que usa el C3D.
  */
 public class ServicioAnalisis {
 
@@ -180,8 +182,15 @@ public class ServicioAnalisis {
                             + clase.getNombre() + "'): " + generadorC3D.getCuadruplas().size()
                             + " cuádruplas, " + generadorC3D.getFirmas().size() + " método(s)/constructor(es).");
 
+                    // Firmas de las clases HERMANAS (todas las clases de ambitoInterno
+                    // menos la actual). Se emiten como prototipos para que este .c
+                    // pueda referenciar métodos de la otra clase (Nodo <-> Pila) sin
+                    // que el compilador de C falle con "implicit declaration".
+                    Map<String, GeneradorC3D.Firma> firmasHermanas =
+                            recolectarFirmasImportadas(ambitoInterno, clase.getNombre());
+
                     imprimirCuadruplas(generadorC3D, "Zetariano");
-                    generarArchivoC(generadorC3D, archivo, "_", null, ambitoInterno, Map.of());
+                    generarArchivoC(generadorC3D, archivo, "_", null, ambitoInterno, firmasHermanas);
 
                 } catch (Exception exC3D) {
                     String detalle = exC3D.getMessage() != null ? exC3D.getMessage() : exC3D.getClass().getSimpleName();
@@ -238,7 +247,7 @@ public class ServicioAnalisis {
                     // Firmas de las funciones/métodos/constructores IMPORTADOS,
                     // para emitir sus prototipos en main.c.
                     Map<String, GeneradorC3D.Firma> firmasExternas =
-                            recolectarFirmasImportadas(imports.getAmbitoGlobal());
+                            recolectarFirmasImportadas(imports.getAmbitoGlobal(), null);
 
                     imprimirCuadruplas(generadorC3D, "PigLatin");
                     generarArchivoC(generadorC3D, archivo, "_", "main",
@@ -334,11 +343,12 @@ public class ServicioAnalisis {
         }
     }
 
-    // ---------- Recolección de firmas importadas (PigLatin) ----------
+    // ---------- Recolección de firmas importadas / hermanas ----------
 
     /**
      * Construye el mapa {@code etiqueta -> Firma} de todas las funciones, métodos y
-     * constructores IMPORTADOS (de .y y .z) que un .pig puede invocar.
+     * constructores declarados en un ámbito (típicamente el de imports de PigLatin,
+     * o el de clases hermanas de Z).
      *
      * <p>Cada firma trae la etiqueta YA MANGLADA porque el símbolo individual guarda
      * el nombre plano, no la etiqueta que usa el C3D:
@@ -347,8 +357,14 @@ public class ServicioAnalisis {
      *   <li>Método de Z: {@code Clase_metodo}.</li>
      *   <li>Constructor de Z: {@code Clase_init_aN} (usa {@link GeneradorC3D#etiquetaConstructor}).</li>
      * </ul>
+     *
+     * @param nombreClaseExcluir si no es null, se omite la clase con ese nombre.
+     *                           Se usa al generar el .c de una clase Z: sus propias
+     *                           firmas ya van en el bloque de prototipos del archivo,
+     *                           no hace falta duplicarlas como "externas".
      */
-    private static Map<String, GeneradorC3D.Firma> recolectarFirmasImportadas(AmbitoGlobal ambito) {
+    private static Map<String, GeneradorC3D.Firma> recolectarFirmasImportadas(AmbitoGlobal ambito,
+                                                                              String nombreClaseExcluir) {
         Map<String, GeneradorC3D.Firma> out = new HashMap<>();
         if (ambito == null) return out;
 
@@ -357,6 +373,7 @@ public class ServicioAnalisis {
                 String etiqueta = s.getNombre().split("#")[0];
                 out.put(etiqueta, firmaDeFuncion(etiqueta, s));
             } else if (s.getCategoria() == CategoriaSimbolo.CLASE) {
+                if (nombreClaseExcluir != null && nombreClaseExcluir.equals(s.getNombre())) continue;
                 String nombreClase = s.getNombre();
                 Tipo tipoThis = new com.proyecto1.semantico.tipos.TipoClase(s);
 

@@ -111,9 +111,10 @@ public final class OrquestadorC3DaC {
                                                  String prefijoLenguaje,
                                                  List<Simbolo> definicionesTipo,
                                                  String claseEntrada,
-                                                 String metodoEntrada) {
+                                                 String metodoEntrada,
+                                                 Map<String, GeneradorC3D.Firma> firmasExternas) {
         return new OrquestadorC3DaC(cuadruplas, firmas, prefijoLenguaje,
-                null, claseEntrada, metodoEntrada, definicionesTipo, Map.of());
+                null, claseEntrada, metodoEntrada, definicionesTipo, firmasExternas);
     }
 
     // ---------- API pública ----------
@@ -197,9 +198,10 @@ public final class OrquestadorC3DaC {
             }
         }
 
-        InferenciaTiposC inf = new InferenciaTiposC(fc.cuerpo(), firma, firmas, definicionesTipo);
+        Map<String, GeneradorC3D.Firma> firmasVisibles = new HashMap<>(firmas);
+        firmasVisibles.putAll(firmasExternas);
+        InferenciaTiposC inf = new InferenciaTiposC(fc.cuerpo(), firma, firmasVisibles, definicionesTipo);
         tipos.putAll(inf.getDeclaraciones());
-
         for (String linea : inf.comoLineasDeC()) {
             sb.append("    ").append(linea).append("\n");
         }
