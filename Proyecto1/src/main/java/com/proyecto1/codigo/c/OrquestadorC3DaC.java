@@ -2,6 +2,8 @@ package com.proyecto1.codigo.c;
 
 import com.proyecto1.semantico.ast.GeneradorC3D;
 import com.proyecto1.semantico.ast.cuadruplas.*;
+import com.proyecto1.semantico.tabla.AmbitoGlobal;
+import com.proyecto1.semantico.tabla.CategoriaSimbolo;
 import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
@@ -55,6 +57,7 @@ public final class OrquestadorC3DaC {
     private final String metodoEntradaZ;
     private final List<Simbolo> definicionesTipo;
     private final Map<String, GeneradorC3D.Firma> firmasExternas;
+    private final AmbitoGlobal ambitoGlobalDeMain;
 
     // ---------- Constructores ----------
 
@@ -68,7 +71,8 @@ public final class OrquestadorC3DaC {
                              String claseEntradaZ,
                              String metodoEntradaZ,
                              List<Simbolo> definicionesTipo,
-                             Map<String, GeneradorC3D.Firma> firmasExternas) {
+                             Map<String, GeneradorC3D.Firma> firmasExternas,
+                             AmbitoGlobal ambitoGlobalDeMain) {
         this.cuadruplas = cuadruplas != null ? cuadruplas : List.of();
         this.firmas = firmas != null ? firmas : Map.of();
         this.prefijoLenguaje = (prefijoLenguaje != null) ? prefijoLenguaje : "";
@@ -77,19 +81,18 @@ public final class OrquestadorC3DaC {
         this.metodoEntradaZ = metodoEntradaZ;
         this.definicionesTipo = (definicionesTipo != null) ? definicionesTipo : List.of();
         this.firmasExternas = (firmasExternas != null) ? firmasExternas : Map.of();
+        this.ambitoGlobalDeMain = ambitoGlobalDeMain;
     }
 
-    /** Constructor Y / PigLatin sin funciones externas. */
     public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
                             Map<String, GeneradorC3D.Firma> firmas,
                             String prefijoLenguaje,
                             String nombreFuncionEntrada,
                             List<Simbolo> definicionesTipo) {
         this(cuadruplas, firmas, prefijoLenguaje, nombreFuncionEntrada,
-                null, null, definicionesTipo, Map.of());
+                null, null, definicionesTipo, Map.of(), null);
     }
 
-    /** Constructor Y / PigLatin con firmas externas importadas (típico de PigLatin). */
     public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
                             Map<String, GeneradorC3D.Firma> firmas,
                             String prefijoLenguaje,
@@ -97,24 +100,28 @@ public final class OrquestadorC3DaC {
                             List<Simbolo> definicionesTipo,
                             Map<String, GeneradorC3D.Firma> firmasExternas) {
         this(cuadruplas, firmas, prefijoLenguaje, nombreFuncionEntrada,
-                null, null, definicionesTipo, firmasExternas);
+                null, null, definicionesTipo, firmasExternas, null);
     }
 
-    /**
-     * Factory para un programa ZETARIANO: sin función de entrada nombrada (Z no
-     * tiene "main" propio), en su lugar arma un {@code main()} de C que instancia
-     * {@code claseEntrada} (constructor sin argumentos) y llama a
-     * {@code metodoEntrada} sobre ese objeto.
-     */
+    public OrquestadorC3DaC(List<Cuadrupla> cuadruplas,
+                            Map<String, GeneradorC3D.Firma> firmas,
+                            String prefijoLenguaje,
+                            String nombreFuncionEntrada,
+                            List<Simbolo> definicionesTipo,
+                            Map<String, GeneradorC3D.Firma> firmasExternas,
+                            AmbitoGlobal ambitoGlobalDeMain) {
+        this(cuadruplas, firmas, prefijoLenguaje, nombreFuncionEntrada,
+                null, null, definicionesTipo, firmasExternas, ambitoGlobalDeMain);
+    }
+
     public static OrquestadorC3DaC paraZetariano(List<Cuadrupla> cuadruplas,
                                                  Map<String, GeneradorC3D.Firma> firmas,
                                                  String prefijoLenguaje,
                                                  List<Simbolo> definicionesTipo,
                                                  String claseEntrada,
-                                                 String metodoEntrada,
-                                                 Map<String, GeneradorC3D.Firma> firmasExternas) {
+                                                 String metodoEntrada) {
         return new OrquestadorC3DaC(cuadruplas, firmas, prefijoLenguaje,
-                null, claseEntrada, metodoEntrada, definicionesTipo, firmasExternas);
+                null, claseEntrada, metodoEntrada, definicionesTipo, Map.of(), null);
     }
 
     // ---------- API pública ----------
@@ -200,12 +207,40 @@ public final class OrquestadorC3DaC {
 
         Map<String, GeneradorC3D.Firma> firmasVisibles = new HashMap<>(firmas);
         firmasVisibles.putAll(firmasExternas);
-        InferenciaTiposC inf = new InferenciaTiposC(fc.cuerpo(), firma, firmasVisibles, definicionesTipo);
-        tipos.putAll(inf.getDeclaraciones());
+
+        // ⚠️ El inferidor recibe también el ámbito global para resolver tipos de
+        // variables globales (típico en PigLatin) e indirectamente los accesos a
+        // estructuras importadas.
+        InferenciaTiposC inf = new InferenciaTiposC(fc.cuerpo(), firma, firmasVisibles,
+                definicionesTipo, ambitoGlobalDeMain);
+
+        // Declaraciones locales inferidas.
         for (String linea : inf.comoLineasDeC()) {
             sb.append("    ").append(linea).append("\n");
         }
-        if (!inf.getDeclaraciones().isEmpty()) {
+
+        // ⚠️ NUEVO: declaraciones de las variables GLOBALES del programa.
+        // Solo en la función de entrada (o en el main de Z), para no duplicarlas.
+        // Se saltan las que ya están inferidas como locales.
+        boolean esFuncionDeEntrada = (nombreFuncionEntrada != null
+                && fc.begin().nombre().equals(nombreFuncionEntrada))
+                || (claseEntradaZ != null);   // en Z, el main() es el wrapper, no "esta" función
+        if (ambitoGlobalDeMain != null && !ambitoGlobalDeMain.simbolosLocales().isEmpty()) {
+            for (Simbolo s : ambitoGlobalDeMain.simbolosLocales()) {
+                if (s.getCategoria() != CategoriaSimbolo.VARIABLE) continue;
+                if (inf.getDeclaraciones().containsKey(s.getNombre())) continue;
+                sb.append("    ").append(tipoAC(s.getTipo())).append(" ")
+                        .append(s.getNombre()).append(";\n");
+                // Registrar el tipo para el traductor también.
+                tipos.put(s.getNombre(), tipoAC(s.getTipo()));
+            }
+        }
+
+        // Volcar los tipos inferidos al mapa que usará TraductorCuadrupla.
+        tipos.putAll(inf.getDeclaraciones());
+
+        if (!inf.getDeclaraciones().isEmpty()
+                || (ambitoGlobalDeMain != null && !ambitoGlobalDeMain.simbolosLocales().isEmpty())) {
             sb.append("\n");
         }
 

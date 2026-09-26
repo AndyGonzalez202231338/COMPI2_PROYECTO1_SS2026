@@ -6,6 +6,8 @@ import com.proyecto1.semantico.errores.ManejadorErrores;
 import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tabla.Simbolo;
 import com.proyecto1.semantico.tipos.Tipo;
+import com.proyecto1.semantico.tipos.TipoClase;
+import com.proyecto1.semantico.tipos.TipoEstructura;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
@@ -56,26 +58,15 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
     /**
      * Emite:
      * <ul>
-     *   <li>{@code x = v}: el C3D del RHS y la escritura en el lugar del lvalue.
-     *       Devuelve el lugar del RHS con el tipo del lvalue (para que
-     *       {@code a = b = 5} encadene).</li>
-     *   <li>{@code x op= v}: lee el valor actual del lvalue ({@code cargarDe}), emite
-     *       la binaria {@code t = actual op v}, guarda {@code t} en el lvalue y devuelve
-     *       {@code temporal(t, tipoLvalue)}.</li>
+     *   <li>{@code x = v}: el C3D del RHS y la escritura en el lugar del lvalue.</li>
+     *   <li>{@code x op= v}: lee el valor actual, emite la binaria, guarda el resultado.</li>
      * </ul>
      *
-     * <p><b>Orden de evaluación (coherente con Z):</b> primero se resuelve el lvalue
-     * (evalúa subexpresiones del lvalue: {@code obj} en {@code obj.f = v}, {@code arr}
-     * e {@code idx} en {@code arr[i] = v}), después el RHS. Así {@code arr[i()] = f()}
-     * evalúa {@code i()} antes que {@code f()}.
-     *
-     * <p>Sin rama de categoría ATRIBUTO: en PigLatin no hay "this" ni métodos con self
-     * implícito. Los 3 casos del lvalue son: {@link Identificador} (variable local o
-     * parámetro), {@link AccesoCampo}, {@link Indice}. Los dos últimos se dejan armados
-     * con los emisores que ya expone {@link GeneradorC3D}
-     * ({@code emitirCargaCampo}/{@code emitirGuardarCampo}/{@code emitirCargaIndice}/
-     * {@code emitirGuardarIndice}); sus respectivos {@code generarC3D} se implementarán
-     * en la siguiente fase.
+     * <p><b>Auto-malloc de slots (arr[i]):</b> cuando el lvalue es
+     * {@code arr[i].campo} y el elemento del arreglo es una estructura/clase, se
+     * emite un chequeo de NULL + {@code malloc} del slot ANTES de escribir el campo.
+     * Sin esto, {@code personas[0].nombre = "Carlos"} escribiría sobre un puntero
+     * basura del array recién reservado, produciendo segfault en runtime.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
@@ -98,11 +89,6 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
 
     // ---------- ayudantes privados ----------
 
-    /**
-     * Descripción "sin resolver a dirección" de un lvalue: guarda los lugares donde
-     * quedaron la base (nombre de variable o temporal), el nombre del campo (si aplica)
-     * y el índice ya evaluado (si aplica). Solo uno de {campo, indice} es no-null.
-     */
     private record LValue(String base, String campo, String indice, Tipo tipo) {}
 
     private LValue resolverLValue(ExpresionPigLatin objetivo, GeneradorC3D generador) {
@@ -119,9 +105,12 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
 
         // Caso 2: obj.campo
         if (objetivo instanceof AccesoCampo ac) {
+            // Subcaso especial: obj.campo donde obj es arr[i] sobre un arreglo de
+            // estructuras/clases → auto-malloc del slot antes de escribir el campo.
+            if (ac.getObjeto() instanceof Indice ind) {
+                return resolverCampoDeElemento(ind, ac, generador);
+            }
             ResultadoC3D base = ac.getObjeto().generarC3D(generador);
-            // TODO(Fase siguiente): cuando AccesoCampo tenga generarC3D y cachee el tipo
-            // del campo (patrón de Z), usar ac.getTipoCampo() en vez de DESCONOCIDO.
             Tipo tipo = TipoPrimitivo.DESCONOCIDO;
             return new LValue(base.getLugar(), ac.getCampo(), null, tipo);
         }
@@ -130,14 +119,85 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
         if (objetivo instanceof Indice ind) {
             ResultadoC3D base = ind.getArreglo().generarC3D(generador);
             ResultadoC3D idx  = ind.getIndice().generarC3D(generador);
-            // TODO(Fase siguiente): cuando Indice tenga generarC3D y cachee el tipo del
-            // elemento (patrón de Z), usar ind.getTipoElemento() en vez de DESCONOCIDO.
             Tipo tipo = TipoPrimitivo.DESCONOCIDO;
             return new LValue(base.getLugar(), null, idx.getLugar(), tipo);
         }
 
         throw new UnsupportedOperationException(
                 "Asignación a " + objetivo.getClass().getSimpleName() + ": no soportado en C3D");
+    }
+
+    /**
+     * Maneja el caso {@code arr[i].campo = v} cuando {@code arr} es un arreglo de
+     * estructuras o clases. Antes de escribir el campo, garantiza que el slot
+     * {@code arr[i]} esté allocado (malloc si es NULL). Sin esto, escribir
+     * {@code personas[0].nombre = "..."} sobre un arreglo recién creado con
+     * {@code series personas[3] : Persona;} escribiría sobre basura y segfaultearía.
+     *
+     * <p>C3D emitido:
+     * <pre>
+     *   t_slot0 = arr[i]
+     *   t_cmp   = t_slot0 == NULL
+     *   if_false t_cmp goto L_skip
+     *   t_new   = new Tipo
+     *   arr[i]  = t_new
+     *   L_skip:
+     *   t_slot  = arr[i]        // recarga tras el posible malloc
+     * </pre>
+     * El lvalue devuelto usa {@code t_slot} como base. El campo se escribe con
+     * {@code t_slot.campo = v} después.
+     */
+    private LValue resolverCampoDeElemento(Indice ind, AccesoCampo ac, GeneradorC3D generador) {
+        ResultadoC3D arrRes = ind.getArreglo().generarC3D(generador);
+        ResultadoC3D idxRes = ind.getIndice().generarC3D(generador);
+        String arr = arrRes.getLugar();
+        String idx = idxRes.getLugar();
+
+        Tipo tipoElem = ind.getTipoElemento();
+        String nombreTipo = nombreDeTipoInstanciable(tipoElem);
+
+        // Si el elemento no es estructura/clase, no hay nada que allocar.
+        // Usamos el camino normal: leer el elemento y tratar ese temporal como base.
+        if (nombreTipo == null) {
+            String t = generador.nuevoTemporal();
+            generador.emitirCargaIndice(arr, idx, t);
+            Tipo tipoCampo = (ac.getTipoCampo() != null) ? ac.getTipoCampo() : TipoPrimitivo.DESCONOCIDO;
+            return new LValue(t, ac.getCampo(), null, tipoCampo);
+        }
+
+        // Auto-malloc del slot si es NULL.
+        String t_slot0 = generador.nuevoTemporal();
+        generador.emitirCargaIndice(arr, idx, t_slot0);
+
+        String t_cmp = generador.nuevoTemporal();
+        generador.emitirBinaria("==", t_slot0, "NULL", t_cmp);
+
+        String lSkip = generador.nuevaEtiqueta();
+        generador.emitirIfFalse(t_cmp, lSkip);
+
+        String t_new = generador.nuevoTemporal();
+        generador.emitirNew(nombreTipo, t_new);
+        generador.emitirGuardarIndice(arr, idx, t_new);
+
+        generador.emitirEtiqueta(lSkip);
+
+        // Recargar el slot (puede haber cambiado por el malloc de arriba).
+        String t_slot = generador.nuevoTemporal();
+        generador.emitirCargaIndice(arr, idx, t_slot);
+
+        Tipo tipoCampo = (ac.getTipoCampo() != null) ? ac.getTipoCampo() : TipoPrimitivo.DESCONOCIDO;
+        return new LValue(t_slot, ac.getCampo(), null, tipoCampo);
+    }
+
+    /**
+     * Nombre de clase/estructura si el tipo es instanciable con malloc; null si no.
+     * {@code TipoEstructura} y {@code TipoClase} devuelven el nombre del símbolo;
+     * cualquier otro tipo (primitivo, arreglo, desconocido) devuelve null.
+     */
+    private static String nombreDeTipoInstanciable(Tipo t) {
+        if (t instanceof TipoEstructura te) return te.getDefinicion().getNombre();
+        if (t instanceof TipoClase tc)      return tc.getDefinicion().getNombre();
+        return null;
     }
 
     private ResultadoC3D cargarDe(LValue lv, GeneradorC3D generador) {

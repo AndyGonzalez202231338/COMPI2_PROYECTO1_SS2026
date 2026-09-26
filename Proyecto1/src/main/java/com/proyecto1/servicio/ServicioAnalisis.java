@@ -228,7 +228,10 @@ public class ServicioAnalisis {
             com.proyecto1.semantico.ast.piglatin.Programa programa = new ASTBuilderPigLatin().construir(arbol);
             CargadorImports.Resultado imports =
                     new CargadorImports(this, raizProyecto).cargar(programa.getImportaciones(), archivo);
-            ManejadorErrores errores = new AnalizadorSemanticoPigLatin().analizar(programa, imports.getAmbitoGlobal());
+            AnalizadorSemanticoPigLatin.Resultado resultadoPig =
+                    new AnalizadorSemanticoPigLatin().analizar(programa, imports.getAmbitoGlobal());
+            ManejadorErrores errores = resultadoPig.errores();
+            AmbitoGlobal globalPig = resultadoPig.globalPig();
 
             List<ErrorSemantico> todos = new ArrayList<>(imports.getErrores());
             todos.addAll(errores.obtenerErrores());
@@ -238,20 +241,21 @@ public class ServicioAnalisis {
 
             if (todos.isEmpty()) {
                 try {
-                    generadorC3D = new GeneradorC3D(imports.getAmbitoGlobal());
+                    generadorC3D = new GeneradorC3D(globalPig);
                     programa.generarC3D(generadorC3D);
                     System.out.println("[C3D] Generado correctamente (PigLatin): "
                             + generadorC3D.getCuadruplas().size() + " cuádruplas, "
                             + generadorC3D.getFirmas().size() + " función(es).");
 
-                    // Firmas de las funciones/métodos/constructores IMPORTADOS,
-                    // para emitir sus prototipos en main.c.
                     Map<String, GeneradorC3D.Firma> firmasExternas =
                             recolectarFirmasImportadas(imports.getAmbitoGlobal(), null);
 
                     imprimirCuadruplas(generadorC3D, "PigLatin");
+                    // ⚠️ Ahora pasamos globalPig (con las globales del .pig + padre de imports)
+                    // como ambitoGlobalUsado. Ese es el ámbito que OrquestadorC3DaC usa para
+                    // declarar las variables globales y como fuente de tipos para InferenciaTiposC.
                     generarArchivoC(generadorC3D, archivo, "_", "main",
-                            imports.getAmbitoGlobal(), firmasExternas);
+                            globalPig, firmasExternas);
 
                 } catch (Exception exC3D) {
                     String detalle = exC3D.getMessage() != null ? exC3D.getMessage() : exC3D.getClass().getSimpleName();
@@ -327,7 +331,8 @@ public class ServicioAnalisis {
                     prefijoLenguaje,
                     nombreFuncionEntrada,
                     tipos,
-                    externas
+                    externas,
+                    ambitoGlobalUsado   // <-- NUEVO argumento
             );
             String codigoC = orch.generarArchivoCompleto();
 
