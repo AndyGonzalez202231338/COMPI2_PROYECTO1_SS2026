@@ -1,7 +1,7 @@
 package com.proyecto1.semantico.tabla;
 
 /**
- * Base común de {@link AmbitoEstructura} (Y?) y {@link AmbitoClase} (Zetariano): un
+ * Base común de AmbitoEstructura (Y?) y AmbitoClase (Zetariano): un
  * ámbito que representa "por dentro" de una estructura o clase mientras se procesan
  * sus campos/atributos/métodos. Guarda una referencia al {@link Simbolo} que representa
  * a la propia estructura/clase (ya registrado antes en el AmbitoGlobal), para poder

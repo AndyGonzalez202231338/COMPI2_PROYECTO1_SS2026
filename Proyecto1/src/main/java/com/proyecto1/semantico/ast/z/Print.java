@@ -7,7 +7,6 @@ import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code PRINT LPAREN expression RPAREN} (#primarioPrint): "print(expr)". */
 public final class Print extends NodoZ implements ExpresionZ {
 
     private final ExpresionZ argumento;

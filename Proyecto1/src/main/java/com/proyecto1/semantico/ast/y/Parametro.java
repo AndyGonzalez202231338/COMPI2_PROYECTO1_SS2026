@@ -8,11 +8,11 @@ import com.proyecto1.semantico.tipos.TipoArreglo;
 import com.proyecto1.semantico.tipos.TipoEstructura;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 /**
- * Un {@code parametro}. Las tres alternativas de la gramática (#parametroPrimitivo,
+ * Un parametro. Las tres alternativas de la gramática (#parametroPrimitivo,
  * #parametroArreglo, #parametroEstructura) se representan con esta única clase + su
- * {@link CategoriaParametro}, construida siempre a través de una de las tres fábricas
+ * CategoriaParametro, construida siempre a través de una de las tres fábricas
  * estáticas de abajo (así queda imposible construir, por ejemplo, un parámetro
- * ESTRUCTURA sin {@code nombreTipoEstructura}).
+ * ESTRUCTURA sin nombreTipoEstructura).
  */
 public final class Parametro extends NodoY {
 

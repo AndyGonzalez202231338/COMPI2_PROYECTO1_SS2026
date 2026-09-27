@@ -9,8 +9,8 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * {@code expresionCondicional} (#expresionCondicionalDef), cuando trae el operador
- * ternario: {@code expresionOr ? expresion : expresionCondicional}. Sin equivalente
+ * (expresionCondicional ()#expresionCondicionalDef), cuando trae el operador
+ * ternario: expresionOr ? expresion : expresionCondicional. Sin equivalente
  * en Y; se agrega porque PigLatin sí lo admite.
  */
 public final class Ternaria extends NodoPigLatin implements ExpresionPigLatin {
@@ -57,8 +57,7 @@ public final class Ternaria extends NodoPigLatin implements ExpresionPigLatin {
 
     /**
      * Emite, con el mismo esquema de backpatching que un if/else, pero usando UN SOLO
-     * temporal {@code t} compartido por ambas ramas:
-     * <pre>
+     * temporal t compartido por ambas ramas:
      *   [cond]
      *   if_false c goto L_falso
      *   [siVerdadero]              -> t = v1
@@ -66,37 +65,33 @@ public final class Ternaria extends NodoPigLatin implements ExpresionPigLatin {
      *   L_falso:
      *   [siFalso]                  -> t = v2
      *   L_fin:
-     * </pre>
-     * La razón de reutilizar {@code t} en ambas ramas: como solo una se ejecuta en
+     * La razón de reutilizar t en ambas ramas: como solo una se ejecuta en
      * runtime, el mismo temporal es válido para las dos. Al final del ternario,
-     * {@code t} contiene el valor de la rama que se tomó. Devuelve
-     * {@code ResultadoC3D.temporal(t, tipoResultado)}.
-     *
-     * <p>Los temporales internos de cada rama se numeran por separado (cada
-     * {@code generarC3D} de rama pide los suyos), así que no hay colisión con {@code t}.
+     * contiene el valor de la rama que se tomó. Devuelve
+     * ResultadoC3D.temporal(t, tipoResultado).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
-        // 1) Temporal único compartido por ambas ramas.
+        // Temporal único compartido por ambas ramas.
         String t = generador.nuevoTemporal();
         String etiquetaFalso = generador.nuevaEtiqueta();
         String etiquetaFin   = generador.nuevaEtiqueta();
 
-        // 2) Evaluar la condición y saltar a la rama falsa si es false.
+        // Evaluar la condición y saltar a la rama falsa si es false.
         ResultadoC3D c = condicion.generarC3D(generador);
         generador.emitirIfFalse(c.getLugar(), etiquetaFalso);
 
-        // 3) Rama verdadera: emitir su C3D y copiar el resultado a t.
+        // Rama verdadera: emitir su C3D y copiar el resultado a t.
         ResultadoC3D v1 = siVerdadero.generarC3D(generador);
         generador.emitirAsignacion(v1.getLugar(), t);
         generador.emitirGoto(etiquetaFin);
 
-        // 4) Rama falsa: emitir su C3D y copiar el resultado a t.
+        // Rama falsa: emitir su C3D y copiar el resultado a t.
         generador.emitirEtiqueta(etiquetaFalso);
         ResultadoC3D v2 = siFalso.generarC3D(generador);
         generador.emitirAsignacion(v2.getLugar(), t);
 
-        // 5) Fin: t contiene el valor de la rama tomada.
+        // Fin: t contiene el valor de la rama tomada.
         generador.emitirEtiqueta(etiquetaFin);
 
         Tipo tipo = (tipoResultado != null) ? tipoResultado : TipoPrimitivo.DESCONOCIDO;

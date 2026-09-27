@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code etiqueta:} — la DEFINICIÓN del label (no se backpatchea, se emite directo). */
+/** etiqueta: la DEFINICIÓN del label (no se backpatchea, se emite directo). */
 public record CuadruplaEtiqueta(String etiqueta) implements Cuadrupla {
     @Override
     public String toStringLegible() { return etiqueta + ":"; }

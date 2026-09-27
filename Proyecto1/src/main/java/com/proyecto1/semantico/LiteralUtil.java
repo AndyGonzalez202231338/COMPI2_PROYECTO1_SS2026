@@ -1,17 +1,6 @@
 package com.proyecto1.semantico;
 
-/**
- * Utilidad compartida entre {@code ASTBuilderY} y {@code ASTBuilderZ} (y, cuando se
- * escriba, {@code ASTBuilderPig}) para convertir el TEXTO CRUDO de un token
- * CADENA_LIT/CARACTER_LIT (que todavía incluye las comillas y las secuencias de
- * escape tal como las escribió el programador, p. ej. {@code "hola\n"} con backslash
- * literal) en el valor Java real que representa (quita comillas y desescapa
- * {@code \n \t \r \' \" \\}).
- *
- * Se deja en un solo lugar para que ningún visitor tenga que reinventar el
- * desescapado, y para que si algún día cambia el conjunto de escapes soportados
- * (ver {@code fragment ESCAPE} en LenguajeLexer.g4) solo haya que tocar un archivo.
- */
+
 public final class LiteralUtil {
 
     private LiteralUtil() {}

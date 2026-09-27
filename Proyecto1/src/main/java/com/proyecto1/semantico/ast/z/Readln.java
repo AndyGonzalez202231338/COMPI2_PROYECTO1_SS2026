@@ -8,17 +8,12 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
- * {@code readlnExpression} (#primarioReadln): "readln()".
+ * readlnExpression (#primarioReadln): "readln()".
  *
- * <p>Es una expresión (no una instrucción): devuelve el valor leído, que el padre
- * decide qué hacer con él ({@code x = readln();}, {@code print(readln());},
- * {@code readln() + "x"}, etc.). Como en Z la lectura se trata como llamada al
- * runtime, el C3D es {@code (call, rt_readln, 0, t)} con un temporal nuevo como
+ * Es una expresión (no una instrucción): devuelve el valor leído, que el padre
+ * decide qué hacer con él x = readln();, readln() + "x", etc.). Como en Z la lectura se trata como llamada al
+ * runtime, el C3D es (call, rt_readln, 0, t) con un temporal nuevo como
  * destino.
- *
- * <p><b>Tipo devuelto:</b> {@link TipoPrimitivo#CADENA} siempre (igual que hace
- * {@code Leer} en Y). Un chequeo más fino requeriría análisis bidireccional, que ni
- * Y ni Z aplican; el usuario debe hacer conversión explícita si quiere otro tipo.
  */
 public final class Readln extends NodoZ implements ExpresionZ {
 
@@ -33,12 +28,8 @@ public final class Readln extends NodoZ implements ExpresionZ {
     }
 
     /**
-     * Emite: una única cuádrupla {@code (call, rt_readln, 0, t)} con un temporal nuevo,
-     * y devuelve {@code temporal(t, CADENA)}. El padre decide qué hacer con el valor.
-     *
-     * <p>En Fase 4, {@code rt_readln} en C suele leer una línea completa y devolverla
-     * como {@code char*} (o {@code string} según el runtime); el temporal {@code t} se
-     * declara en consecuencia.
+     * Emite: una única cuádrupla (call, rt_readln, 0, t) con un temporal nuevo,
+     * y devuelve temporal(t, CADENA). El padre decide qué hacer con el valor.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

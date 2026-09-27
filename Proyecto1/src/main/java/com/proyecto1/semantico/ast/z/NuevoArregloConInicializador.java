@@ -11,13 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code NEW tipoBase (CORIZQ CORDER)+ LLAVEIZQ initializerList? LLAVEDER}
+ * NEW tipoBase (CORIZQ CORDER)+ LLAVEIZQ initializerList? LLAVEDER
  * (#primarioArregloConInicializador): "new int[]{1, 2, 3}" o "new int[][]{{1,2},{3,4}}".
  *
- * <p>SIEMPRE se emite con estrategia FLAT: las dimensiones del literal anidado
+ * SIEMPRE se emite con estrategia FLAT: las dimensiones del literal anidado
  * son constantes conocidas en compile-time, así que no hay razón para jagged.
  * El literal se "aplanan" a UN solo bloque contiguo, y cada elemento hoja se
- * guarda con una cuádrupla {@code []=} usando un índice aplanado constante.
+ * guarda con una cuádrupla []= usando un índice aplanado constante.
  */
 public final class NuevoArregloConInicializador extends NodoZ implements ExpresionZ {
 
@@ -74,7 +74,7 @@ public final class NuevoArregloConInicializador extends NodoZ implements Expresi
 
     /**
      * Deduce las dimensiones del literal anidado, en orden del externo al interno.
-     * Lanza {@link IllegalStateException} si encuentra inconsistencias (sub-listas
+     * Lanza IllegalStateException si encuentra inconsistencias (sub-listas
      * de distinto tamaño → arreglo irregular, no soportado en flat).
      */
     private static List<Integer> deducirDimensiones(List<ExpresionZ> elems, int dimensiones) {
@@ -105,12 +105,12 @@ public final class NuevoArregloConInicializador extends NodoZ implements Expresi
     }
 
     /**
-     * Recorre el literal anidado y emite una cuádrupla {@code []=} por cada hoja,
+     * Recorre el literal anidado y emite una cuádrupla []= por cada hoja,
      * con el índice aplanado calculado en compile-time.
      *
-     * <p>{@code baseOffset} es el offset acumulado del sub-arreglo actual; cada
-     * elemento del nivel {@code nivel} suma {@code i * peso} donde
-     * {@code peso = dims[nivel+1] * ... * dims[n-1]}.
+     * baseOffset es el offset acumulado del sub-arreglo actual; cada
+     * elemento del nivel nivel  suma i * peso donde
+     * peso = dims[nivel+1] * ... * dims[n-1].
      */
     private static void asignarFlat(GeneradorC3D g, String arr, int[] dims, int nivel,
                                     List<ExpresionZ> elems, int baseOffset) {

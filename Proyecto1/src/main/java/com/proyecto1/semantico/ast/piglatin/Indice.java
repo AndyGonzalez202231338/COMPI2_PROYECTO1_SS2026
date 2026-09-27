@@ -10,7 +10,7 @@ import com.proyecto1.semantico.tipos.TipoArreglo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
-/** {@code primaria [ expresion ]} (#primariaIndice): "arreglo[indice]". */
+/** primaria [ expresion ] (#primariaIndice): "arreglo[indice]". */
 public final class Indice extends NodoPigLatin implements ExpresionPigLatin {
 
     private final ExpresionPigLatin arreglo;
@@ -63,10 +63,7 @@ public final class Indice extends NodoPigLatin implements ExpresionPigLatin {
 
     /**
      * Emite, en orden: C3D del arreglo (base), C3D del índice, y UNA cuádrupla
-     * {@code (=[] , base, idx, t)}. Devuelve {@code ResultadoC3D.temporal(t, tipoElemento)}.
-     *
-     * <p>La multiplicación por tamaño de elemento y la suma a la base las hará Fase 4.
-     * Aquí el índice se pasa como entero crudo, igual que en Y/Z.
+     * (=[] , base, idx, t). Devuelve ResultadoC3D.temporal(t, tipoElemento).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

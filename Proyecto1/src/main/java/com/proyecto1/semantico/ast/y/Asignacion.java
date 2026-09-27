@@ -10,7 +10,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * {@code asignacion} (#asigDef): "ID (.campo | [indice])* op= expresion".
+ * (#asigDef): "ID (.campo | [indice])* op= expresion".
  */
 public final class Asignacion extends NodoY implements InstruccionY {
 
@@ -52,12 +52,10 @@ public final class Asignacion extends NodoY implements InstruccionY {
      * gramática: variable simple, campo de estructura, elemento de arreglo.
      *
      * Orden de evaluación (coherente con C):
-     *   1. resolverLValue(objetivo)  → evalúa subexpresiones del lvalue UNA sola vez
+     *   1. resolverLValue(objetivo)  -> evalúa subexpresiones del lvalue UNA sola vez
      *      (p. ej. el i() de arr[i()] o el obj de obj.f).
      *   2. Si op == "=": C3D del RHS y guardarEn(lv, rhs).
      *      Si op es compuesto: cargarDe(lv) (t = x), C3D del RHS, emitirBinaria, guardar.
-     *
-     * Devuelve {@code ResultadoC3D.vacio()}: en Y? la asignación es una instrucción.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

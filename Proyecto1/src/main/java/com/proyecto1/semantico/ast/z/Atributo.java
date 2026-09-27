@@ -8,10 +8,9 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * Un {@code fieldDeclaration} (#fieldDeclarationDef): "tipo ID (= expresion)? ;".
+ * Un fieldDeclaration (#fieldDeclarationDef): "tipo ID (= expresion)? ;".
  * A diferencia de {@code CampoEstructura} de Y?, no necesita una lista de tamaños de
- * arreglo aparte: en Z el arreglo ya viene incluido en {@code tipo} (ver
- * {@link NodoTipoRef#getDimensiones()}).
+ * arreglo aparte: en Z el arreglo ya viene incluido en tipo
  */
 public final class Atributo extends NodoZ {
 

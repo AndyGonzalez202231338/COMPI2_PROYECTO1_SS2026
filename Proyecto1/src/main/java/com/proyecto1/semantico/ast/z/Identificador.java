@@ -14,10 +14,10 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
  * es un ATRIBUTO de la clase actual, no es una variable local, es un acceso
  * implícito a "this.<nombre>". Eso se emite como carga de campo.
  *
- * <p>Motivo: AmbitoContenedor.declararMiembro registra los atributos en la tabla
+ * Motivo: AmbitoContenedor.declararMiembro registra los atributos en la tabla
  * del método/constructor con su nombre plano (por eso "return edad;" resuelve
- * solo). Basta con mirar la categoría del símbolo: ATRIBUTO → this.<nombre>;
- * VARIABLE/PARAMETRO → acceso local normal.
+ * solo). Basta con mirar la categoría del símbolo: ATRIBUTO -> this.<nombre>;
+ * VARIABLE/PARAMETRO -> acceso local normal.
  */
 public final class Identificador extends NodoZ implements ExpresionZ {
 
@@ -48,14 +48,12 @@ public final class Identificador extends NodoZ implements ExpresionZ {
 
     /**
      * Dos casos según la categoría del símbolo:
-     * <ul>
-     *   <li><b>ATRIBUTO</b>: emite {@code (=., this, nombre, t)} y devuelve
-     *       {@code temporal(t, tipo)}. Es un acceso implícito a "this.nombre".</li>
-     *   <li><b>VARIABLE / PARAMETRO / otro</b>: comportamiento idéntico al de Y:
-     *       no emite nada y devuelve {@code valor(nombre, tipo)}.</li>
-     * </ul>
+     *   ATRIBUTO: emite (=., this, nombre, t) y devuelve
+     *       temporal(t, tipo). Es un acceso implícito a "this.nombre".
+     *   VARIABLE / PARAMETRO / otro: comportamiento idéntico al de Y:
+     *       no emite nada y devuelve valor(nombre, tipo).
      * Si el generador no tiene ámbito o el símbolo no se resuelve, cae al caso Y
-     * (devuelve {@code valor(nombre, DESCONOCIDO)}); es el comportamiento degradado
+     * (devuelve valor(nombre, DESCONOCIDO)); es el comportamiento degradado
      * cuando se genera C3D sin análisis semántico previo.
      */
     @Override

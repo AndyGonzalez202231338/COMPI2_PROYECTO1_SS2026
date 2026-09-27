@@ -102,7 +102,6 @@ sentenciaLeer
     ;
 
 // asignación / llamada a función / llamada a método encadenada,
-// unificadas -- ver desviación 2 al inicio del archivo.
 expresionSentencia
     : expresion PUNTOYCOMA                                                #expresionSentenciaDef
     ;

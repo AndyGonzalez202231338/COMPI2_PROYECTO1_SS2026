@@ -9,20 +9,18 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 /**
  * Base de TODOS los nodos del AST de Y?. Guarda línea/columna (para poder reportar
  * errores exactamente donde ocurren) y provee una implementación de
- * {@link #verificar(Ambito, ManejadorErrores)} que, POR AHORA, es un placeholder:
- * no valida nada y siempre devuelve {@link TipoPrimitivo#DESCONOCIDO}.
+ * verificar(Ambito, ManejadorErrores) que, POR AHORA, es un placeholder:
+ * no valida nada y siempre devuelve TipoPrimitivo#DESCONOCIDO.
  *
- * <p><b>Esto es intencional y temporal.</b> El alcance de esta entrega es SOLO el
+ * El alcance de esta entrega es SOLO el
  * visitor que construye el AST (recorre el árbol que entrega ANTLR y arma estos
  * nodos); las reglas semánticas reales se agregan en la siguiente parte,
  * sobreescribiendo verificar() en cada subclase concreta que lo necesite. Quedan
  * pendientes explícitamente:
- * <ul>
- *   <li>Variables declaradas antes de usarse.</li>
- *   <li>Funciones con retorno correcto.</li>
- *   <li>Arreglos con índices enteros y dimensiones correctas.</li>
- *   <li>Estructuras anidadas y objetos.</li>
- * </ul>
+ *   Variables declaradas antes de usarse.
+ *   Funciones con retorno correcto.
+ *   Arreglos con índices enteros y dimensiones correctas.
+ *   Estructuras anidadas y objetos.
  * Al dejar la implementación por defecto AQUÍ (en la clase base) y no repetida en
  * cada subclase, cuando llegue el momento de implementar las reglas de verdad basta
  * con sobreescribir el método en la subclase que corresponda — nada de lo que ya

@@ -11,10 +11,10 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import java.util.List;
 
 /**
- * Un {@code bloque} (#bloqueDef): {@code { sentencia* }}. A diferencia de
- * {@code Bloque} en Y, aquí SÍ implementa {@link InstruccionPigLatin}: la gramática
- * de PigLatin permite un bloque suelto directamente como {@code sentencia}
- * (alternativa {@code #stmtBloque}).
+ * Un bloque (#bloqueDef): sentencia* . A diferencia de
+ * Bloque en Y, aquí SÍ implementa InstruccionPigLatin: la gramática
+ * de PigLatin permite un bloque suelto directamente como sentencia
+ * (alternativa #stmtBloque).
  */
 public final class Bloque extends NodoPigLatin implements InstruccionPigLatin {
 
@@ -39,7 +39,7 @@ public final class Bloque extends NodoPigLatin implements InstruccionPigLatin {
     /**
      * Emite: nada propio; recorre las instrucciones en orden del código fuente y
      * cada una emite sus cuádruplas en la tabla del generador.
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     * Devuelve ResultadoC3D.vacio().
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

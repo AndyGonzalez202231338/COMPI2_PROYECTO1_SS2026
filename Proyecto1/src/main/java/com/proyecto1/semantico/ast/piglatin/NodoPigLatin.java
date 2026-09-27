@@ -9,17 +9,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 /**
  * Base de TODOS los nodos del AST de PigLatin. Guarda línea/columna (para poder
  * reportar errores exactamente donde ocurren) y provee una implementación de
- * {@link #verificar(Ambito, ManejadorErrores)} que, POR AHORA, es un placeholder:
- * no valida nada y siempre devuelve {@link TipoPrimitivo#DESCONOCIDO}.
- *
- * <p><b>Esto es intencional y temporal.</b> El alcance de esta entrega es SOLO el
- * visitor que construye el AST (recorre el árbol que entrega ANTLR y arma estos
- * nodos); las reglas semánticas reales se agregan en la siguiente parte,
- * sobreescribiendo verificar() en cada subclase concreta que lo necesite.
- * Al dejar la implementación por defecto AQUÍ (en la clase base) y no repetida en
- * cada subclase, cuando llegue el momento de implementar las reglas de verdad basta
- * con sobreescribir el método en la subclase que corresponda — nada de lo que ya
- * existe en el AST necesita cambiar de forma.
+ * #verificar(Ambito, ManejadorErrores).
  */
 public abstract class NodoPigLatin implements NodoAST {
 

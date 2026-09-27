@@ -8,7 +8,6 @@ import com.proyecto1.semantico.tabla.AmbitoBloque;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code PERGE ;} (#sentenciaPergeDef). Equivale a {@code Continuar} de Y. */
 public final class Perge extends NodoPigLatin implements InstruccionPigLatin {
     public Perge(int linea, int columna) {
         super(linea, columna);
@@ -23,9 +22,8 @@ public final class Perge extends NodoPigLatin implements InstruccionPigLatin {
     }
 
     /**
-     * Emite {@code (goto, null, null, L)}, donde L es {@code generador.etiquetaInicioCiclo()}
-     * (el destino de "perge" del ciclo más interno). Si la pila está vacía lanza
-     * {@link IllegalStateException}. Devuelve {@code ResultadoC3D.vacio()}.
+     * Emite (goto, null, null, L), donde L es generador.etiquetaInicioCiclo()
+     * (el destino de "perge" del ciclo más interno).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

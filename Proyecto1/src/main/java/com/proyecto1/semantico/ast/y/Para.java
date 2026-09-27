@@ -55,7 +55,6 @@ public final class Para extends NodoY implements InstruccionY {
 
     /**
      * Emite, en este orden:
-     * <pre>
      *   [init]                       (una sola vez, fuera del ciclo)
      *   L_inicio:
      *   [condición]                  (solo si hay condición)
@@ -65,13 +64,12 @@ public final class Para extends NodoY implements InstruccionY {
      *   [act]                        (solo si hay actualización)
      *   goto L_inicio
      *   L_fin:
-     * </pre>
-     * Se registra el ciclo como {@code entrarCiclo(L_act, L_fin)}: "continuar" salta a
+     *
+     * Se registra el ciclo como entrarCiclo(L_act, L_fin): "continuar" salta a
      * L_act (así la actualización SÍ se ejecuta; si saltara a L_inicio, un "continuar"
      * dejaría el contador sin avanzar y el ciclo sería infinito) y "romper" salta a
      * L_fin sin ejecutar la actualización. Init y act quedan FUERA de entrarCiclo /
      * salirCiclo. Sin condición el ciclo no emite if_false (solo termina con "romper").
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

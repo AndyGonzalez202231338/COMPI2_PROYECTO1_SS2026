@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.TipoEstructura;
 
 import java.util.List;
 
-/** Una {@code definicionEstructura} (#estructuraDef): "estructura Nombre: campo*". */
+/** Una (#estructuraDef): "estructura Nombre: campo*". */
 public final class Estructura extends NodoY {
 
     private final String nombre;

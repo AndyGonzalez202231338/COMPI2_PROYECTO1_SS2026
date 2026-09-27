@@ -14,41 +14,6 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * ASTBuilderPigLatin convierte el árbol de análisis sintáctico (parse tree) que
- * entrega ANTLR para PigLatin en el AST propio del proyecto (paquete
- * {@code semantico.ast.piglatin}).
- *
- * <h2>Qué hace y qué NO hace</h2>
- * Igual que ASTBuilderY/ASTBuilderZ: recorre UNA sola vez el parse tree y lo
- * traduce a los nodos propios (que implementan {@link NodoAST}). NO valida nada
- * semánticamente (no consulta ningún {@code Ambito}, no reporta errores). Los
- * literales sí se "parsean" aquí (de texto a long/double/char/String/boolean/null)
- * porque eso es puramente sintáctico.
- *
- * <h2>Cómo leerla</h2>
- * Se sigue la gramática de arriba hacia abajo: programa → importaciones →
- * variables globales → función principal → sentencias → expresiones (de menor a
- * mayor precedencia) → primaria. Cada método {@code visitXxx} corresponde 1 a 1
- * con una etiqueta {@code #xxx} de la gramática.
- *
- * <h2>Notas particulares de PigLatin</h2>
- * <ul>
- *   <li>{@code programa} y {@code seccionVariables} NO tienen label: sus visit son
- *       {@code visitPrograma} y (no se usa visitor para la sección, ver abajo).</li>
- *   <li>La asignación es una EXPRESIÓN (vive dentro de {@code expresionAsignacion}),
- *       no una instrucción aparte. Una asignación usada como sentencia suelta queda
- *       envuelta en {@link ExpresionStmt}.</li>
- *   <li>Los niveles con {@code *} y varios operadores mezclados (==/!=, </>/<=/>=,
- *       +/-) se recorren por hijos ({@code ctx.getChild(i)}) para respetar
- *       el ORDEN real, porque los accessors {@code ctx.IGUALIGUAL()},
-        *       {@code ctx.MENOS()}, etc. devuelven listas separadas que no dicen cuál
- *       salió primero.</li>
-        *   <li>{@code sentenciaSi}: como "aliter con condición" y "aliter sin condición"
-        *       usan el MISMO token {@code ALITER}, la detección del "contrario" se hace
- *       CONTANDO bloques vs. condiciones.</li>
-        * </ul>
-        */
 public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
 
     /** Punto de entrada: {@code new ASTBuilderPigLatin().construir(parser.programa())}. */
@@ -59,10 +24,6 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
     // POSICIÓN: todo nodo del AST propio necesita línea/columna de origen.
     private int linea(ParserRuleContext ctx) { return ctx.getStart().getLine(); }
     private int columna(ParserRuleContext ctx) { return ctx.getStart().getCharPositionInLine(); }
-
-    // =====================================================================
-    // PROGRAMA / IMPORTACIONES / FUNCIÓN PRINCIPAL
-    // =====================================================================
 
     /**
      * programa : importaciones? seccionVariables? funcionPrincipal EOF ;
@@ -128,9 +89,7 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
         return new FuncionPrincipal(cuerpo, linea(ctx), columna(ctx));
     }
 
-    // =====================================================================
     // BLOQUE
-    // =====================================================================
 
     /**
      * bloque : LLAVEIZQ sentencia* LLAVEDER  #bloqueDef ;
@@ -146,12 +105,7 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
         return new Bloque(instrucciones, linea(ctx), columna(ctx));
     }
 
-    // =====================================================================
-    // SENTENCIA (13 alternativas -> 13 overrides)
-    // =====================================================================
-    // Cada alternativa etiquetada "envuelve" a una regla con su propio label
-    // (p. ej. #stmtSi envuelve a sentenciaSi #sentenciaSiDef). Por eso cada
-    // visitStmtXxx se limita a delegar al visit de la regla específica.
+    // SENTENCIA
 
     @Override public NodoAST visitStmtBloque(GramaticaPigLatin.StmtBloqueContext ctx) {
         return visit(ctx.bloque());
@@ -193,9 +147,7 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
         return visit(ctx.sentenciaVacia());
     }
 
-    // =====================================================================
     // SENTENCIAS ESPECÍFICAS
-    // =====================================================================
 
     /**
      * sentenciaSi
@@ -344,9 +296,7 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
         return new SentenciaVacia(linea(ctx), columna(ctx));
     }
 
-    // =====================================================================
     // DECLARACIONES DE VARIABLE Y ARREGLO
-    // =====================================================================
 
     /** declaracionVariable : declaracionVariableSinPuntoYComa PUNTOYCOMA  #declaracionVariableDef ; */
     @Override
@@ -424,9 +374,7 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
         return new InicializadorArreglo(elementos, linea(ctx), columna(ctx));
     }
 
-    // =====================================================================
     // TIPOS (regla 'tipo': 6 alternativas -> 6 overrides)
-    // =====================================================================
 
     /**
      * Como 'tipo' tiene 6 alternativas etiquetadas, se usa {@code visit(ctx)}
@@ -454,17 +402,10 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
     }
     @Override public NodoAST visitTipoImportado(GramaticaPigLatin.TipoImportadoContext ctx) {
         // Un ID de clase/estructura importada; la validación contra la tabla de
-        // símbolos es semántica (Parte 2).
         return new NodoTipoRef(ctx.ID().getText(), false, linea(ctx), columna(ctx));
     }
 
-    // =====================================================================
-    // LISTAS AUXILIARES (argumentos)
-    // =====================================================================
-    // listaArgumentos solo aparece dentro de Llamada y NuevoObjeto; no tiene nodo
-    // propio en el AST (Llamada/NuevoObjeto guardan List<ExpresionPigLatin>), así
-    // que se accede a sus expresiones directamente sin visit().
-    // =====================================================================
+
 
     private List<ExpresionPigLatin> construirListaArgumentos(GramaticaPigLatin.ListaArgumentosContext ctx) {
         List<ExpresionPigLatin> r = new ArrayList<>();
@@ -474,9 +415,7 @@ public class ASTBuilderPigLatin extends GramaticaPigLatinBaseVisitor<NodoAST> {
         return r;
     }
 
-    // =====================================================================
     // EXPRESIONES
-    // =====================================================================
 
     /**
      * expresion : expresionAsignacion ; (regla SIN label) — se delega al nivel

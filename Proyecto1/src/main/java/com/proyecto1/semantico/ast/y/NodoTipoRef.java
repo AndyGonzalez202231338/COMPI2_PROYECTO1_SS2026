@@ -9,17 +9,13 @@ import com.proyecto1.semantico.tipos.TipoEstructura;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
- * Representa la regla {@code tipo} de la gramática ({@code tipoEntero, tipoFlotante,
- * tipoCaracter, tipoCadena, tipoBool, tipoEstructura}). Es una referencia SINTÁCTICA
+ * Representa la regla tipo de la gramática tipoEntero, tipoFlotante,
+ * tipoCaracter, tipoCadena, tipoBool, tipoEstructura). Es una referencia SINTÁCTICA
  * nada más: guarda el nombre tal cual aparece en el código ("entero", "flotante",
  * "Persona", ...) y si es primitivo o no; todavía NO se resuelve contra la tabla de
  * símbolos (comprobar que "Persona" en verdad exista como estructura ya
  * definida antes es parte de las validaciones semánticas ).
  *
- * No implementa {@link ExpresionY} ni {@link InstruccionY} porque una referencia de
- * tipo no es ni una expresión (no produce un valor en tiempo de ejecución) ni una
- * instrucción; solo aparece "colgada" de otros nodos (parámetros, campos,
- * declaraciones, tipo de retorno).
  */
 public final class NodoTipoRef extends NodoY {
 

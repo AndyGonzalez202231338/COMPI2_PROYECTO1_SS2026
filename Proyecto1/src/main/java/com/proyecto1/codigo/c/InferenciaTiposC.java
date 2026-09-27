@@ -14,15 +14,14 @@ import java.util.Map;
 
 /**
  * Infiere el tipo C de cada variable local y temporal de UNA función a partir de
- * las cuádruplas de su cuerpo más su {@link GeneradorC3D.Firma}.
+ * las cuádruplas de su cuerpo más su GeneradorC3D.Firma.
  *
- * <p><b>Ámbito global:</b> cuando el cuerpo referencia un identificador que no es
- * parámetro ni ya fue declarado por una cuádrupla anterior (típico de las variables
- * globales de PigLatin: {@code personas}, {@code suma}, {@code contador}, ...),
- * se consulta el {@link AmbitoGlobal} que se pasó al constructor. Ese ámbito es
+ * Ámbito global:cuando el cuerpo referencia un identificador que no es
+ * parámetro ni ya fue  declarado por una cuádrupla anterior (típico de las variables
+ * globales de PigLatin: personas, suma, contador, ...),
+ * se consulta el AmbitoGlobal que se pasó al constructor. Ese ámbito es
  * el del programa completo, con todas las globales ya declaradas por el semántico.
- * Sin esto, un acceso a {@code personas[0]} trataría {@code personas} como
- * {@code int} y todo lo derivado saldría mal tipado.
+ * Sin esto, un acceso a personas trataría personas como int y todo lo derivado saldría mal tipado.
  */
 public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
 
@@ -53,7 +52,7 @@ public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
     /**
      * Constructor completo.
      *
-     * @param ambitoGlobal ámbito del programa (con las variables globales del .pig,
+     * ambitoGlobal ámbito del programa (con las variables globales del .pig,
      *                     si aplica). Puede ser null.
      */
     public InferenciaTiposC(List<Cuadrupla> cuadruplas,
@@ -85,8 +84,6 @@ public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
         }
     }
 
-    // ---------- API pública ----------
-
     public Map<String, String> getDeclaraciones() { return declaracionesLocales; }
 
     public List<String> comoLineasDeC() {
@@ -97,8 +94,6 @@ public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
         return lineas;
     }
 
-    // ---------- Registro inicial de parámetros ----------
-
     private void registrarParametros() {
         if (firma == null || firma.parametros() == null) return;
         for (GeneradorC3D.ParametroFirma p : firma.parametros()) {
@@ -106,7 +101,7 @@ public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
         }
     }
 
-    // ---------- Visitor ----------
+    //Visitor
 
     @Override
     public Void visitar(CuadruplaBinaria c) {
@@ -176,9 +171,9 @@ public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
     }
 
     /**
-     * {@code destino = arreglo[idx]}. Tipo del elemento = tipo del arreglo menos
+     * destino = arreglo[idx]. Tipo del elemento = tipo del arreglo menos
      * un nivel de indirección. Si el arreglo no está en locales, se consulta el
-     * ámbito global (caso típico: {@code personas[i]} donde {@code personas} es
+     * ámbito global (caso típico: personas[i] donde personas es
      * una global del .pig).
      */
     @Override
@@ -204,8 +199,6 @@ public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
         return null;
     }
 
-    // ---------- Cuádruplas que no declaran lugar nuevo ----------
-
     @Override public Void visitar(CuadruplaGoto c)        { return null; }
     @Override public Void visitar(CuadruplaIfFalse c)     { return null; }
     @Override public Void visitar(CuadruplaIfTrue c)      { return null; }
@@ -217,8 +210,6 @@ public final class InferenciaTiposC implements VisitanteCuadrupla<Void> {
     @Override public Void visitar(CuadruplaEndFunc c)     { return null; }
     @Override public Void visitar(CuadruplaIndiceGuarda c){ return null; }
     @Override public Void visitar(CuadruplaCampoGuarda c) { return null; }
-
-    // ---------- Helpers ----------
 
     private String resolverTipoCampo(String objeto, String campo) {
         if (objeto == null || campo == null) return "int";

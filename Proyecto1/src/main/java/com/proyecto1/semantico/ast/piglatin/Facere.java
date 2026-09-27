@@ -10,9 +10,9 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * {@code sentenciaFacere} (#sentenciaFacereDef): {@code facere bloque dum (cond);}.
+ * {sentenciaFacere} (#sentenciaFacereDef): facere bloque dum (cond);.
  * El cuerpo se ejecuta al menos una vez y la condición se evalúa DESPUÉS de cada
- * iteración. No lleva {@code finis;}.
+ * iteración.
  */
 public final class Facere extends NodoPigLatin implements InstruccionPigLatin {
 
@@ -40,17 +40,16 @@ public final class Facere extends NodoPigLatin implements InstruccionPigLatin {
     }
 
     /**
-     * <pre>
      *   L_inicio:
      *   [cuerpo]              (dentro de entrarCiclo/salirCiclo)
      *   L_cond:
      *   [cond]
      *   if_true c goto L_inicio
      *   L_fin:
-     * </pre>
-     * Se registra el ciclo como {@code entrarCiclo(L_cond, L_fin)}: "perge" salta a
+
+     * Se registra el ciclo como entrarCiclo(L_cond, L_fin): "perge" salta a
      * L_cond para reevaluar la condición (si saltara a L_inicio repetiría el cuerpo
-     * sin comprobarla) y "interrumpe" a L_fin. Devuelve {@code ResultadoC3D.vacio()}.
+     * sin comprobarla) y "interrumpe" a L_fin.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

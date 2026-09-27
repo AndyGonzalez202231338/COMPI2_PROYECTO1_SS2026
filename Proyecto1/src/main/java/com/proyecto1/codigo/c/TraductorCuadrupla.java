@@ -8,21 +8,13 @@ import java.util.Map;
 /**
  * Traduce UNA cuádrupla del C3D a su línea equivalente en C.
  *
- * <p>El traductor recibe un mapa {@code lugar -> tipoC} (típicamente provisto por
- * {@code InferenciaTiposC}), con el que decide:
- * <ul>
- *   <li>Concatenación de strings ({@code rt_concat}) cuando {@code +} involucra un
- *       {@code char*}.</li>
- *   <li>Comparación de contenido ({@code rt_strcmp}) cuando {@code ==}/{@code !=}
- *       compara dos {@code char*}.</li>
- *   <li>Formato correcto de {@code printf}/{@code scanf} según el tipo.</li>
- *   <li>Elección de {@code rt_print_<tipo>} vs {@code rt_println_<tipo>} al traducir
- *       las llamadas al runtime de Z.</li>
- * </ul>
- *
- * <p><b>Literales:</b> los literales string/char/numéricos NO están en el mapa
- * (nunca son destino de una cuádrupla). Se detectan por su forma con {@link
- * #tipoEfectivo(String)}. Esto es clave para que {@code "Hola" + t2} se trate como
+ * El traductor recibe un mapa lugar -> tipoC (típicamente provisto por InferenciaTiposC), con el que decide:
+ * Concatenación de strings (rt_concat) cuando + involucra un char*.
+ * Comparación de contenido (rt_strcmp) cuando ==/!= compara dos char*.
+ * Formato correcto de printf/scanf según el tipo.
+ * Elección de rt_print_<tipo> vs rt_println_<tipo> al traducir las llamadas al runtime de Z.
+ * Literales: los literales string/char/numéricos NO están en el mapa
+ * (nunca son destino de una cuádrupla). Se detectan por su forma con tipoEfectivo(String). Esto es clave para que "Hola" + t2 se trate como
  * concatenación y no como operación aritmética.
  */
 public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
@@ -41,7 +33,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         return c.aceptar(this);
     }
 
-    // ---------- Aritmética / lógica / relacionales ----------
+    // Aritmética / lógica / relacionales
 
     @Override
     public String visitar(CuadruplaBinaria c) {
@@ -78,7 +70,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         return c.destino() + " = " + c.valor() + ";";
     }
 
-    // ---------- Control de flujo ----------
+    // Control de flujo
 
     @Override public String visitar(CuadruplaGoto c)     { return "goto " + c.etiqueta() + ";"; }
     @Override public String visitar(CuadruplaIfFalse c)  { return "if (!" + c.condicion() + ") goto " + c.etiqueta() + ";"; }
@@ -86,7 +78,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
     @Override public String visitar(CuadruplaEtiqueta c) { return c.etiqueta() + ":;"; }
     @Override public String visitar(CuadruplaReturn c)   { return c.valor() != null ? "return " + c.valor() + ";" : "return;"; }
 
-    // ---------- Heap ----------
+    // Heap
 
     @Override
     public String visitar(CuadruplaNew c) {
@@ -103,7 +95,7 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         return c.objeto() + "->" + c.campo() + " = " + c.valor() + ";";
     }
 
-    // ---------- I/O ----------
+    // I/O
 
     @Override
     public String visitar(CuadruplaPrint c) {
@@ -121,14 +113,14 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         return "scanf(\"" + formatoScanf(tipo) + "\", &" + c.destino() + ");";
     }
 
-    // ---------- Funciones ----------
+    // Funciones
 
     @Override public String visitar(CuadruplaBeginFunc c) { throw pendiente("begin_func"); }
     @Override public String visitar(CuadruplaEndFunc c)   { throw pendiente("end_func"); }
     @Override public String visitar(CuadruplaCall c)      { throw pendiente("call"); }
     @Override public String visitar(CuadruplaParam c)     { throw pendiente("param"); }
 
-    // ---------- Arreglos ----------
+    // Arreglos
 
     @Override
     public String visitar(CuadruplaIndiceCarga c) {
@@ -147,8 +139,6 @@ public final class TraductorCuadrupla implements VisitanteCuadrupla<String> {
         return c.destino() + " = (" + c.tipoElemento() + "*) malloc(("
                 + producto + ") * sizeof(" + c.tipoElemento() + "));";
     }
-
-    // ---------- Helpers ----------
 
     /**
      * Tipo C efectivo de un operando. Detecta literales por forma (no están en el

@@ -10,14 +10,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
-/**
- * Operación unaria de Z: !, - (negación), ++, --. Prefija o postfija.
- *
- * <p>Diferencia con Y: cuando ++/-- actúa sobre un identificador que resulta ser
- * un ATRIBUTO, hay que LEER de "this.<nombre>" y ESCRIBIR en "this.<nombre>", no
- * sobre un temporal. Es el mismo problema que resuelve {@code Asignacion} con su
- * "LValue", aquí en versión mínima (solo identificadores, como en Y).
- */
+
 public final class Unaria extends NodoZ implements ExpresionZ {
 
     private final String operador;
@@ -56,23 +49,6 @@ public final class Unaria extends NodoZ implements ExpresionZ {
         return TipoPrimitivo.DESCONOCIDO;
     }
 
-    /**
-     * Emite según el operador (siempre después de generar el C3D del operando):
-     * <ul>
-     *   <li>{@code !} y {@code -}: {@code (op, a, null, t)}, idéntico a Y.</li>
-     *   <li>{@code ++x} / {@code --x} (prefijo): carga valor actual, calcula
-     *       {@code t = valor ± 1}, guarda {@code t} en el destino y devuelve {@code t}.</li>
-     *   <li>{@code x++} / {@code x--} (postfijo): carga valor actual a {@code t0},
-     *       calcula {@code t1 = valor ± 1}, guarda {@code t1} en el destino y devuelve
-     *       {@code t0} (el valor VIEJO).</li>
-     * </ul>
-     * "Destino" es {@code this.<nombre>} si el identificador es un ATRIBUTO, o el
-     * propio nombre si es variable local/parámetro. Para atributos se emiten las
-     * cuádruplas {@code (=., this, x, t)} y {@code (.=, this, x, t)} de Fase 1.6.
-     *
-     * <p>Solo se admite {@link Identificador} como operando de ++/-- (mismo límite
-     * que en Y). Campos y elementos de arreglo quedan para una fase posterior.
-     */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
         switch (operador) {
@@ -136,7 +112,7 @@ public final class Unaria extends NodoZ implements ExpresionZ {
         }
     }
 
-    /** Escribe "v" en el destino: {@code this.<campo> = v} si es atributo, {@code x = v} si es local. */
+    /** Escribe "v" en el destino: this.<campo> = v si es atributo, x = v si es local. */
     private static void guardarEnDestino(GeneradorC3D generador, boolean esAtributo,
                                          String nombre, String v) {
         if (esAtributo) {

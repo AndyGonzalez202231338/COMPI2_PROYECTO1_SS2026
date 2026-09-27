@@ -11,7 +11,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 import java.util.List;
 
-/** {@code LLAVEIZQ (expresion (COMA expresion)*)? LLAVEDER} (#primariaListaLiteral): "{1, 2, 3}". */
+/** LLAVEIZQ (expresion (COMA expresion)*)? LLAVEDER (#primariaListaLiteral): "{1, 2, 3}". */
 public final class ListaLiteral extends NodoY implements ExpresionY {
 
     private final List<ExpresionY> elementos;
@@ -45,12 +45,12 @@ public final class ListaLiteral extends NodoY implements ExpresionY {
 
     /**
      * Emite: pide un temporal que hará de "arreglo", luego por cada elemento genera su
-     * C3D y emite {@code ([]=, tArr, i, v)} con {@code i} como literal entero. NO hay
+     * C3D y emite ([]=, tArr, i, v) con i como literal entero. NO hay
      * cuádrupla de "reservar" ni "malloc": el arreglo es un símbolo más; Fase 4 lo
      * declarará como arreglo de tamaño {@code elementos.size()} (ver nota abajo sobre
      * TipoArreglo).
      *
-     * Devuelve {@code temporal(tArr, tipoArreglo)} — es un temporal (viene de
+     * Devuelve temporal(tArr, tipoArreglo) - es un temporal (viene de
      * nuevoTemporal()), no un valor.
      */
     @Override

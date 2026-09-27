@@ -10,8 +10,8 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * {@code sentenciaDum} (#sentenciaDumDef): {@code dum (cond) bloque finis;}. Equivale
- * al {@code Mientras} de Y: evalúa la condición ANTES de cada iteración.
+ * entenciaDum (#sentenciaDumDef): dum (cond) bloque . Equivale
+ * al Mientras de Y: evalúa la condición ANTES de cada iteración.
  */
 public final class Dum extends NodoPigLatin implements InstruccionPigLatin {
 
@@ -39,16 +39,13 @@ public final class Dum extends NodoPigLatin implements InstruccionPigLatin {
     }
 
     /**
-     * <pre>
      *   L_inicio:
      *   [cond]
      *   if_false c goto L_fin
      *   [cuerpo]              (dentro de entrarCiclo/salirCiclo)
      *   goto L_inicio
      *   L_fin:
-     * </pre>
-     * "perge" (continue) salta a L_inicio (reevalúa la condición); "interrumpe" a L_fin.
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     * "perge" (continue) salta a L_inicio (reevalúa la condición); "interrumpe" a L_fin..
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

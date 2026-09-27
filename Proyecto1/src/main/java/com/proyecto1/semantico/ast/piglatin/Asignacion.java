@@ -16,9 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code expresionAsignacion} (#expresionAsignacionDef), cuando trae operador.
- * Es una EXPRESIÓN (no instrucción): {@code a = b = 5} es válido; usada como sentencia
- * queda envuelta en {@link ExpresionStmt}.
+ * ExpresionAsignacion (#expresionAsignacionDef), cuando trae operador.
+ * Es una EXPRESIÓN (no instrucción): a = b = 5 es válido; usada como sentencia
+ * queda envuelta en ExpresionStmt.
  */
 public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin {
 
@@ -28,7 +28,7 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
 
     /**
      * Tipo del lvalue, cacheado por verificar(). Se usa para saber si el RHS
-     * {@code {...}} es un literal POSICIONAL de estructura/clase (en cuyo caso se
+     * es un literal POSICIONAL de estructura/clase (en cuyo caso se
      * valida campo por campo y se expande inline en el C3D) o un arreglo normal.
      */
     private Tipo tipoLValueCache;
@@ -50,12 +50,6 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
         Tipo tIzq = objetivo.verificar(ambito, errores);
         this.tipoLValueCache = tIzq;
 
-        // Caso especial: "lvalue = {v1, v2, ...}" donde lvalue es estructura/clase.
-        // El RHS {...} se ve como InicializadorArreglo (por gramática), pero
-        // semánticamente es un literal POSICIONAL de estructura, no un arreglo.
-        // Validamos campo por campo contra los campos reales del tipo del lvalue,
-        // sin llamar a InicializadorArreglo.verificar (que daría "Elemento
-        // incompatible" entre tipos distintos).
         if (operador.equals("=")
                 && valor instanceof InicializadorArreglo lit
                 && (tIzq instanceof TipoEstructura || tIzq instanceof TipoClase)) {
@@ -89,7 +83,7 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
                     }
                 }
             }
-            return tIzq;    // ya no cae al chequeo genérico de esAsignable
+            return tIzq;
         }
 
         // Camino normal: chequeo genérico de compatibilidad.
@@ -113,18 +107,12 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
 
     /**
      * Emite:
-     * <ul>
-     *   <li><b>Literal de estructura</b> ({@code lvalue = {v1, v2, ...}} donde el
-     *       tipo del lvalue es estructura/clase): expansión inline —
-     *       {@code t = new Tipo; t.campo_i = v_i; lvalue = t}. No se emite el
-     *       {@code newarr} que haría {@code InicializadorArreglo.generarC3D}.</li>
-     *   <li>{@code x = v} normal.</li>
-     *   <li>{@code x op= v}: leer, operar, guardar.</li>
-     * </ul>
-     *
-     * <p>El auto-malloc de slots ({@code arr[i].campo = ...}) sigue funcionando:
-     * {@link #resolverLValue} garantiza que el slot {@code arr[i]} esté allocado
-     * antes de devolver el lvalue, y este método escribe el campo sobre esa base.
+     *      Literal de estructura lvalue = {v1, v2, ...} donde el
+     *          tipo del lvalue es estructura/clase): expansión inline -
+     *          t = new Tipo; t.campo_i = v_i; lvalue = t. No se emite el
+     *          newarr que haría InicializadorArreglo.generarC3D.
+     *      x = v normal.
+     *      x op= v: leer, operar, guardar.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
@@ -175,7 +163,6 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
         return ResultadoC3D.temporal(t, lv.tipo());
     }
 
-    // ---------- ayudantes privados ----------
 
     private record LValue(String base, String campo, String indice, Tipo tipo) {}
 
@@ -194,7 +181,7 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
         // Caso 2: obj.campo
         if (objetivo instanceof AccesoCampo ac) {
             // Subcaso especial: obj.campo donde obj es arr[i] sobre un arreglo de
-            // estructuras/clases → auto-malloc del slot antes de escribir el campo.
+            // estructuras/clases -> auto-malloc del slot antes de escribir el campo.
             if (ac.getObjeto() instanceof Indice ind) {
                 return resolverCampoDeElemento(ind, ac, generador);
             }
@@ -217,14 +204,13 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
     }
 
     /**
-     * Maneja el caso {@code arr[i].campo = v} cuando {@code arr} es un arreglo de
+     * Maneja el caso arr[i].campo = v cuando arr es un arreglo de
      * estructuras o clases. Antes de escribir el campo, garantiza que el slot
-     * {@code arr[i]} esté allocado (malloc si es NULL). Sin esto, escribir
-     * {@code personas[0].nombre = "..."} sobre un arreglo recién creado con
-     * {@code series personas[3] : Persona;} escribiría sobre basura y segfaultearía.
+     * arr[i] esté allocado (malloc si es NULL). Sin esto, escribir
+     * personas[0].nombre = "..." sobre un arreglo recién creado con
+     * series personas[3] : Persona; escribiría sobre basura y segfaultearía.
      *
-     * <p>C3D emitido:
-     * <pre>
+     * C3D emitido:
      *   t_slot0 = arr[i]
      *   t_cmp   = t_slot0 == NULL
      *   if_false t_cmp goto L_skip
@@ -232,9 +218,7 @@ public final class Asignacion extends NodoPigLatin implements ExpresionPigLatin 
      *   arr[i]  = t_new
      *   L_skip:
      *   t_slot  = arr[i]        // recarga tras el posible malloc
-     * </pre>
-     * El lvalue devuelto usa {@code t_slot} como base. El campo se escribe con
-     * {@code t_slot.campo = v} después.
+     * El lvalue devuelto usa t_slot como base. El campo se escribe con t_slot.campo = v después.
      */
     private LValue resolverCampoDeElemento(Indice ind, AccesoCampo ac, GeneradorC3D generador) {
         ResultadoC3D arrRes = ind.getArreglo().generarC3D(generador);

@@ -11,15 +11,15 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * {@code assignmentExpression} (#assignmentExpressionDef) cuando trae operador:
- * "objetivo op= valor". OJO: implementa {@link ExpresionZ}, NO {@link InstruccionZ} —
+ * assignmentExpression (#assignmentExpressionDef) cuando trae operador:
+ * "objetivo op= valor". implementa ExpresionZ, NO InstruccionZ —
  * a diferencia de Y?, en la gramática de Z la asignación vive DENTRO de la jerarquía
  * de expresiones (así "a = (b = 5)" es válido). Una asignación usada como sentencia
- * suelta ("x = 5;") queda envuelta en {@link ExpresionStmt}, igual que cualquier otra
+ * suelta ("x = 5;") queda envuelta en ExpresionStmt, igual que cualquier otra
  * expresión.
  *
- * El objetivo se guarda ya armado como {@link ExpresionZ} (una cadena de
- * {@link Identificador} envuelto en {@link AccesoCampo}/{@link Indice}), exactamente
+ * El objetivo se guarda ya armado como ExpresionZ (una cadena de
+ * Identificador envuelto en AccesoCampo/Indice), exactamente
  * como sale de visitar "primaryExpression" normalmente — no hace falta lógica
  * distinta de encadenado para el lado izquierdo.
  */
@@ -58,31 +58,27 @@ public final class Asignacion extends NodoZ implements ExpresionZ {
 
     /**
      * Emite:
-     * <ul>
-     *   <li>{@code x = v}: el C3D del RHS y la escritura en el lugar del lvalue
-     *       (que según el caso puede ser {@code (=, v, -, x)}, {@code (.=, this, x, v)},
-     *       {@code (.=, base, campo, v)} o {@code ([]=, base, idx, v)}).
-     *       Devuelve un {@link ResultadoC3D} con el lugar del RHS y el tipo del lvalue,
-     *       para que {@code a = (b = 5)} encadene.</li>
-     *   <li>{@code x op= v}: primero se lee el valor actual del lvalue
-     *       ({@link #cargarDe}), se emite la binaria {@code t = actual op v}, y se
-     *       guarda {@code t} en el lvalue. Devuelve {@code temporal(t, tipoLvalue)}.</li>
-     * </ul>
      *
-     * <p><b>Orden de evaluación:</b> primero se resuelve el lvalue (evalúa
-     * subexpresiones del lvalue: {@code obj} en {@code obj.f = v}, {@code arr} e
-     * {@code idx} en {@code arr[i] = v}), luego el RHS. Así {@code arr[i()] = f()}
-     * evalúa {@code i()} antes que {@code f()}.
+     *   x = v: el C3D del RHS y la escritura en el lugar del lvalue
+     *       (que según el caso puede ser (=, v, -, x), (.=, this, x, v),
+     *       Devuelve un ResultadoC3D con el lugar del RHS y el tipo del lvalue,
+     *       para que a = (b = 5) encadene.
+     *   x op= v: primero se lee el valor actual del lvalue
+     *       #cargarDe}, se emite la binaria t = actual op v, y se
+     *       guarda t en el lvalue. Devuelve temporal(t, tipoLvalue).
      *
-     * <p><b>4 casos de lvalue en Z:</b>
-     * <ol>
-     *   <li>{@link Identificador} con categoría {@code VARIABLE}/{@code PARAMETRO}:
-     *       variable local.</li>
-     *   <li>{@link Identificador} con categoría {@code ATRIBUTO}: acceso implícito
-     *       a {@code this.<nombre>}. Es el caso que Z añade sobre Y.</li>
-     *   <li>{@link AccesoCampo}: {@code obj.campo}.</li>
-     *   <li>{@link Indice}: {@code arr[i]}.</li>
-     * </ol>
+     * Orden de evaluación: primero se resuelve el lvalue (evalúa
+     * subexpresiones del lvalue: obj en obj.f = v, arr e
+     * {idx en arr[i] = v), luego el RHS. Así arr[i()] = f()
+     * evalúa i() antes que f().
+     *
+     * 4 casos de lvalue en Z:
+     *   Identificador con categoría VARIABLE/PARAMETRO:
+     *       variable local.
+     *   Identificador} con categoría ATRIBUTO: acceso implícito
+     *       a this.<nombre>. Es el caso que Z añade sobre Y.<
+     *   AccesoCampo}: obj.campo.
+     *   Indice: arr[i].
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
@@ -109,7 +105,7 @@ public final class Asignacion extends NodoZ implements ExpresionZ {
 
     /**
      * Descripción "sin resolver a dirección" de un lvalue: guarda los lugares donde
-     * quedaron la base (nombre de variable, temporal, o el literal {@code "this"}),
+     * quedaron la base (nombre de variable, temporal, o el literal "this"),
      * el nombre del campo (si aplica) y el índice ya evaluado (si aplica). Solo uno
      * de {campo, indice} es no-null.
      */

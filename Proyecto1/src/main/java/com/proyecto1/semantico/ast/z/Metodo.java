@@ -16,11 +16,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Un {@code methodDeclaration} (#methodDeclarationDef): "public (tipo|void) Nombre(params) bloque".
- * A diferencia de {@code Funcion} de Y? (donde omitir "-> tipo" significa void),
+ * "public (tipo|void) Nombre(params) bloque".
+ * A diferencia de Funcion de Y? (donde omitir "-> tipo" significa void),
  * aquí SIEMPRE hay una de las dos alternativas presente en la gramática (tipo o la
- * palabra reservada VOID); {@code tipoRetorno == null} representa justamente el caso
- * "era VOID", para que {@link #esVoid()} funcione igual que en Y?.
+ * palabra reservada VOID); tipoRetorno == null representa justamente el caso
+ * "era VOID", para que #esVoid() funcione igual que en Y?.
  */
 public final class Metodo extends NodoZ {
 
@@ -31,8 +31,8 @@ public final class Metodo extends NodoZ {
 
     /**
      * Ámbito de la función, creado por verificar() y reutilizado por generarC3D().
-     * Mismo patrón que {@code AccesoCampo} usa para cachear {@code tipoCampo}: se
-     * evita reconstruir parámetros y volver a tocar {@link ManejadorErrores} en la
+     * Mismo patrón que {@code AccesoCampo} usa para cachear tipoCampo: se
+     * evita reconstruir parámetros y volver a tocar ManejadorErrores en la
      * fase de generación. Es null si verificar() aún no corrió.
      */
     private AmbitoFuncion ambitoPropio;
@@ -79,12 +79,8 @@ public final class Metodo extends NodoZ {
         Simbolo simbolo = ambClase.getSimboloContenedor().buscarMiembro(sb.toString());
 
         AmbitoFuncion amb = new AmbitoFuncion(ambClase, simbolo);
-        this.ambitoPropio = amb;   // <-- única línea nueva respecto al original
+        this.ambitoPropio = amb;
 
-        // Los parámetros YA quedaron registrados en simbolo (con su tipo) por
-        // AnalizadorSemanticoZ.registrarMiembros -- es parte de la FIRMA, se resuelve antes de
-        // verificar ningún cuerpo (ver su Javadoc). Aquí solo falta declararlos como variables
-        // LOCALES de este método, para que el cuerpo pueda usarlos por nombre.
         for (Parametro p : parametros) {
             Tipo t = p.resolverTipo(amb, errores);
             Simbolo sp = new Simbolo(p.getNombre(), CategoriaSimbolo.PARAMETRO, t, p.getLinea(), p.getColumna());
@@ -101,27 +97,20 @@ public final class Metodo extends NodoZ {
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>{@code (begin_func, etiquetaMetodo(nombreClase, nombre), parametros.size()+1, null)}.
-     *       El {@code +1} es el "this" implícito que todo método de Z recibe.</li>
-     *   <li>{@code entrarAmbito(ambitoPropio)} para que, mientras se genera el cuerpo,
-     *       cualquier {@code Identificador} que resuelva a un ATRIBUTO emita
-     *       {@code (=., this, campo, t)} en vez de tratarlo como variable local. Y para
-     *       que cualquier {@code Llamada} con objetivo {@link Identificador} lea del
-     *       generador el nombre de la clase actual ({@code generador.getClaseActual()},
-     *       que {@link Clase#generarC3D} deja fijado antes de recorrer sus métodos).</li>
-     *   <li>C3D del cuerpo.</li>
-     *   <li>{@code salirAmbito(anterior)} para restaurar el ámbito previo.</li>
-     *   <li>{@code (end_func)}.</li>
-     * </ol>
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     *   begin_func, etiquetaMetodo(nombreClase, nombre), parametros.size()+1, null).
+     *       El +1}es el "this" implícito que todo método de Z recibe.
+     *   entrarAmbito(ambitoPropio) para que, mientras se genera el cuerpo,
+     *       cualquier Identificador que resuelva a un ATRIBUTO emita
+     *       (=., this, campo, t) en vez de tratarlo como variable local. Y para
+     *       que cualquier Llamada con objetivo Identificador lea del
+     *       generador el nombre de la clase actual (generador.getClaseActual(),
+     *       que {@link Clase#generarC3D} deja fijado antes de recorrer sus métodos).
+     *   C3D del cuerpo.
+     *   salirAmbito(anterior) para restaurar el ámbito previo.
+     *   end_func.
      *
-     * <p>La firma lleva {@code nombreClase} porque {@link Metodo} por sí solo no conoce
-     * su clase contenedora (solo sabe su nombre corto). {@link Clase#generarC3D} es
-     * quien lo pasa al iterar sus métodos.
-     *
-     * <p>No emite un {@code return} implícito al final de métodos void; la Fase 4 puede
-     * resolverlo al traducir {@code end_func}.
+     * La firma lleva nombreClase porque Metodo por sí solo no conoce
+     * su clase contenedora (solo sabe su nombre corto).
      */
     public ResultadoC3D generarC3D(GeneradorC3D generador, String nombreClase) {
         String etiqueta = generador.etiquetaMetodo(nombreClase, nombre);

@@ -8,19 +8,9 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
  * Base de TODOS los nodos del AST de Zetariano. Mismo rol que {@code NodoY}: guarda
- * línea/columna y deja {@link #verificar(Ambito, ManejadorErrores)} como placeholder
- * (siempre {@link TipoPrimitivo#DESCONOCIDO}) hasta que se escriban las reglas
- * semánticas reales en cada subclase concreta. Pendiente explícitamente para Z:
- * <ul>
- *   <li>Variables/atributos declarados antes de usarse.</li>
- *   <li>Métodos y constructores con retorno correcto (y constructor con el mismo
- *       nombre que la clase).</li>
- *   <li>Arreglos con índices enteros y dimensiones correctas (incluye
- *       multidimensionales, "int[][]").</li>
- *   <li>Objetos: resolución de "obj.atributo"/"obj.metodo(...)" contra los miembros
- *       registrados en el {@code Simbolo} de la clase, y compatibilidad de tipos
- *       nominal entre clases.</li>
- * </ul>
+ * línea/columna y deja verificar(Ambito, ManejadorErrores) como placeholder
+ * (siempre TipoPrimitivo#DESCONOCIDO) hasta que se escriban las reglas
+ * semánticas reales en cada subclase concreta.
  */
 public abstract class NodoZ implements NodoAST {
 

@@ -1,9 +1,8 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
 /**
- * Patrón Visitor sobre las 20 formas de {@link Cuadrupla}. La Fase 4 (traducir C3D
- * a C) implementa esto UNA VEZ (p. ej. {@code TraductorCuadrupla implements
- * VisitanteCuadrupla<String>}), con un método por tipo — nada de switch sobre
+ * Patrón Visitor sobre las 20 formas de Cuadrupla. (p. ej. {@code TraductorCuadrupla implements
+ * VisitanteCuadrupla<String>}), con un método por tipo; nada de switch sobre
  * Strings de operador, y si se agrega un tipo de cuádrupla nuevo, este archivo (y
  * cada visitante) tiene que agregar el método correspondiente o no compila.
  */

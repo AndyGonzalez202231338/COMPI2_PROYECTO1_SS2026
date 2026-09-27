@@ -32,11 +32,10 @@ public final class Imprimir extends NodoPigLatin implements InstruccionPigLatin 
     /**
      * Emite, en orden de aparición: por cada argumento, primero su C3D (que puede
      * generar cuádruplas propias: "t0 = a + b", "t1 = leer()", etc.) y luego UNA
-     * cuádrupla {@code (print, v, null, null)} con el lugar resultante. Como la
+     * cuádrupla (print, v, null, null) con el lugar resultante. Como la
      * cuádrupla "print" solo tiene arg1, cada argumento produce su propia cuádrupla
      * — no hay un "print variádico". Fase 4 decide el formato (printf con "%d %f %s…"
      * según el tipo del lugar).
-     * Devuelve {@code ResultadoC3D.vacio()}: imprimir no produce valor.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

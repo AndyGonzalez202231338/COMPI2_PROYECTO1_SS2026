@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code if_true condicion goto etiqueta}. */
+/** if_true condicion goto etiqueta. */
 public record CuadruplaIfTrue(String condicion, String etiqueta) implements CuadruplaSalto {
     @Override
     public String getEtiquetaDestino() { return etiqueta; }

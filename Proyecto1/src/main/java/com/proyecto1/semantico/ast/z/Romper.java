@@ -8,7 +8,6 @@ import com.proyecto1.semantico.tabla.AmbitoBloque;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code breakStatement} (#breakStatementDef). Sin datos propios más que la posición. */
 public final class Romper extends NodoZ implements InstruccionZ {
     public Romper(int linea, int columna) {
         super(linea, columna);
@@ -25,15 +24,7 @@ public final class Romper extends NodoZ implements InstruccionZ {
         return TipoPrimitivo.VOID;
     }
 
-    /**
-     * Emite {@code (goto, null, null, L)} donde L es {@code generador.etiquetaFinCiclo()}:
-     * el destino de "break" más cercano, ya sea el L_fin de un ciclo (empujado con
-     * {@code entrarCiclo}) o el L_fin de un switch (empujado con
-     * {@code entrarBloqueRompible} por {@link Elegir#generarC3D}).
-     * Si la pila está vacía lanza {@link IllegalStateException}: verificar() ya reportó
-     * el error, esto solo ocurre si se generó C3D sin análisis previo.
-     * Devuelve {@code ResultadoC3D.vacio()}.
-     */
+
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
         String destino = generador.etiquetaFinCiclo();

@@ -14,36 +14,25 @@ import java.util.*;
  * Ensambla un archivo C completo a partir de las cuádruplas y firmas de un programa
  * de Y, PigLatin o Zetariano.
  *
- * <p><b>Responsabilidades:</b>
- * <ol>
- *   <li>Dividir la lista plana de cuádruplas por función, detectando begin_func...
- *       end_func.</li>
- *   <li>Para cada función: emitir su cabecera (con el tipo de retorno y los
- *       parámetros de la {@link GeneradorC3D.Firma}), las declaraciones locales
- *       (delegadas a {@link InferenciaTiposC}) y su cuerpo (delegado a
- *       {@link TraductorCuadrupla}, salvo {@code param}/{@code call}, que se
- *       manejan agrupados aquí).</li>
- *   <li>Emitir prototipos de todas las funciones propias y de las funciones
- *       IMPORTADAS (las que un .pig usa de un .y o .z, sin definirlas él).</li>
- *   <li>Emitir un {@code main} de C. Dos estrategias:
- *     <ul>
- *       <li><b>Y / PigLatin</b>: llama por nombre a la función de entrada del C3D.</li>
- *       <li><b>Zetariano</b> (factory {@link #paraZetariano}): instancia una clase
- *           y llama a un método de entrada por convención.</li>
- *     </ul>
- *   </li>
- * </ol>
+ * Responsabilidades:
  *
- * <p><b>Fase 4.6:</b> el runtime completo viene de {@link RuntimeC#codigo()}, que
- * se inyecta al principio del archivo. Las llamadas al runtime que Z emite como
- * {@code call rt_print} / {@code call rt_println} / {@code call rt_readln} se
- * resuelven aquí mismo, ANTES de aplicar el prefijo de lenguaje.
+ *   Dividir la lista plana de cuádruplas por función, detectando begin_func...
+ *       end_func.
+ *   Para cada función: emitir su cabecera (con el tipo de retorno y los
+ *       parámetros de la GeneradorC3D.Firma), las declaraciones locales
+ *       (delegadas a nferenciaTiposC y su cuerpo (delegado a TraductorCuadrupla, salvo param/call, que se
+ *       manejan agrupados aquí).
+ *   Emitir prototipos de todas las funciones propias y de las funciones
+ *       IMPORTADAS (las que un .pig usa de un .y o .z, sin definirlas él).
+ *   Emitir un main de C. Dos estrategias:
+ *       Y / PigLatin: llama por nombre a la función de entrada del C3D.
+ *       Zetariano: instancia una clase y llama a un método de entrada por convención.
  *
- * <p><b>Prototipos de funciones importadas:</b> se pasan como {@code Map<String,
- * Firma>} (no como {@code List<Simbolo>}) porque el {@code Simbolo} de un método
- * o constructor de Z guarda el nombre PLANO ("saludar", "Estudiante"), no la
+ *
+ *   Prototipos de funciones importadas: se pasan como Map<String,
+ * Firma> (porque el Simbolo de un método o constructor de Z guarda el nombre PLANO ("saludar", "Estudiante"), no la
  * etiqueta MANGLADA que usa el C3D ("Estudiante_saludar", "Estudiante_init_a2").
- * Pasar la {@link GeneradorC3D.Firma} ya construida (con la etiqueta correcta,
+ * Pasar la GeneradorC3D.Firma ya construida (con la etiqueta correcta,
  * parámetros tipados y tipo de retorno) evita tener que reconstruir el mangling
  * aquí.
  */
@@ -58,8 +47,6 @@ public final class OrquestadorC3DaC {
     private final List<Simbolo> definicionesTipo;
     private final Map<String, GeneradorC3D.Firma> firmasExternas;
     private final AmbitoGlobal ambitoGlobalDeMain;
-
-    // ---------- Constructores ----------
 
     /**
      * Constructor central: asigna los 8 campos. Todos los demás delegan aquí.
@@ -124,8 +111,6 @@ public final class OrquestadorC3DaC {
                 null, claseEntrada, metodoEntrada, definicionesTipo, Map.of(), null);
     }
 
-    // ---------- API pública ----------
-
     /** Genera el archivo C completo: runtime + structs + prototipos + funciones + main. */
     public String generarArchivoCompleto() {
         List<FuncionCompilada> funciones = dividirPorFuncion();
@@ -164,8 +149,6 @@ public final class OrquestadorC3DaC {
         return sb.toString();
     }
 
-    // ---------- División por función ----------
-
     private record FuncionCompilada(CuadruplaBeginFunc begin, List<Cuadrupla> cuerpo) {}
 
     private List<FuncionCompilada> dividirPorFuncion() {
@@ -187,7 +170,7 @@ public final class OrquestadorC3DaC {
         return resultado;
     }
 
-    // ---------- Cabecera + cuerpo ----------
+    // Cabecera + cuerpo
 
     private String prototipo(FuncionCompilada fc) {
         return cabecera(fc, false);
@@ -208,8 +191,7 @@ public final class OrquestadorC3DaC {
         Map<String, GeneradorC3D.Firma> firmasVisibles = new HashMap<>(firmas);
         firmasVisibles.putAll(firmasExternas);
 
-        // ⚠️ El inferidor recibe también el ámbito global para resolver tipos de
-        // variables globales (típico en PigLatin) e indirectamente los accesos a
+        // El inferidor recibe también el ámbito global para resolver tipos de variables globales (típico en PigLatin) e indirectamente los accesos a
         // estructuras importadas.
         InferenciaTiposC inf = new InferenciaTiposC(fc.cuerpo(), firma, firmasVisibles,
                 definicionesTipo, ambitoGlobalDeMain);
@@ -219,8 +201,7 @@ public final class OrquestadorC3DaC {
             sb.append("    ").append(linea).append("\n");
         }
 
-        // ⚠️ NUEVO: declaraciones de las variables GLOBALES del programa.
-        // Solo en la función de entrada (o en el main de Z), para no duplicarlas.
+        // Declaraciones de las variables GLOBALES del programa solo en la función de entrada (o en el main de Z), para no duplicarlas.
         // Se saltan las que ya están inferidas como locales.
         boolean esFuncionDeEntrada = (nombreFuncionEntrada != null
                 && fc.begin().nombre().equals(nombreFuncionEntrada))
@@ -273,8 +254,8 @@ public final class OrquestadorC3DaC {
     }
 
     /**
-     * Cabecera C de una función importada, construida desde su {@link GeneradorC3D.Firma}.
-     * Misma forma que {@link #cabecera} pero sin necesitar la cuádrupla begin_func —
+     * Cabecera C de una función importada, construida desde su GeneradorC3D.Firma.
+     * Misma forma que cabecera pero sin necesitar la cuádrupla begin_func —
      * la firma ya trae la etiqueta manglada, los parámetros tipados y el retorno.
      */
     private String cabeceraDesdeFirma(GeneradorC3D.Firma firma) {
@@ -296,7 +277,7 @@ public final class OrquestadorC3DaC {
         return sb.toString();
     }
 
-    // ---------- Traducción del cuerpo con contexto ----------
+    // Traducción del cuerpo con contexto
 
     private String cuerpoATexto(List<Cuadrupla> cuerpo, Map<String, String> tipos) {
         StringBuilder sb = new StringBuilder();
@@ -349,7 +330,7 @@ public final class OrquestadorC3DaC {
         return "int";
     }
 
-    // ---------- main de C ----------
+    // main de C
 
     private String mainWrapper(List<FuncionCompilada> funciones) {
         if (claseEntradaZ != null) {
@@ -375,9 +356,8 @@ public final class OrquestadorC3DaC {
     }
 
     /**
-     * Estrategia Zetariano: genera un {@code main()} que instancia
-     * {@code claseEntradaZ} (constructor sin argumentos) y llama a
-     * {@code metodoEntradaZ} sobre el objeto. Valida que exista el constructor y
+     * Estrategia Zetariano: genera un main() que instancia claseEntradaZ (constructor sin argumentos) y llama a
+     * metodoEntradaZ sobre el objeto. Valida que exista el constructor y
      * que el método de entrada tenga aridad 1 (solo "this").
      */
     private String mainWrapperZetariano() {
@@ -421,9 +401,7 @@ public final class OrquestadorC3DaC {
         sb.append("}\n");
         return sb.toString();
     }
-
-    // ---------- Tipos internos a C ----------
-
+    
     private static String tipoAC(Tipo t) {
         if (t == null) return "void";
         if (t == TipoPrimitivo.ENTERO)      return "int";

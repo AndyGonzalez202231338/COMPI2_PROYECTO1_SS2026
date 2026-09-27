@@ -60,20 +60,14 @@ public final class Unaria extends NodoY implements ExpresionY {
 
     /**
      * Emite según el operador (siempre después de generar el C3D del operando):
-     * <ul>
-     *   <li>{@code !} y {@code -}: {@code (op, a, null, t)}, es decir {@code t = op a}.
-     *       Devuelve el temporal t (tipo BOOL para "!", el del operando para "-").</li>
-     *   <li>{@code ++x} / {@code --x} (prefijo): {@code t = x + 1} (o {@code - 1}) y luego
-     *       {@code x = t}. Devuelve t, que contiene el valor NUEVO.</li>
-     *   <li>{@code x++} / {@code x--} (postfijo): {@code t0 = x} (copia del valor
-     *       viejo), {@code t1 = x + 1} (o {@code - 1}) y {@code x = t1}. Devuelve t0,
+     *   ! y -: (op, a, null, t), es decir t = op a.
+     *       Devuelve el temporal t (tipo BOOL para "!", el del operando para "-").
+     *   ++x / --x (prefijo): t = x + 1 (o - 1) y luego
+     *       x = t. Devuelve t, que contiene el valor NUEVO.
+     *   x++ / x-- (postfijo): t0 = x (copia del valor
+     *       viejo), t1 = x + 1 (o - 1) y x = t1. Devuelve t0,
      *       porque el valor de la expresión postfija es el anterior a incrementar
-     *       (en {@code y = x++} y recibe el viejo). Si se usa como sentencia suelta la
-     *       copia t0 queda sin usar; eso lo eliminará la optimización (Fase 5).</li>
-     * </ul>
-     * Para ++/-- solo se admite como operando un {@link Identificador} (variable
-     * simple); campos y elementos de arreglo quedan para una fase posterior y lanzan
-     * {@link UnsupportedOperationException}.
+     *        y = x++ y recibe el viejo).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

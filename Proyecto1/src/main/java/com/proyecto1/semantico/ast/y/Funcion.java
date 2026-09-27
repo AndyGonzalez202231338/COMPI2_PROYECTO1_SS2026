@@ -67,11 +67,11 @@ public final class Funcion extends NodoY {
     }
 
     /**
-     * Emite, en este orden: {@code (begin_func, nombre, nParametros, null)}, todas las
-     * cuádruplas del cuerpo (vía {@link Bloque#generarC3D}) y {@code (end_func)}.
+     * Emite, en este orden: (begin_func, nombre, nParametros, null), todas las
+     * cuádruplas del cuerpo (vía Bloque#generarC3D) y (end_func).
      * Devuelve {@code ResultadoC3D.vacio()}.
      *
-     * No emite un {@code return} implícito al final de funciones void; la Fase 4 puede
+     * No emite un return implícito al final de funciones void; la Fase 4 puede
      * resolverlo al traducir end_func.
      */
     @Override

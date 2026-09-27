@@ -12,7 +12,7 @@ import java.util.*;
  *   - pedir una etiqueta nueva (L0, L1, ... para saltos de si/mientras/para),
  *   - emitir cuádruplas ESTRUCTURADAS en la tabla global (una clase concreta de
  *     com.proyecto1.semantico.ast.cuadruplas por cada tipo de instrucción, ver
- *     {@link Cuadrupla}),
+ *     Cuadrupla),
  *   - consultar el Ámbito (tabla de símbolos) para resolver tipos de identificadores,
  *   - construir etiquetas de función/método/constructor (mangling),
  *   - registrar la firma (parámetros + tipo de retorno) de cada función/método/
@@ -53,27 +53,27 @@ public class GeneradorC3D {
     private final Deque<String> pilaFinCiclo    = new ArrayDeque<>();
 
     /**
-     * Firma de cada función/método/constructor emitido con {@link #emitirBeginFunc}.
+     * Firma de cada función/método/constructor emitido con emitirBeginFunc.
      * begin_func en el C3D solo guarda (nombre, nArgs) — el CONTEO de parámetros, no
      * sus nombres ni tipos, ni el tipo de retorno. La Fase 4 (C3D -> C) necesita eso
      * para escribir la cabecera de cada función en C; esta tabla lo conserva junto al
      * C3D en vez de obligar al traductor a volver a caminar el AST o la tabla de
-     * símbolos. Se llena aparte, con {@link #registrarFirma}, junto a cada llamada a
+     * símbolos. Se llena aparte, con registrarFirma, junto a cada llamada a
      * emitirBeginFunc (no automáticamente: begin_func no conoce los Simbolo de los
      * parámetros, solo el conteo).
      */
     private final Map<String, Firma> firmas = new LinkedHashMap<>();
 
-    /** Un parámetro dentro de una {@link Firma}: su nombre en el código fuente y su tipo. */
+    /** Un parámetro dentro de una Firma: su nombre en el código fuente y su tipo. */
     public record ParametroFirma(String nombre, Tipo tipo) {}
 
     /**
      * Firma completa de una función/método/constructor, indexada por la misma
-     * etiqueta que se le pasó a {@link #emitirBeginFunc}.
+     * etiqueta que se le pasó a emitirBeginFunc.
      *
-     * @param esMetodo true si el primer parámetro real (no incluido en "parametros")
-     *                 es un "this"/receptor implícito de Z — la Fase 4 lo necesita
-     *                 para saber si debe anteponer "NombreClase* this" a la firma en C.
+     * El parámetro "esMetodo" es true si el primer parámetro real (no incluido en
+     * "parametros") es un "this"/receptor implícito de Z — la Fase 4 lo necesita
+     * para saber si debe anteponer "NombreClase* this" a la firma en C.
      */
     public record Firma(String etiqueta, List<ParametroFirma> parametros, Tipo tipoRetorno, boolean esMetodo) {}
 
@@ -106,10 +106,10 @@ public class GeneradorC3D {
     /**
      * Cambia el ámbito activo y devuelve el anterior para restaurarlo luego.
      * Patrón de uso (típico en Constructor/Metodo.generarC3D):
-     * <pre>
+     *
      *   Ambito anterior = generador.entrarAmbito(ambitoPropio);
      *   try { ... emitir cuerpo ... } finally { generador.salirAmbito(anterior); }
-     * </pre>
+     *
      * Se devuelve el anterior en lugar de apilarlos porque el consumidor necesita
      * restaurarlo en el mismo orden; no hay anidamiento arbitrario (una función no
      * contiene a otra), así que no hace falta una pila.
@@ -120,7 +120,7 @@ public class GeneradorC3D {
         return anterior;
     }
 
-    /** Restaura el ámbito devuelto por {@link #entrarAmbito(Ambito)}. */
+    /** Restaura el ámbito devuelto por entrarAmbito(Ambito). */
     public void salirAmbito(Ambito anterior) {
         this.ambito = anterior;
     }
@@ -266,22 +266,22 @@ public class GeneradorC3D {
 
     // ---------- Arreglos y campos ----------
 
-    /** t = arr[i]  →  CuadruplaIndiceCarga. Fase 4 aplica base + i*tamañoElemento. */
+    /** t = arr[i]  ->  CuadruplaIndiceCarga. Fase 4 aplica base + i*tamañoElemento. */
     public void emitirCargaIndice(String arr, String idx, String t) {
         tabla.agregar(new CuadruplaIndiceCarga(arr, idx, t));
     }
 
-    /** arr[i] = v  →  CuadruplaIndiceGuarda. */
+    /** arr[i] = v  ->  CuadruplaIndiceGuarda. */
     public void emitirGuardarIndice(String arr, String idx, String v) {
         tabla.agregar(new CuadruplaIndiceGuarda(arr, idx, v));
     }
 
-    /** t = obj.f  →  CuadruplaCampoCarga. El campo va por NOMBRE, no por offset. */
+    /** t = obj.f  ->  CuadruplaCampoCarga. El campo va por NOMBRE, no por offset. */
     public void emitirCargaCampo(String obj, String campo, String t) {
         tabla.agregar(new CuadruplaCampoCarga(obj, campo, t));
     }
 
-    /** obj.f = v  →  CuadruplaCampoGuarda. */
+    /** obj.f = v  ->  CuadruplaCampoGuarda. */
     public void emitirGuardarCampo(String obj, String campo, String v) {
         tabla.agregar(new CuadruplaCampoGuarda(obj, campo, v));
     }
@@ -289,14 +289,14 @@ public class GeneradorC3D {
     // ---------- Objetos y arreglos dinámicos ----------
 
     /**
-     * t = new NombreClase  →  CuadruplaNew.
-     * Fase 4 lo traduce a {@code t = malloc(sizeof(NombreClase))}.
+     * t = new NombreClase  ->  CuadruplaNew.
+     * Fase 4 lo traduce a t = malloc(sizeof(NombreClase)).
      */
     public void emitirNew(String nombreClase, String t) {
         tabla.agregar(new CuadruplaNew(nombreClase, t));
     }
 
-    /** t = new Tipo[t1][t2]...[tn]  →  CuadruplaNewArray. Fase 4: malloc con el producto de tamaños. */
+    /** t = new Tipo[t1][t2]...[tn]  ->  CuadruplaNewArray. Fase 4: malloc con el producto de tamaños. */
     public void emitirNewArray(String tipoDescriptor, java.util.List<String> tamanos, String t) {
         tabla.agregar(new CuadruplaNewArray(tipoDescriptor, tamanos, t));
     }
@@ -310,10 +310,10 @@ public class GeneradorC3D {
      * Etiqueta para un método de una clase Z: "Clase_metodo".
      * Los métodos NO se sobrecargan en Z (declararMiembro los guarda por nombre plano).
      *
-     * <p>Es {@code static} (no depende de ningún estado de esta instancia) para que
-     * la Fase 4 ({@code OrquestadorC3DaC}, al armar el {@code main()} de un programa
-     * Zetariano) pueda construir la misma etiqueta sin necesitar un {@code
-     * GeneradorC3D} a mano — solo el nombre de la clase y el método.
+     * Es static (no depende de ningún estado de esta instancia) para que la Fase 4
+     * (OrquestadorC3DaC, al armar el main() de un programa Zetariano) pueda construir
+     * la misma etiqueta sin necesitar un GeneradorC3D a mano — solo el nombre de la
+     * clase y el método.
      */
     public static String etiquetaMetodo(String clase, String metodo) {
         return clase + "_" + metodo;
@@ -323,26 +323,26 @@ public class GeneradorC3D {
      * Etiqueta para un constructor de una clase Z: "Clase_init_aN" (N = aridad).
      * Los constructores SÍ se sobrecargan por aridad, de ahí el sufijo.
      *
-     * <p><b>Por qué "_aN" y no "@N"</b>: la etiqueta de un constructor termina siendo,
-     * tal cual, el NOMBRE DE LA FUNCIÓN en el C generado (ver
-     * {@code CuadruplaBeginFunc.nombre()} y cada {@code CuadruplaCall.funcion()} que
-     * la referencia) — y {@code @} no es un carácter válido en un identificador de C.
-     * Antes esta etiqueta era {@code "Clase_init@N"}, lo cual compilaba bien como C3D
-     * pero generaba C inválido en CUALQUIER llamada a un constructor. Es un cambio de
-     * formato, no de significado: sigue siendo "nombre de clase + aridad", legible y
-     * sin colisión entre aridades distintas del mismo constructor.
+     * Por qué "_aN" y no "@N": la etiqueta de un constructor termina siendo, tal cual,
+     * el NOMBRE DE LA FUNCIÓN en el C generado (ver CuadruplaBeginFunc.nombre() y
+     * cada CuadruplaCall.funcion() que la referencia) — y @ no es un carácter válido
+     * en un identificador de C. Antes esta etiqueta era "Clase_init@N", lo cual
+     * compilaba bien como C3D pero generaba C inválido en CUALQUIER llamada a un
+     * constructor. Es un cambio de formato, no de significado: sigue siendo "nombre
+     * de clase + aridad", legible y sin colisión entre aridades distintas del mismo
+     * constructor.
      *
-     * <p>Es {@code static} por el mismo motivo que {@link #etiquetaMetodo}: la Fase 4
-     * necesita poder reconstruir esta etiqueta (para buscar el constructor de 0
-     * argumentos de la clase de entrada al armar {@code main()}) sin una instancia.
+     * Es static por el mismo motivo que etiquetaMetodo: la Fase 4 necesita poder
+     * reconstruir esta etiqueta (para buscar el constructor de 0 argumentos de la
+     * clase de entrada al armar main()) sin una instancia.
      *
-     * <p><b>Deuda detectada</b>: hoy {@code Constructor.verificar} intenta resolver el
-     * constructor buscando por {@code nombre + "@" + aridad} (con el separador viejo),
-     * pero {@code AmbitoContenedor.declararMiembro} los guarda por nombre plano. Es una
-     * incoherencia preexistente entre esas dos clases (no de C3D, y no la resuelve este
-     * cambio). Antes de generar C3D con constructores sobrecargados, hay que decidir
-     * cuál de las dos se arregla: o {@code declararMiembro} usa una clave única al
-     * declararlos, o {@code Constructor.verificar} busca por nombre plano.
+     * Deuda detectada: hoy Constructor.verificar intenta resolver el constructor
+     * buscando por nombre + "@" + aridad (con el separador viejo), pero
+     * AmbitoContenedor.declararMiembro los guarda por nombre plano. Es una
+     * incoherencia preexistente entre esas dos clases (no de C3D, y no la resuelve
+     * este cambio). Antes de generar C3D con constructores sobrecargados, hay que
+     * decidir cuál de las dos se arregla: o declararMiembro usa una clave única al
+     * declararlos, o Constructor.verificar busca por nombre plano.
      */
     public static String etiquetaConstructor(String clase, int aridad) {
         return clase + "_init_a" + aridad;

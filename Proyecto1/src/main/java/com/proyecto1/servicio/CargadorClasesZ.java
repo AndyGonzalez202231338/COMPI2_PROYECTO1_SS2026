@@ -28,44 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Pre-carga en un {@link AmbitoGlobal} compartido las clases HERMANAS de un .z: los demás
- * archivos .z del mismo proyecto. A diferencia de Pig Latin, Zetariano NO tiene {@code import}
- * -- dos clases del mismo proyecto se ven entre sí automáticamente, igual que dos clases Java
- * del mismo paquete -- así que esta carga es AUTOMÁTICA (se dispara siempre que hay un
- * {@code raizProyecto}), no depende de que el .z declare nada.
- *
- * <h3>Por qué en DOS rondas</h3>
- * Sobre TODAS las hermanas encontradas:
- * <ol>
- *   <li><b>Ronda 1</b> ({@link AnalizadorSemanticoZ#registrarFirma}): se registra el NOMBRE
- *       (bare, sin miembros) de CADA clase hermana en el {@link AmbitoGlobal} compartido.</li>
- *   <li><b>Ronda 2</b> ({@link AnalizadorSemanticoZ#registrarMiembros}): con TODOS los nombres
- *       ya presentes, se registran los atributos/métodos/constructores (solo sus FIRMAS) de
- *       cada una.</li>
- * </ol>
- * Hacerlo en dos rondas SEPARADAS (no una sola pasada por archivo) es justo lo que permite
- * referencias MUTUAS/circulares entre hermanas -- el caso típico de una lista enlazada, donde
- * {@code Nodo} tiene un campo {@code Nodo siguiente} (se referencia a SÍ MISMA) y {@code Pila}
- * tiene un campo {@code Nodo tope} (referencia cruzada): si se resolviera el tipo de un campo
- * en la misma pasada en que se registra su clase, el orden en que se escanearon los archivos
- * importaría y una referencia "hacia adelante" fallaría.
- *
- * <p>El resultado de este cargador se usa como el {@code global} que recibe
- * {@link AnalizadorSemanticoZ#analizar(Clase, AmbitoGlobal)} para la clase que sí se está
- * compilando: sigue siendo UN SOLO {@link AmbitoGlobal} plano (no un padre/hijo en capas como
- * el de Pig Latin) precisamente para que esa clase pueda auto-referenciarse ("Nodo siguiente;"
- * dentro del propio Nodo.z) -- {@code NodoTipoRef.resolver} busca con
- * {@code ambito.ambitoGlobal().resolverLocal(...)}, que sube hasta la RAÍZ de la cadena de
- * ámbitos; con una capa extra encima, la propia clase (declarada en la capa hija) quedaría
- * invisible para sí misma.
- *
- * <h3>Qué NO hace</h3>
- * NO verifica los CUERPOS de las clases hermanas (esos errores, si los hay, le pertenecen al
- * archivo de esa hermana, no al que se está analizando ahora) y NO reporta nada si una hermana
- * tiene errores de sintaxis: simplemente no aporta símbolos (esa hermana tendrá sus propios
- * errores cuando se analice directamente).
- */
 public final class CargadorClasesZ {
 
     private static final Set<String> CARPETAS_IGNORADAS = Set.of("target", "node_modules", "build", "out");
@@ -154,9 +116,7 @@ public final class CargadorClasesZ {
         return a.getAbsoluteFile().equals(b == null ? null : b.getAbsoluteFile());
     }
 
-    // ------------------------------------------------------------------
     // Búsqueda de archivos .z bajo la raíz del proyecto
-    // ------------------------------------------------------------------
 
     private List<File> buscarArchivosZ(File raiz) {
         Path inicio = raiz.toPath();

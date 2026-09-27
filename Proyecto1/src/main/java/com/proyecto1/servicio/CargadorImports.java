@@ -23,33 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Resuelve los {@code import} de un archivo .pig: localiza los .y / .z importados, los analiza
- * con el pipeline normal ({@link ServicioAnalisis}) y junta las estructuras, funciones y clases
- * que definen en UN solo {@link AmbitoGlobal}, que luego se usa como padre del ámbito global
- * del .pig (ver {@code AnalizadorSemanticoPigLatin}).
- *
- * <h3>Cómo se busca el archivo de un import</h3>
- * {@code import a.b.c} busca un archivo {@code c.y} y/o {@code c.z} (si existen los dos se cargan
- * ambos). Si el ULTIMO segmento es {@code y} o {@code z} se toma como la extension del archivo:
- * {@code import Utilidades.y} busca exactamente {@code Utilidades.y}, y
- * {@code import Estudiante.z} busca {@code Estudiante.z}. Se prueba, en este orden, en la carpeta del .pig y luego en la raíz del proyecto (si
- * se conoce):
- * <ol>
- *   <li>La ruta indicada por los segmentos como subcarpetas: {@code a/b/c.y}.</li>
- *   <li>Un archivo llamado {@code c.y} / {@code c.z} en cualquier subcarpeta (el más cercano gana).</li>
- * </ol>
- * Es decir, {@code import utilidades} funciona tanto si {@code utilidades.y} está junto al .pig
- * como si está en una subcarpeta, y {@code import Persona} encuentra {@code Persona.z} (en Zetariano
- * el archivo se llama como la clase).
- *
- * <h3>Qué se reporta</h3>
- * Todo se reporta como error semántico ubicado en la línea del {@code import} que lo causó, para
- * que el usuario sepa dónde mirar: archivo no encontrado, archivo importado con errores, o un
- * símbolo definido en dos archivos importados. Si el archivo importado tiene solo errores
- * semánticos, sus símbolos IGUAL se importan (así un error en el .y no llena el .pig de
- * "no declarado" en cascada); si tiene errores de sintaxis no hay símbolos que importar.
- */
 public final class CargadorImports {
 
     /** Resultado de cargar los imports: el ámbito con todos los símbolos importados + los errores encontrados. */
@@ -193,9 +166,8 @@ public final class CargadorImports {
         return "Primer error: línea " + primero.getLinea() + " - " + primero.getMensaje();
     }
 
-    // ------------------------------------------------------------------
+
     // Búsqueda de archivos
-    // ------------------------------------------------------------------
 
     private static boolean esExtension(String segmento) {
         for (String ext : EXTENSIONES) if (ext.equalsIgnoreCase(segmento)) return true;

@@ -30,8 +30,7 @@ public final class Programa extends NodoY {
      * funciones en el orden del código fuente; cada una emite su begin_func / cuerpo /
      * end_func en la tabla del generador.
      * Las estructuras no emiten cuádruplas: son definiciones de tipo, no código
-     * ejecutable (la Fase 4 las usará al escribir el C).
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     * ejecutable.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

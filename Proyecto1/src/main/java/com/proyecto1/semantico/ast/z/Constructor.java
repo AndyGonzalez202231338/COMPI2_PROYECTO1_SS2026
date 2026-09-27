@@ -16,22 +16,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code constructorDef} (#constructorDef): "NombreClase ( parametros? ) { cuerpo }".
+ * (#constructorDef): "NombreClase ( parametros? ) { cuerpo }".
  *
- * <p>El nombre del constructor coincide con el de su clase; {@link #nombre} guarda ese
+ * El nombre del constructor coincide con el de su clase; guarda ese
  * nombre (es lo que después alimenta a
- * {@link GeneradorC3D#etiquetaConstructor(String, int)}).
+ * #etiquetaConstructor(String, int)).
  *
- * <p>Todo método/constructor de Z recibe un parámetro implícito extra: "this". Por eso
- * el {@code begin_func} lleva {@code parametros.size() + 1} argumentos. El "this" no se
+ * Todo método/constructor de Z recibe un parámetro implícito extra: "this". Por eso
+ * el @code begin_func lleva parametros.size() + 1 argumentos. El "this" no se
  * declara como símbolo en la tabla (no es un identificador resoluble); es una
  * convención de generación: cualquier acceso a un atributo emite
- * {@code (=., this, campo, t)} / {@code (.=, this, campo, v)}.
- *
- * <p>Antes del cuerpo del usuario, se inyectan los inicializadores de atributo de la
- * clase (field initializers), en el orden en que aparecen en la clase. Es el mismo
- * comportamiento que Java: los inicializadores de campo corren antes del cuerpo del
- * constructor.
+ * (=., this, campo, t) / (.=, this, campo, v).
  */
 public final class Constructor extends NodoZ /* o la base que ya uses */ {
 
@@ -62,7 +57,7 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
 
     /**
      * Idéntico al verificar() que ya tenías, MÁS una línea al final del setup del
-     * ámbito: cachear el {@link AmbitoFuncion} recién creado en {@link #ambitoPropio}
+     * ámbito: cachear el {AmbitoFuncion} recién creado en #ambitoPropio
      * para que generarC3D() lo reutilice.
      */
     public Tipo verificar(AmbitoClase ambClase, ManejadorErrores errores) {
@@ -91,9 +86,6 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
                 errores.reportar(p.getLinea(), p.getColumna(),
                         "Parámetro duplicado: '" + p.getNombre() + "'");
             }
-            // (3) Se ELIMINA el "if (simbolo != null) simbolo.agregarParametro(sp);"
-            //     que tenías: registrarParametros() en el analizador YA los agregó,
-            //     y hacerlo aquí duplicaba la lista en el símbolo.
         }
 
         cuerpo.verificar(amb, errores);
@@ -102,23 +94,17 @@ public final class Constructor extends NodoZ /* o la base que ya uses */ {
 
 
     /**
-     * Emite, en este orden:
-     * <ol>
-     *   <li>{@code (begin_func, etiquetaConstructor(nombre, aridad), parametros.size()+1, null)}.
-     *       El +1 es el "this" implícito.</li>
-     *   <li>{@code entrarAmbito(ambitoPropio)}.</li>
-     *   <li>Por cada atributo con inicializador no nulo:
-     *       {@code this.<campo> = <C3D del inicializador>} (una cuádrupla {@code (.=, this, campo, v)}).</li>
-     *   <li>C3D del cuerpo del usuario.</li>
-     *   <li>{@code salirAmbito(anterior)}.</li>
-     *   <li>{@code (end_func)}.</li>
-     * </ol>
-     * No emite un {@code return} implícito; Fase 4 puede añadirlo al traducir
-     * {@code end_func}.
-     *
-     * <p>La firma lleva {@code atributosClase} porque el constructor debe inyectar los
-     * field initializers de la clase y {@link Constructor} por sí solo no los conoce.
-     * {@link Clase#generarC3D} es quien los pasa.
+     *   (begin_func, etiquetaConstructor(nombre, aridad), parametros.size()+1, null).
+     *       El +1 es el "this" implícito.
+     *   entrarAmbito(ambitoPropio)}.
+     *   Por cada atributo con inicializador no nulo:
+     *       this.<campo> = <C3D del inicializador> (una cuádrupla (.=, this, campo, v)).
+     *   C3D del cuerpo del usuario.
+     *   salirAmbito(anterior).
+     *   (end_func).
+     * La firma lleva atributosClase porque el constructor debe inyectar los
+     * field initializers de la clase y Constructor por sí solo no los conoce.
+     * Clase#generarC3D es quien los pasa.
      */
     public ResultadoC3D generarC3D(GeneradorC3D generador, List<Atributo> atributosClase) {
         // Usar el nombre real de la clase (si verificar ya corrió), no el declarado.

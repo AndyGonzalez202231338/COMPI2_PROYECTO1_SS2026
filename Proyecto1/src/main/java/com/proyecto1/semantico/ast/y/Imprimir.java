@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 import java.util.List;
 
-/** {@code IMPRIMIR(expresion (, expresion)*)} (#instImprimir). */
+/** IMPRIMIR(expresion (, expresion)*) (#instImprimir). */
 public final class Imprimir extends NodoY implements InstruccionY {
 
     private final List<ExpresionY> argumentos;
@@ -30,9 +30,7 @@ public final class Imprimir extends NodoY implements InstruccionY {
     /**
      * Emite, en orden de aparición: para cada argumento, primero su C3D (que puede
      * generar cuádruplas propias: "t0 = a + b", "t1 = leer()"→"read t1", …) y luego
-     * {@code (print, v, null, null)}. La Fase 4 decide el separador entre argumentos
-     * (típicamente printf con "%d %f %s ..." según el tipo).
-     * Devuelve {@code ResultadoC3D.vacio()}: imprimir no produce valor.
+     * (print, v, null, null).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

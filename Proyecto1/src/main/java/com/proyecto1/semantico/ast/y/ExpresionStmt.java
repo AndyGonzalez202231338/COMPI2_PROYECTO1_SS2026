@@ -28,7 +28,6 @@ public final class ExpresionStmt extends NodoY implements InstruccionY {
     /**
      * Emite: lo que emita la expresión (efectos como "contador++" incluidos); este nodo
      * no agrega cuádruplas propias. El valor resultante se descarta.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

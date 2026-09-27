@@ -5,7 +5,7 @@ import com.proyecto1.semantico.ast.NodoAST;
 /**
  * Marca los nodos que representan una INSTRUCCIÓN de Y (una sentencia dentro de un
  * bloque: declaración, asignación, si, para, mientras, retornar, etc.). Ver
- * {@link ExpresionY} para la razón de ser de esta interfaz vacía.
+ * ExpresionY para la razón de ser de esta interfaz vacía.
  */
 public interface InstruccionY extends NodoAST {
 }

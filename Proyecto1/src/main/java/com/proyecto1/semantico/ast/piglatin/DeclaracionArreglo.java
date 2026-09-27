@@ -11,8 +11,8 @@ import com.proyecto1.semantico.tipos.TipoArreglo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
- * {@code series ID [ tamaño ] : tipo (= { expr, ... })? ;} (#declaracionArregloDef).
- * {@code tamano} ya viene parseado a {@code int} (no como texto crudo) para que los
+ * series ID [ tamaño ] : tipo (= { expr, ... })? ;} (#declaracionArregloDef).
+ * tamano ya viene parseado a int (no como texto crudo) para que los
  * nodos de más arriba no tengan que volver a parsear el literal entero.
  */
 public final class DeclaracionArreglo extends NodoPigLatin implements InstruccionPigLatin {
@@ -64,16 +64,13 @@ public final class DeclaracionArreglo extends NodoPigLatin implements Instruccio
 
     /**
      * Emite:
-     * <ul>
-     *   <li><b>Con inicializador</b>: el C3D del inicializador (que ya reserva
-     *       el bloque con {@code newarr} y llena los elementos) y luego la
-     *       asignación {@code nombre = t}.</li>
-     *   <li><b>Sin inicializador</b>: reserva el bloque AQUÍ con un {@code newarr}
-     *       y lo asigna a la variable. Sin esta rama, {@code series arr[N] : T;}
-     *       dejaría {@code arr} como puntero basura y cualquier acceso
-     *       {@code arr[i]} explotaría con segfault en runtime.</li>
-     * </ul>
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     *   Con inicializador: el C3D del inicializador (que ya reserva
+     *       el bloque con newarr y llena los elementos) y luego la
+     *       asignación nombre = t.
+     *   Sin inicializador: reserva el bloque AQUÍ con un newarr
+     *       y lo asigna a la variable. Sin esta rama, series arr[N] : T;
+     *       dejaría arr como puntero basura y cualquier acceso
+     *       arr[i] explotaría con segfault en runtime.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
@@ -95,14 +92,12 @@ public final class DeclaracionArreglo extends NodoPigLatin implements Instruccio
     /**
      * Descriptor C del tipo de los ELEMENTOS del arreglo (no del arreglo).
      * Ejemplos:
-     * <ul>
-     *   <li>{@code numerus}  → "int"      (el arreglo será {@code int*})</li>
-     *   <li>{@code Persona}  → "Persona*" (el arreglo será {@code Persona**})</li>
-     *   <li>{@code textum}   → "char*"    (el arreglo será {@code char**})</li>
-     * </ul>
-     * Se usa como argumento del {@code newarr}, que en C emite
-     * {@code (T*) malloc(N * sizeof(T))}. Para que el destino sea {@code T*},
-     * {@code T} debe ser el tipo del elemento, no el del arreglo.
+     * numerus  -> "int"
+     * Persona  -> "Persona*"
+     * textum}   -> "char*"
+     * Se usa como argumento del newarr, que en C emite
+     * (T*) malloc(N * sizeof(T)). Para que el destino sea T*,
+     * T debe ser el tipo del elemento, no el del arreglo.
      */
     private String descriptorElemento() {
         return tipoAC(tipoBaseCache);

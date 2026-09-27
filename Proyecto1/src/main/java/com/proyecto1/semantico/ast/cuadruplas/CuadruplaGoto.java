@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code goto etiqueta}, incondicional. */
+/** goto etiqueta, incondicional. */
 public record CuadruplaGoto(String etiqueta) implements CuadruplaSalto {
     @Override
     public String getEtiquetaDestino() { return etiqueta; }

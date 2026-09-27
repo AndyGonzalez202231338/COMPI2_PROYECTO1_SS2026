@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code t = a op b}. "operador" es el símbolo tal cual ("+", "==", "&&", ...). */
+/** t = a op b. "operador" es el símbolo tal cual ("+", "==", "&&", ...). */
 public record CuadruplaBinaria(String operador, String a, String b, String t) implements Cuadrupla {
     @Override
     public String toStringLegible() { return t + " = " + a + " " + operador + " " + b; }

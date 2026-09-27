@@ -18,47 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * ASTBuilderY convierte el árbol de análisis sintáctico (parse tree) que entrega
- * ANTLR para Y en el AST propio del proyecto (paquete {@code semantico.ast.y}).
- *
- * <h2>Por qué existe esta clase (y qué NO hace)</h2>
- * ANTLR ya construyó un árbol correcto sintácticamente, pero sus nodos ({@code
- * ProgramaDefContext}, {@code ExpAditivaDefContext}, etc.) están acoplados 100% a la
- * gramática: mezclan tokens sueltos, contextos anidados, listas con nombres que
- * cambian si la gramática cambia, y no tienen ningún lugar para guardar el resultado
- * del análisis semántico (tipo, símbolo resuelto) ni para la futura generación de
- * C3D. Este visitor recorre ESE árbol una sola vez y lo traduce a las clases de
- * {@code semantico.ast.y} (que sí implementan {@link NodoAST}), que son las que en
- * las siguientes partes van a saber verificarse y traducirse a sí mismas.
- *
- * Esta clase, a propósito, NO valida nada semánticamente (no consulta ninguna
- * {@code Ambito}, no reporta errores): solo copia fielmente la forma del árbol de
- * ANTLR a la forma del AST propio. Literales sí se "parsean" de una vez (de texto a
- * long/double/char/String/boolean) porque eso es trabajo puramente sintáctico, no
- * semántico.
- *
- * <h2>Cómo leerla</h2>
- * Sigue la gramática de arriba hacia abajo, en el mismo orden que {@code GramaticaY.g4}:
- * programa → estructuras/funciones → parámetros/tipos → bloques → instrucciones →
- * expresiones (de menor a mayor precedencia) → primaria. Cada método
- * {@code visitXxx} corresponde 1 a 1 con una etiqueta {@code #xxx} de la gramática.
- * Cuando una regla NO tiene etiqueta (solo pasa en {@code expresion: expresionOr;}) o
- * cuando hay que combinar piezas que ANTLR entrega por separado (ver la nota extensa
- * en {@link #construirObjetivoAsignacion} y en {@link #construirPara}), se usa un
- * método auxiliar {@code construirXxx(...)} en vez de un {@code visitXxx} de
- * ANTLR.
- *
- * <h2>Nota sobre las etiquetas de alternativa (alt labels) de ANTLR</h2>
- * Cuando una regla tiene una sola alternativa (por ejemplo {@code bloque}), esta
- * clase simplemente hace un cast directo al tipo concreto en vez de pasar por
- * {@code visit(...)} — es más directo y no cambia el resultado, porque solo existe
- * una forma posible. Cuando una regla tiene VARIAS alternativas (por ejemplo
- * {@code tipo}, {@code parametro}, {@code instruccion}, {@code primaria}), se usa el
- * mecanismo real del Visitor: se sobreescribe un método {@code visitXxx} por cada
- * etiqueta y se llama a {@code visit(ctx)} para que ANTLR despache automáticamente
- * al método correcto según qué alternativa se usó de verdad en el código fuente.
- */
+
 public class ASTBuilderY extends GramaticaYBaseVisitor<NodoAST> {
 
     /** Punto de entrada: úsese como {@code new ASTBuilderY().construir(parser.programa())}. */

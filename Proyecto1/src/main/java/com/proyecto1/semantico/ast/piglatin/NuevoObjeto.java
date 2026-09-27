@@ -15,9 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code primaria NUEVO ID LPAREN argumentos? RPAREN} (#primariaInstancia): creación
- * de un objeto nuevo. El ID puede referirse a una CLASE (importada de {@code .z},
- * tiene constructor) o a una ESTRUCTURA (importada de {@code .y}, sin constructor:
+ * primaria NUEVO ID LPAREN argumentos? RPAREN (#primariaInstancia): creación
+ * de un objeto nuevo. El ID puede referirse a una CLASE (importada de .z,
+ * tiene constructor) o a una ESTRUCTURA (importada de .y, sin constructor:
  * los argumentos se asignan posicionalmente a los campos en orden de declaración).
  */
 public final class NuevoObjeto extends NodoPigLatin implements ExpresionPigLatin {
@@ -74,29 +74,19 @@ public final class NuevoObjeto extends NodoPigLatin implements ExpresionPigLatin
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>{@code (new, nombreTipo, null, t)}: reserva la celda en heap; {@code t}
-     *       es la referencia al objeto recién creado.</li>
-     *   <li>Según la categoría del símbolo resuelto:
-     *       <ul>
-     *         <li><b>CLASE</b>: como {@code NuevoObjeto(Z)}. Evalúa los argumentos en
-     *             orden, emite {@code param(t)} + un {@code param} por argumento, y
-     *             {@code (call, etiquetaConstructor(nombreTipo, nArgs), nArgs+1, null)}.
-     *             El {@code +1} es el {@code this} del constructor.</li>
-     *         <li><b>ESTRUCTURA</b>: asignación posicional de campos, mismo patrón que
-     *             el caso ESTRUCTURA de {@code DeclaracionVariable(PigLatin)}. Filtra
-     *             {@code s.getMiembrosEnOrden()} quedándose solo con los de categoría
-     *             {@code CAMPO}, y empareja por posición con los argumentos: por cada
-     *             {@code i}, genera el C3D del argumento y emite
-     *             {@code (.=, t, campo_i, v_i)}.</li>
+     * (new, nombreTipo, null, t): reserva la celda en heap; t
+     *       es la referencia al objeto recién creado.
+     *   Según la categoría del símbolo resuelto:
+     *         CLASE: como NuevoObjeto(Z). Evalúa los argumentos en
+     *             orden, emite param(t) + un param por argumento, y
+     *             (call, etiquetaConstructor(nombreTipo, nArgs), nArgs+1, null).
+     *             El +1 es el this del constructor.
+     *         ESTRUCTURA: asignación posicional de campos, mismo patrón que
+     *             el caso ESTRUCTURA. Filtra s.getMiembrosEnOrden() quedándose solo con los de categoría
+     *             CAMPO, y empareja por posición con los argumentos: por cada
+     *             i, genera el C3D del argumento y emite (.=, t, campo_i, v_i)}.
      *         <li>Otra categoría o símbolo null: solo se emite el {@code new}, sin
-     *             inicialización. Degradación controlada.</li>
-     *       </ul>
-     *   </li>
-     * </ol>
-     * Devuelve {@code ResultadoC3D.temporal(t, tipo)} donde {@code tipo} es
-     * {@link TipoClase} o {@link TipoEstructura} según corresponda (o
-     * {@link TipoPrimitivo#DESCONOCIDO} si no se pudo resolver).
+
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

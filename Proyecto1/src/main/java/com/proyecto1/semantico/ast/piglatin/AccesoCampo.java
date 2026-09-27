@@ -10,7 +10,7 @@ import com.proyecto1.semantico.tipos.TipoClase;
 import com.proyecto1.semantico.tipos.TipoEstructura;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code primaria . ID} (#primariaCampo): "objeto.campo". */
+/** primaria . ID (#primariaCampo): "objeto.campo". */
 public final class AccesoCampo extends NodoPigLatin implements ExpresionPigLatin {
 
     private final ExpresionPigLatin objeto;
@@ -52,14 +52,8 @@ public final class AccesoCampo extends NodoPigLatin implements ExpresionPigLatin
 
     /**
      * Emite: primero el C3D del objeto (queda su base en un temporal o nombre de
-     * variable), luego UNA cuádrupla {@code (=., base, campo, t)} con un temporal
-     * nuevo. Devuelve {@code ResultadoC3D.temporal(t, tipoCampo)}.
-     *
-     * <p>El nombre del campo viaja tal cual en la cuádrupla (no como offset): el
-     * cálculo base+offset con el layout real lo hará Fase 4. Se usa el mismo esquema
-     * simbólico tanto si el objeto proviene de una estructura de Y como de una clase
-     * de Z, sin ramificar (Fase 4 emite {@code obj.campo} u {@code obj->campo} según
-     * el tipo, pero el C3D es idéntico).
+     * variable), luego UNA cuádrupla (=., base, campo, t) con un temporal
+     * nuevo. Devuelve ResultadoC3D.temporal(t, tipoCampo).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

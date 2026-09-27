@@ -1,8 +1,8 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
 /**
- * {@code arreglo[indice] = valor}. OJO: a diferencia de la mayoría, el tercer campo
- * es el VALOR a guardar, no un destino — antes esto vivía silenciosamente en el
+ * arreglo[indice] = valor. a diferencia de la mayoría, el tercer campo
+ * es el VALOR a guardar, no un destino. antes esto vivía silenciosamente en el
  * campo "resultado" de la cuádrupla genérica; ahora el nombre del campo
  * ("valor") lo deja explícito.
  */

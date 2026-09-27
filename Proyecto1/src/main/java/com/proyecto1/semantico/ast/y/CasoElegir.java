@@ -1,9 +1,7 @@
 package com.proyecto1.semantico.ast.y;
 
 /**
- * Un {@code casoElegir} (#casoDef): "caso literal: bloque", dentro de un {@link Elegir}.
- * Igual que {@link RamaSi}, no es un {@link com.proyecto1.semantico.ast.NodoAST}
- * independiente: solo tiene sentido como pieza de un {@link Elegir}.
+ * Un casoElegir (#casoDef): "caso literal: bloque", dentro de un Elegir.
  */
 public final class CasoElegir {
 

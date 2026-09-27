@@ -11,9 +11,9 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import java.util.List;
 
 /**
- * La {@code funcionPrincipal} (#funcionPrincipalDef): {@code MAIOR >> sentencia*
- * FINIS ;}. Es el único punto de entrada del programa PigLatin (no tiene nombre,
- * parámetros ni tipo de retorno como {@code Funcion} en Y; por eso no se reutiliza
+ * La funcionPrincipal (#funcionPrincipalDef): MAIOR >> sentencia*
+ * FINIS ;. Es el único punto de entrada del programa PigLatin (no tiene nombre,
+ * parámetros ni tipo de retorno como Funcion en Y; por eso no se reutiliza
  * esa forma aquí).
  */
 public final class FuncionPrincipal extends NodoPigLatin {
@@ -38,22 +38,16 @@ public final class FuncionPrincipal extends NodoPigLatin {
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>{@code (begin_func, "main", 0, null)}: punto de entrada fijo, aridad 0
-     *       (PigLatin no tiene {@code this} implícito, no recibe nada).</li>
-     *   <li>C3D de las variables globales, en el orden en que aparecen en el
-     *       programa. Se declaran DENTRO del {@code begin_func}...{@code end_func}
-     *       porque el C3D no distingue variables globales de locales — Fase 4 puede
-     *       subirlas al nivel de archivo si lo prefiere.</li>
-     *   <li>C3D del cuerpo, en orden.</li>
-     *   <li>{@code (end_func, null, null, null)}.</li>
-     * </ol>
-     * Devuelve {@code ResultadoC3D.vacio()}.
-     *
-     * <p>La firma lleva {@code variablesGlobales} porque {@link FuncionPrincipal}
-     * no las conoce por sí misma (solo tiene su propio cuerpo). {@link Programa} se
-     * las pasa — mismo patrón que {@code Clase(Z)} pasando los atributos a cada
-     * {@code Constructor}.
+     *   (begin_func, "main", 0, null): punto de entrada fijo, aridad 0
+     *       (PigLatin no tiene this implícito, no recibe nada).</li>
+     *   C3D de las variables globales, en el orden en que aparecen en el
+     *       programa. Se declaran DENTRO del begin_func...end_func
+     *       porque el C3D no distingue variables globales de locales.
+     *   C3D del cuerpo, en orden.
+     *   (end_func, null, null, null)
+     * La firma lleva variablesGlobales porque FuncionPrincipal
+     * no las conoce por sí misma (solo tiene su propio cuerpo). Programa se
+     * las pasa.
      */
     public ResultadoC3D generarC3D(GeneradorC3D generador, List<InstruccionPigLatin> variablesGlobales) {
         generador.registrarFirma("main", List.of(), TipoPrimitivo.VOID, false);

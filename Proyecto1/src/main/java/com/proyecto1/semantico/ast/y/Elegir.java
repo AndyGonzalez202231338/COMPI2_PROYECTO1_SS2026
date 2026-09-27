@@ -14,7 +14,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 import java.util.ArrayList;
 import java.util.List;
 
-/** {@code instruccionElegir} (#condicionElegirDef): "elegir(control): caso* siempre?". */
+/** (#condicionElegirDef): "elegir(control): caso* siempre?". */
 public final class Elegir extends NodoY implements InstruccionY {
 
     private final ExpresionY control;
@@ -68,25 +68,19 @@ public final class Elegir extends NodoY implements InstruccionY {
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>El C3D de la expresión de control (una sola vez).</li>
-     *   <li>Bloque de pruebas: por cada caso {@code t = c == literal} y
-     *       {@code if_true t goto ?} (destino pendiente: la etiqueta del caso).</li>
-     *   <li>{@code goto ?}: hacia "siempre" si existe, o hacia L_fin si no (pendiente).</li>
-     *   <li>Los cuerpos: cada caso lleva su etiqueta (con ella se rellena su if_true),
-     *       su C3D y termina con {@code goto ?} hacia L_fin (pendiente). Mientras se
+     *   El C3D de la expresión de control (una sola vez).
+     *   Bloque de pruebas: por cada caso t = c == literal y
+     *       if_true t goto ? (destino pendiente: la etiqueta del caso).
+     *   goto ?: hacia "siempre" si existe, o hacia L_fin si no (pendiente).
+     *   Los cuerpos: cada caso lleva su etiqueta (con ella se rellena su if_true),
+     *       su C3D y termina con goto ? hacia L_fin (pendiente). Mientras se
      *       generan estos cuerpos (y el de "siempre") el generador tiene registrado
      *       L_fin como destino de "romper" (entrarBloqueRompible/salirBloqueRompible),
      *       así un "romper" explícito dentro de un caso emite el mismo goto que ya se
-     *       emite automáticamente al terminar el caso.</li>
-     *   <li>"siempre" (si existe) con su etiqueta, que rellena el goto del paso 3; no
-     *       necesita goto porque cae directo en L_fin.</li>
-     *   <li>{@code L_fin:} y el relleno de todos los saltos pendientes hacia el fin.</li>
-     * </ol>
-     * No hay "caída" entre casos (cada uno salta a L_fin). entrarBloqueRompible NO toca
-     * la pila de "continuar": un "continuar" dentro de un caso sigue refiriéndose al
-     * ciclo externo (si lo hay), nunca a este elegir.
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     *       emite automáticamente al terminar el caso.
+     *   "siempre" (si existe) con su etiqueta, que rellena el goto del paso 3; no
+     *       necesita goto porque cae directo en L_fin.
+     *   L_fin: y el relleno de todos los saltos pendientes hacia el fin.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

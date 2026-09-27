@@ -64,10 +64,10 @@ public final class Indice extends NodoY implements ExpresionY {
     }
 
     /**
-     * Emite: C3D del arreglo, C3D del índice, y UNA cuádrupla {@code (=[], base, idx, t)}.
-     * Devuelve {@code ResultadoC3D.temporal(t, tipoElemento)}.
+     * Emite: C3D del arreglo, C3D del índice, y UNA cuádrupla (=[], base, idx, t).
+     * Devuel ResultadoC3D.temporal(t, tipoElemento).
      *
-     * <p>En Y los arreglos son de tamaño fijo y no hay ramificación flat/jagged:
+     * En Y los arreglos son de tamaño fijo y no hay ramificación flat/jagged:
      * la composición directa (una cuádrupla por índice) cubre todos los casos,
      * porque el lenguaje no tiene arreglos dinámicos con dimensiones runtime.
      */

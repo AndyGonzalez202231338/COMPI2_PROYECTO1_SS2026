@@ -8,7 +8,7 @@ import com.proyecto1.semantico.tabla.AmbitoBloque;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code CONTINUAR} (#instContinuar). Sin datos propios más que la posición. */
+/** (#instContinuar). Sin datos propios más que la posición. */
 public final class Continuar extends NodoY implements InstruccionY {
     public Continuar(int linea, int columna) {
         super(linea, columna);
@@ -22,13 +22,12 @@ public final class Continuar extends NodoY implements InstruccionY {
     }
 
     /**
-     * Emite: {@code (goto, null, null, L)}, donde L es {@code generador.etiquetaInicioCiclo()}
+     * Emite: (goto, null, null, L), donde L es generador.etiquetaInicioCiclo()
      * (tope de la pila de ciclos: el destino de "continuar" del ciclo más interno).
      * No genera código propio adicional; solo consulta la pila.
-     * Si la pila está vacía lanza {@link IllegalStateException}: verificar() ya reporta
+     * Si la pila está vacía lanza IllegalStateException: verificar() ya reporta
      * "continuar fuera de ciclo", así que esto solo ocurre si se generó C3D sin haber
      * pasado el análisis semántico.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

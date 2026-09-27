@@ -7,10 +7,10 @@ import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
 
 /**
- * {@code expresion ;} (#expresionSentenciaDef): una expresión usada como instrucción
- * suelta. Cubre asignaciones ({@code x = 5;}), llamadas ({@code metodo();}) y llamadas
- * encadenadas ({@code obj.metodo();}), que en la gramática de PigLatin son todas la
- * misma regla {@code expresion} (ver {@link Asignacion} y {@link Llamada}).
+ * expresion ; (#expresionSentenciaDef): una expresión usada como instrucción
+ * suelta. Cubre asignaciones x = 5;), llamadas (metodo();) y llamadas
+ * encadenadas (obj.metodo();), que en la gramática de PigLatin son todas la
+ * misma regla expresion
  */
 public final class ExpresionStmt extends NodoPigLatin implements InstruccionPigLatin {
 

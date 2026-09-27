@@ -8,7 +8,7 @@ import com.proyecto1.semantico.tabla.AmbitoBloque;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code INTERRUMPE ;} (#sentenciaInterrumpeDef). Equivale a {@code Romper} de Y. */
+/** INTERRUMPE ; (#sentenciaInterrumpeDef). Equivale a Romper de Y. */
 public final class Interrumpe extends NodoPigLatin implements InstruccionPigLatin {
     public Interrumpe(int linea, int columna) {
         super(linea, columna);
@@ -22,13 +22,7 @@ public final class Interrumpe extends NodoPigLatin implements InstruccionPigLati
         return TipoPrimitivo.VOID;
     }
 
-    /**
-     * Emite {@code (goto, null, null, L)}, donde L es {@code generador.etiquetaFinCiclo()}:
-     * el destino de "interrumpe" del ciclo más interno. Si la pila está vacía lanza
-     * {@link IllegalStateException} — verificar() ya reportó el error, así que esto
-     * solo ocurre si se generó C3D sin análisis semántico previo.
-     * Devuelve {@code ResultadoC3D.vacio()}.
-     */
+
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
         String destino = generador.etiquetaFinCiclo();

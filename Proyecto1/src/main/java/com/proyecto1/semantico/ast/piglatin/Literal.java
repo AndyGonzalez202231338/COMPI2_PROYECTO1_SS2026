@@ -12,8 +12,8 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
  * #primariaVerum, #primariaFalsus, #primariaNull). El valor ya viene "parseado" a su
  * tipo Java correspondiente (Long/Double/Character/String/Boolean/null), no como
  * texto crudo, así los nodos de más arriba no tienen que volver a parsear números ni
- * desescapar cadenas. Para {@code NULL}, {@code valor} es {@code null} y
- * {@code categoria} es {@link CategoriaLiteral#NULO}.
+ * desescapar cadenas. Para NULL, valor es null y
+ * categoria es CategoriaLiteral#NULO.
  */
 public final class Literal extends NodoPigLatin implements ExpresionPigLatin {
 
@@ -43,15 +43,12 @@ public final class Literal extends NodoPigLatin implements ExpresionPigLatin {
 
     /**
      * Emite: NADA (un literal no necesita cuádruplas, se usa directamente como operando).
-     * Devuelve: {@code ResultadoC3D.valor(texto, tipo)}, donde "texto" es la forma
+     * Devuelve: ResultadoC3D.valor(texto, tipo), donde "texto" es la forma
      * literal lista para usarse como operando: enteros/flotantes tal cual ("5", "3.14"),
      * caracteres entre comillas simples ('a'), cadenas entre comillas dobles ("hola",
      * re-escapadas porque el AST guarda el valor ya desescapado), booleanos como
      * "true"/"false", y null como "null". Las comillas permiten distinguir después un
      * literal cadena "5" de un entero 5 sin re-parsear.
-     *
-     * <p>{@code verificar(null, null)} es seguro aquí: el switch de verificar no toca
-     * ni el ámbito ni el manejador de errores.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

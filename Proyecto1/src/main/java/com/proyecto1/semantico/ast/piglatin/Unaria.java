@@ -9,10 +9,10 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * Operación unaria, prefija o postfija: {@code !, -, ++, --}. Cubre
+ * Operación unaria, prefija o postfija: !, -, ++, --. Cubre
  * #expUnariaNegacion, #expUnariaMenos, #expUnariaIncPrefijo y #expUnariaDecPrefijo
  * (prefijo = true), y la parte opcional de #expresionPostfijaDef (prefijo = false,
- * solo aplica a {@code ++}/{@code --}).
+ * solo aplica a ++/--).
  */
 public final class Unaria extends NodoPigLatin implements ExpresionPigLatin {
 
@@ -53,17 +53,13 @@ public final class Unaria extends NodoPigLatin implements ExpresionPigLatin {
 
     /**
      * Emite según el operador (siempre después de generar el C3D del operando):
-     * <ul>
-     *   <li>{@code !} y {@code -}: {@code (op, a, null, t)}. Devuelve el temporal t
-     *       (tipo BOOL para "!", el del operando para "-").</li>
-     *   <li>{@code ++x} / {@code --x} (prefijo): {@code t = x ± 1} y luego {@code x = t}.
-     *       Devuelve t, que contiene el valor NUEVO.</li>
-     *   <li>{@code x++} / {@code x--} (postfijo): {@code t0 = x} (copia del valor viejo),
-     *       {@code t1 = x ± 1} y {@code x = t1}. Devuelve t0 (el valor VIEJO, que es el
-     *       que vale la expresión postfija en {@code y = x++}).</li>
-     * </ul>
-     * Para ++/-- solo se admite como operando un {@link Identificador} (variable simple);
-     * campos y elementos de arreglo lanzan {@link UnsupportedOperationException}.
+     *   ! y -: (op, a, null, t). Devuelve el temporal t
+     *       (tipo BOOL para "!", el del operando para "-").
+     *   ++x / --x (prefijo): t = x ± 1 y luego x = t.
+     *       Devuelve t, que contiene el valor NUEVO.
+     *   x++ / x-- (postfijo): t0 = x
+     *   t1 = x ± 1 y x = t1. Devuelve t0 (el valor VIEJO, que es el
+     *       que vale la expresión postfija en y = x++)
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

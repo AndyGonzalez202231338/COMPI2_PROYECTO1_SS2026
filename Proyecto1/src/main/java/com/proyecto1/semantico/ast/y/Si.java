@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code instruccionSi} (#condicionSiDef): la rama "si" más cero o más "sino" con su
+ * instruccionSi (#condicionSiDef): la rama "si" más cero o más "sino" con su
  * propia condición, y opcionalmente un "contrario" final sin condición.
  */
 public final class Si extends NodoY implements InstruccionY {
@@ -57,22 +57,15 @@ public final class Si extends NodoY implements InstruccionY {
 
     /**
      * Emite, con backpatching, para cada rama (si / sino):
-     * <pre>
      *   [cuádruplas de la condición]
      *   if_false c goto ?          <- destino pendiente
      *   [cuerpo de la rama]
      *   goto ?                     <- pendiente hacia L_fin (omitido en la última rama sin contrario)
      *   L_siguiente:               <- aquí se rellena el if_false de esta rama
-     * </pre>
-     * Al terminar todas las ramas: el cuerpo de "contrario" (si existe) y {@code L_fin:},
+     * Al terminar todas las ramas: el cuerpo de "contrario" (si existe) y L_fin:,
      * y entonces se rellenan con L_fin todos los saltos pendientes. Si la última rama no
      * tiene "contrario", su if_false salta directamente a L_fin (no hace falta un goto ni
      * una etiqueta intermedia).
-     *
-     * El backpatching usa {@code siguienteIndice()} para recordar la posición de cada
-     * salto antes de emitirlo y {@code reemplazar(int, Cuadrupla)} para escribirle el
-     * destino cuando la etiqueta ya existe.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

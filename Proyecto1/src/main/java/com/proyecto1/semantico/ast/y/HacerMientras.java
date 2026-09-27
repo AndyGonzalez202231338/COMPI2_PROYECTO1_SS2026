@@ -37,20 +37,16 @@ public final class HacerMientras extends NodoY implements InstruccionY {
     }
 
     /**
-     * Emite, en este orden:
-     * <pre>
      *   L_inicio:
      *   [cuerpo]                     (entre entrarCiclo y salirCiclo)
      *   L_cond:
      *   [condición]
      *   if_true c goto L_inicio
      *   L_fin:
-     * </pre>
      * L_inicio va ANTES del cuerpo (el cuerpo se ejecuta al menos una vez y se repite
-     * desde ahí). Se registra el ciclo como {@code entrarCiclo(L_cond, L_fin)}:
+     * desde ahí). Se registra el ciclo como entrarCiclo(L_cond, L_fin):
      * "continuar" salta a L_cond para evaluar la condición (si saltara a L_inicio se
      * repetiría el cuerpo sin comprobarla) y "romper" salta a L_fin.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

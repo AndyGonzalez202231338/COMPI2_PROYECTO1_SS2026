@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * Cualquier operación binaria: {@code ||, &&, ==, !=, <, >, <=, >=, +, -, *, /, %}.
+ * Cualquier operación binaria: ||, &&, ==, !=, <, >, <=, >=, +, -, *, /, %.
  * Los seis niveles de precedencia de la gramática se colapsan aquí porque la
  * precedencia ya quedó resuelta por la FORMA del árbol.
  */
@@ -63,11 +63,11 @@ public final class Binaria extends NodoPigLatin implements ExpresionPigLatin {
 
     /**
      * Emite (post-orden): primero el C3D del izquierdo, luego el del derecho, y al final
-     * UNA cuádrupla {@code (op, a, b, t)}, es decir {@code t = a op b}, con un temporal
+     * UNA cuádrupla (op, a, b, t), es decir t = a op b, con un temporal
      * nuevo pedido DESPUÉS de generar los hijos (así los temporales internos salen
      * numerados antes que el externo). Devuelve {@code ResultadoC3D.temporal(t, tipo)}.
      * El tipo se deduce de los tipos de los operandos (aritmético, BOOL, o DESCONOCIDO
-     * si la combinación es inválida — el error ya se reportó en verificar()).
+     * si la combinación es inválida - el error ya se reportó en verificar()).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

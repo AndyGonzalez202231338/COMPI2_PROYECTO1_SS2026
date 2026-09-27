@@ -7,7 +7,7 @@ import com.proyecto1.semantico.tabla.Ambito;
 import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code LEER LPAREN RPAREN} (#primariaLeer): lectura de entrada estándar. */
+/** LEER LPAREN RPAREN (#primariaLeer): lectura de entrada estándar. */
 public final class Leer extends NodoY implements ExpresionY {
     public Leer(int linea, int columna) {
         super(linea, columna);
@@ -21,11 +21,11 @@ public final class Leer extends NodoY implements ExpresionY {
     }
 
     /**
-     * Emite UNA cuádrupla {@code (read, null, null, t)} con un temporal nuevo y devuelve
-     * ese temporal con tipo CADENA. El padre (p. ej. una {@link Asignacion}) decide luego
-     * si lo copia a una variable ({@code x = t}), lo usa como argumento de {@code imprimir}
-     * ({@code print t}) o lo combina en una binaria.
-     * Devuelve {@code ResultadoC3D.temporal(t, CADENA)}.
+     * Emite UNA cuádrupla (read, null, null, t) con un temporal nuevo y devuelve
+     * ese temporal con tipo CADENA. El padre (p. ej. una Asignacion) decide luego
+     * si lo copia a una variable x = t, lo usa como argumento de imprimir
+     * print t) o lo combina en una binaria.
+     * Devuelve ResultadoC3D.temporal(t, CADENA).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

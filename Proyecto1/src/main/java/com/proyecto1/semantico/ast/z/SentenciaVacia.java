@@ -8,7 +8,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
- * {@code PUNTOYCOMA} solo (#stmtVacia): un ";" suelto. Y? no tiene equivalente (su
+ * PUNTOYCOMA solo (#stmtVacia): un ";" suelto. Y? no tiene equivalente (su
  * gramática no admite sentencias vacías); existe solo para Z.
  */
 public final class SentenciaVacia extends NodoZ implements InstruccionZ {
@@ -23,7 +23,6 @@ public final class SentenciaVacia extends NodoZ implements InstruccionZ {
 
     /**
      * Nada que emitir: la sentencia vacía no produce cuádruplas.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

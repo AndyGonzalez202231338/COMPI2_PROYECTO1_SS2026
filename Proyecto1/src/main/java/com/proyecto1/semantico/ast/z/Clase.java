@@ -6,12 +6,12 @@ import com.proyecto1.semantico.ast.ResultadoC3D;
 import java.util.List;
 
 /**
- * {@code claseDef} (#claseDef): "clase Nombre { miembros* }".
+ * claseDef (#claseDef): "clase Nombre { miembros* }".
  *
  * <p>Desde el punto de vista del C3D, una clase no genera código propio: es un
  * contenedor de constructores y métodos. Aquí se recorre cada uno y se le pasa lo
  * que necesita (atributos al constructor, nombre de la clase al método) — mismo
- * rol que juega {@code Programa} en Y con las funciones.
+ * rol que juega Programa en Y con las funciones.
  */
 public final class Clase extends NodoZ /* o la base que ya uses */ {
 
@@ -39,7 +39,6 @@ public final class Clase extends NodoZ /* o la base que ya uses */ {
      * Emite, en este orden: todos los constructores, luego todos los métodos. Cada
      * constructor recibe la lista de atributos de la clase para inyectar los field
      * initializers; cada método recibe el nombre de la clase para su mangling.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

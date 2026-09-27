@@ -10,25 +10,6 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 /**
  * Un literal de Z. Mismo diseño que el de Y: el valor ya viene parseado
  * (Long/Double/Character/String/Boolean/null), no como texto crudo.
- *
- * <p>Los dos {@code switch} sobre {@link CategoriaLiteral} son EXHAUSTIVOS, sin
- * {@code default}: si se añade una categoría nueva al enum, el compilador obligará
- * a mapearla aquí. Es deliberado — antes había un {@code default} que tragaba
- * silenciosamente las categorías nuevas.
- *
- * <p>Sobre {@link CategoriaLiteral#NULO}: el tipo semántico que se le asigna aquí
- * es {@link TipoPrimitivo#NULO} (ver {@link #tipoDeCategoria()}). Si tu
- * {@code TipoPrimitivo} todavía no tiene la constante {@code NULO}, hay dos
- * alternativas, en orden de preferencia:
- * <ol>
- *   <li>Añadir {@code NULO} a {@code TipoPrimitivo} y las correspondientes reglas
- *       a {@code Tipos.esAsignable} / {@code Tipos.esComparableIgualdad} (lo
- *       correcto: null es asignable a cualquier tipo de objeto, comparable a
- *       cualquier referencia).</li>
- *   <li>Cambiar el {@code case NULO ->} para que devuelva
- *       {@link TipoPrimitivo#DESCONOCIDO} (parche rápido, pero relaja el chequeo:
- *       null se vuelve compatible con todo sin distinción).</li>
- * </ol>
  */
 public final class Literal extends NodoZ implements ExpresionZ {
 
@@ -61,7 +42,7 @@ public final class Literal extends NodoZ implements ExpresionZ {
     }
 
     /**
-     * Mapeo categoría → tipo semántico. Es exhaustivo a propósito (sin default)
+     * Mapeo categoría -> tipo semántico. Es exhaustivo a propósito (sin default)
      * para que añadir una categoría al enum rompa la compilación aquí en vez de
      * caer silenciosamente a DESCONOCIDO.
      */
