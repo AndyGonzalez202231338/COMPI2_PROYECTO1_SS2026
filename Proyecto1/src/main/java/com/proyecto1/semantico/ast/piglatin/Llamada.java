@@ -15,15 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code primaria LPAREN argumentos? RPAREN} (#primariaLlamada): llamada a función
+ * primaria LPAREN argumentos? RPAREN (#primariaLlamada): llamada a función
  * o método. Cubre dos casos:
- * <ul>
- *   <li>{@code f(args)} — objetivo = {@link Identificador}. Función suelta,
- *       probablemente importada de {@code .y}. SIN receptor.</li>
- *   <li>{@code obj.m(args)} — objetivo = {@link AccesoCampo}. Método de un objeto
- *       (típicamente importado de {@code .z}). CON receptor explícito: el objeto
- *       real, NO {@code this} (PigLatin no tiene métodos con self implícito).</li>
- * </ul>
  */
 public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
 
@@ -138,49 +131,32 @@ public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>Determinar el receptor:
-     *       <ul>
-     *         <li>{@link Identificador}: SIN receptor. No se emite ningún {@code param}
-     *             antes de los argumentos.</li>
-     *         <li>{@link AccesoCampo}: la expresión del objeto es el receptor; se
-     *             genera su C3D y su lugar pasa a ser el primer {@code param}.</li>
-     *       </ul>
-     *   </li>
-     *   <li>C3D de cada argumento, en orden.</li>
-     *   <li>Bloque de {@code param}: primero el receptor (solo en el caso
-     *       {@link AccesoCampo}), luego cada argumento.</li>
-     *   <li>Llamada:
-     *       <ul>
-     *         <li>{@link Identificador}: {@code (call, nombreFuncion, nArgs, t)}.</li>
-     *         <li>{@link AccesoCampo}: {@code etiquetaMetodo(clase, metodo)}, con
-     *             {@code nArgs+1} (el +1 es el receptor).</li>
-     *       </ul>
-     *   </li>
-     * </ol>
-     * Los {@code param} contiguos anteriores al {@code call} son exactamente sus
-     * argumentos, en orden — misma convención que en Z. Devuelve
-     * {@code ResultadoC3D.temporal(t, tipoDelSímboloCacheado)} (o {@code DESCONOCIDO}
+     *   Determinar el receptor:
+
+     *         Identificador: SIN receptor. No se emite ningún param
+     *             antes de los argumentos.
+     *         AccesoCampo: la expresión del objeto es el receptor; se
+     *             genera su C3D y su lugar pasa a ser el primer param.
+     * ResultadoC3D.temporal(t, tipoDelSímboloCacheado) (o DESCONOCIDO
      * si el símbolo no se pudo cachear).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
-        // 1) Receptor: solo si es "obj.m(args)".
+        // Receptor: solo si es "obj.m(args)".
         String receptor = null;
         if (objetivo instanceof AccesoCampo ac) {
             ResultadoC3D r = ac.getObjeto().generarC3D(generador);
             receptor = r.getLugar();
         }
         // Caso Identificador: sin receptor, nada que evaluar.
-
-        // 2) Evaluar todos los argumentos, guardando sus lugares.
+        // Evaluar todos los argumentos, guardando sus lugares.
         List<String> lugaresArgs = new ArrayList<>();
         for (ExpresionPigLatin a : argumentos) {
             ResultadoC3D v = a.generarC3D(generador);
             lugaresArgs.add(v.getLugar());
         }
 
-        // 3) Bloque de params: receptor (si aplica) + args.
+        // Bloque de params: receptor (si aplica) + args.
         if (receptor != null) {
             generador.emitirParam(receptor);
         }
@@ -188,7 +164,7 @@ public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
             generador.emitirParam(lugar);
         }
 
-        // 4) ¿El método devuelve void? Si es así, el call va SIN destino y
+        // ¿El método devuelve void? Si es así, el call va SIN destino y
         //    devolvemos vacio() (nadie consume el resultado: verificar() ya
         //    rechazó que un void se use en contexto de expresión).
         Tipo tipoRetorno = (simboloResuelto != null && simboloResuelto.getTipo() != null)
@@ -196,7 +172,7 @@ public final class Llamada extends NodoPigLatin implements ExpresionPigLatin {
                 : TipoPrimitivo.DESCONOCIDO;
         boolean esVoid = tipoRetorno.esVoid();
 
-        // 5) Emitir la llamada con la etiqueta correcta según el caso.
+        // Emitir la llamada con la etiqueta correcta según el caso.
         if (objetivo instanceof Identificador id) {
             if (esVoid) {
                 generador.emitirCall(id.getNombre(), argumentos.size(), null);

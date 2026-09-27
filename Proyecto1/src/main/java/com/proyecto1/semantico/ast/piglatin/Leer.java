@@ -9,11 +9,10 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
- * {@code ID? << } (#sentenciaLeerDef): lectura de entrada estándar. A diferencia del
- * {@code Leer} de Y (que es una EXPRESIÓN, {@code leer()}), en PigLatin es una
- * SENTENCIA completa que opcionalmente guarda el valor leído en una variable ya
- * declarada; por eso aquí implementa {@link InstruccionPigLatin} y no
- * {@link ExpresionPigLatin}. {@code variable} es {@code null} cuando el {@code ID} se
+ * ID? <<  (#sentenciaLeerDef): lectura de entrada estándar. A diferencia del
+ * Leer de Y , en PigLatin es una SENTENCIA completa que opcionalmente guarda el valor leído en una variable ya
+ * declarada; por eso aquí implementa InstruccionPigLatin y no
+ * ExpresionPigLatin. variable es null cuando el ID se
  * omite (se lee y se descarta el valor).
  */
 public final class Leer extends NodoPigLatin implements InstruccionPigLatin {
@@ -42,17 +41,10 @@ public final class Leer extends NodoPigLatin implements InstruccionPigLatin {
     }
 
     /**
-     * Emite UNA cuádrupla {@code (read, null, null, destino)}.
-     * <ul>
-     *   <li>Con variable: {@code destino = variable}. Se escribe directo en la
+     * Emite UNA cuádrupla (read, null, null, destino).
+     *   Con variable: destino = variable. Se escribe directo en la
      *       variable ya declarada y validada por verificar(). Sin temporal intermedio:
-     *       el valor leído es exactamente lo que va en esa variable.</li>
-     *   <li>Sin variable: {@code destino = t} con un temporal nuevo. El valor se lee
-     *       igual pero se descarta (nadie lo consume después); el temporal es basura
-     *       que Fase 5 puede eliminar.</li>
-     * </ul>
-     * Devuelve {@code ResultadoC3D.vacio()}: es una sentencia, no produce valor
-     * reutilizable por el llamador.
+     *       el valor leído es exactamente lo que va en esa variable.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

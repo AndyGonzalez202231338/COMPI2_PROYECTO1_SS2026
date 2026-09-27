@@ -13,9 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code primaryExpression LPAREN argumentList? RPAREN} (#primarioLlamada): llamada a
- * método/función. Cubre "metodo(args)" (objetivo = {@link Identificador}, llamada
- * dentro de la propia clase) y "obj.metodo(args)" (objetivo = {@link AccesoCampo}).
+ * primaryExpression LPAREN argumentList? RPAREN (#primarioLlamada): llamada a
+ * método/función. Cubre "metodo(args)" (objetivo = Identificador, llamada
+ * dentro de la propia clase) y "obj.metodo(args)" (objetivo = AccesoCampo).
  */
 public final class Llamada extends NodoZ implements ExpresionZ {
 
@@ -30,8 +30,8 @@ public final class Llamada extends NodoZ implements ExpresionZ {
 
     /**
      * Nombre de la clase cuyo método se está llamando, CUANDO el objetivo es un
-     * {@link AccesoCampo} (llamada "obj.metodo"). Para el caso {@link Identificador}
-     * no se cachea aquí: se lee del generador ({@link GeneradorC3D#getClaseActual()}),
+     * AccesoCampo (llamada "obj.metodo"). Para el caso Identificador
+     * no se cachea aquí: se lee del generador (GeneradorC3D#getClaseActual()),
      * que Clase.generarC3D deja fijado mientras se generan sus métodos.
      */
     private String nombreClaseObjetivo;
@@ -148,33 +148,24 @@ public final class Llamada extends NodoZ implements ExpresionZ {
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>Determinar el receptor:
-     *       <ul>
-     *         <li>{@link Identificador}: llamada a método de la propia clase; el receptor
-     *             es la palabra literal {@code "this"} (parámetro implícito que todo
-     *             método Z recibe).</li>
-     *         <li>{@link AccesoCampo}: se genera el C3D de la expresión del objeto; su
-     *             lugar pasa a ser el receptor.</li>
-     *       </ul>
-     *   </li>
-     *   <li>C3D de cada argumento (en orden), guardando su lugar.</li>
-     *   <li>Bloque de params: el receptor, luego cada argumento.</li>
-     *   <li>{@code (call, etiquetaMetodo(Clase, metodo), nArgs+1, t)}: el {@code +1}
-     *       es el receptor.</li>
-     * </ol>
-     * Devuelve {@code temporal(t, tipoRetornoDelMétodo)}.
+     *   Determinar el receptor:
+     *       Identificador: llamada a método de la propia clase; el receptor
+     *             es la palabra literal "this" (parámetro implícito que todo
+     *             método Z recibe).
+     *         AccesoCampo: se genera el C3D de la expresión del objeto; su
+     *             lugar pasa a ser el receptor.
+     *   (call, etiquetaMetodo(Clase, metodo), nArgs+1, t): el +1
+     *       es el receptor.
+     * Devuelve temporal(t, tipoRetornoDelMétodo).
      *
-     * <p>La clase con la que se construye la etiqueta se resuelve así:
-     * <ul>
-     *   <li>{@code Identificador}: {@code generador.getClaseActual()}, que
-     *       {@link Clase#generarC3D} deja fijado mientras recorre sus métodos. Si por
+     * La clase con la que se construye la etiqueta se resuelve así:
+     *   Identificador: generador.getClaseActual(), que
+     *       Clase#generarC3D deja fijado mientras recorre sus métodos. Si por
      *       algún motivo no estuviera fijado (p. ej. generación fuera de una clase),
-     *       la etiqueta queda con prefijo {@code "?"} — visible al inspeccionar la
-     *       tabla y no un crash silencioso.</li>
-     *   <li>{@code AccesoCampo}: el nombre cacheado por {@code verificar} a partir de
-     *       {@code TipoClase.getDefinicion().getNombre()}.</li>
-     * </ul>
+     *       la etiqueta queda con prefijo "?" - visible al inspeccionar la
+     *       tabla y no un crash silencioso.
+     *   AccesoCampo: el nombre cacheado por verificar a partir de
+     *       TipoClase.getDefinicion().getNombre().
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

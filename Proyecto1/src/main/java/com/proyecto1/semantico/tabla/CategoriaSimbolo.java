@@ -1,7 +1,7 @@
 package com.proyecto1.semantico.tabla;
 
 /**
- * Categoría de un {@link Simbolo} dentro de la tabla de símbolos. Sirve tanto para dar
+ * Categoría de un Simbolo dentro de la tabla de símbolos. Sirve tanto para dar
  * mensajes de error más claros ("ya existe una función llamada X", no solo "ya existe X")
  * como para validaciones que dependen de qué tipo de símbolo es (por ejemplo, solo se
  * puede "llamar" a FUNCION/METODO/CONSTRUCTOR, solo se puede acceder con '.' a

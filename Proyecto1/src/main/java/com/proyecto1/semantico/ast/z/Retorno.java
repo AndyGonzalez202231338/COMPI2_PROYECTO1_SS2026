@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
-/** {@code returnStatement} (#returnStatementDef): "return expresion? ;". */
+/** (#returnStatementDef): "return expresion? ;". */
 public final class Retorno extends NodoZ implements InstruccionZ {
 
     private final ExpresionZ valor; // null == "return;" sin valor
@@ -47,8 +47,8 @@ public final class Retorno extends NodoZ implements InstruccionZ {
     }
 
     /**
-     * Emite: primero el C3D del valor (si hay) y luego {@code (return, v, null, null)}.
-     * Sin valor emite {@code return} con arg1 en null. Devuelve {@code ResultadoC3D.vacio()}.
+     * Emite: primero el C3D del valor (si hay) y luego (return, v, null, null).
+     * Sin valor emite return con arg1 en null.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

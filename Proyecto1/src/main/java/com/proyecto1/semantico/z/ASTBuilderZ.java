@@ -12,45 +12,6 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * ASTBuilderZ convierte el árbol de análisis sintáctico (parse tree) que entrega
- * ANTLR para Zetariano en el AST propio del proyecto (paquete
- * {@code semantico.ast.z}).
- *
- * <h2>Qué hace y qué NO hace</h2>
- * Igual que {@code ASTBuilderY}: recorre UNA sola vez el parse tree y lo traduce a
- * los nodos propios (que sí implementan {@link NodoAST}). NO valida nada
- * semánticamente (no consulta ningún {@code Ambito}, no reporta errores). Los
- * literales sí se "parsean" aquí (de texto a long/double/char/String/boolean/null)
- * porque eso es puramente sintáctico.
- *
- * <h2>Cómo leerla</h2>
- * Se sigue la gramática de arriba hacia abajo, en el mismo orden que
- * {@code GramaticaZ.g4}: compilationUnit → classBody → miembros → tipos → bloques
- * → sentencias → expresiones (de menor a mayor precedencia) → primaria. Cada
- * método {@code visitXxx} corresponde 1 a 1 con una etiqueta {@code #xxx}.
- *
- * <h2>Diferencias concretas respecto a {@code ASTBuilderY}</h2>
- * <ul>
- *   <li>{@link NodoTipoRef} de Z NO es un {@link NodoAST} (no guarda línea/columna,
- *       no extiende {@code NodoZ}). Por eso {@code tipoBase} NO se resuelve con
- *       {@code visit(...)}: se hace con {@link #nombreTipoBase} /
- *       {@link #esTipoBasePrimitivo}, que despachan por subtipo de contexto.</li>
- *   <li>En Z la asignación es una EXPRESIÓN (vive dentro de
- *       {@code assignmentExpression}), no una instrucción aparte. Por eso
- *       {@code Asignacion} se construye dentro del árbol de expresiones, y una
- *       asignación usada como sentencia suelta queda envuelta en
- *       {@link ExpresionStmt}, igual que cualquier otra expresión.</li>
- *   <li>Varios niveles de expresiones usan {@code *} (encadenables) con VARIOS
- *       operadores mezclados (==/!=, </>/<=/>=, +/-, //%): hay que recorrer los
- *       hijos del contexto para saber en qué ORDEN salieron, no basta con los
- *       accessors {@code ctx.IGUALIGUAL()}, {@code ctx.MENOS()}, etc.</li>*   <li>{@code switchCase}/{@code defaultCase}: el {@code break; } final suele
- *       quedar consumido por {@code statement*} (porque {@code stmtBreak} es un
- *       {@code statement} válido). Se detecta y se saca de {@code instrucciones}
- *      para poblar bien {@code tieneRomper}.</li>
- *      </ul>
- */
-
 public class ASTBuilderZ extends GramaticaZBaseVisitor<NodoAST> {
 
     /** Punto de entrada: {@code new ASTBuilderZ().construir(parser.compilationUnit())}. */

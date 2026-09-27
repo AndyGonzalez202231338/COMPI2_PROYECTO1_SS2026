@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code destino = valor}. */
+/** destino = valor. */
 public record CuadruplaAsignacion(String valor, String destino) implements Cuadrupla {
     @Override
     public String toStringLegible() { return destino + " = " + valor; }

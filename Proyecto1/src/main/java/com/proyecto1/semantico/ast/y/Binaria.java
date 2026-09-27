@@ -65,7 +65,7 @@ public final class Binaria extends NodoY implements ExpresionY {
      * nuevo pedido DESPUÉS de generar los hijos (así los temporales internos salen
      * numerados antes que el externo).
      * Devuelve: {@code ResultadoC3D.temporal(t, tipo)}. El tipo se deduce de los tipos
-     * de los operandos: aritméticos con {@link Tipos#resultadoAritmetico}; BOOL para
+     * de los operandos: aritméticos con Tipos#resultadoAritmetico; BOOL para
      * comparaciones y lógicos; DESCONOCIDO si algún operando es DESCONOCIDO (p. ej. un
      * Identificador, ver su Javadoc) o la combinación es inválida (el error semántico ya
      * se reportó en verificar()).

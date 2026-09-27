@@ -14,7 +14,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 import java.util.ArrayList;
 import java.util.List;
 
-/** {@code switchStatement} (#switchStatementDef): "switch(control) { caso* default? }". */
+/**(#switchStatementDef): "switch(control) { caso* default? }". */
 public final class Elegir extends NodoZ implements InstruccionZ {
 
     private final ExpresionZ control;
@@ -58,25 +58,18 @@ public final class Elegir extends NodoZ implements InstruccionZ {
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>C3D de la expresión de control (una sola vez).</li>
-     *   <li>Bloque de pruebas: por cada caso {@code t = control == valor} y
-     *       {@code if_true t goto ?} (destino pendiente: la etiqueta del caso).</li>
-     *   <li>{@code goto ?} hacia "default" si existe, o hacia L_fin si no.</li>
-     *   <li>Cuerpos: cada caso lleva su etiqueta (rellena el if_true correspondiente),
-     *       sus instrucciones y, SOLO si {@code tieneRomper}, un {@code goto L_fin}
-     *       pendiente. Sin {@code tieneRomper} el cuerpo no cierra el caso: la última
-     *       instrucción cae directamente al siguiente caso (fall-through estilo C).</li>
-     *   <li>"default" (si existe): etiqueta + instrucciones. Su {@code tieneRomper}
-     *       solo decide si se emite un {@code goto L_fin} explícito; en cualquier caso
-     *       termina en L_fin por caída natural.</li>
-     *   <li>{@code L_fin:} y relleno de todos los saltos pendientes hacia el fin.</li>
-     * </ol>
-     * Mientras se generan los cuerpos, el generador tiene L_fin registrado como
-     * destino de "break" ({@code entrarBloqueRompible/salirBloqueRompible}), así un
-     * {@link Romper} explícito dentro de un caso emite el mismo goto que ya se emite
-     * automáticamente cuando {@code tieneRomper == true}.
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     *   C3D de la expresión de control (una sola vez).
+     *   Bloque de pruebas: por cada caso t = control == valor y
+     *       if_true t goto ? (destino pendiente: la etiqueta del caso).
+     *   goto ? hacia "default" si existe, o hacia L_fin si no.
+     *   Cuerpos: cada caso lleva su etiqueta (rellena el if_true correspondiente),
+     *       sus instrucciones y, SOLO si tieneRomper, un goto L_fin
+     *       pendiente. Sin tieneRomper el cuerpo no cierra el caso: la última
+     *       instrucción cae directamente al siguiente caso (fall-through estilo C).
+     *   "default" (si existe): etiqueta + instrucciones. Su tieneRomper
+     *       solo decide si se emite un goto L_fin explícito; en cualquier caso
+     *       termina en L_fin por caída natural.
+     *   L_fin: y relleno de todos los saltos pendientes hacia el fin.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

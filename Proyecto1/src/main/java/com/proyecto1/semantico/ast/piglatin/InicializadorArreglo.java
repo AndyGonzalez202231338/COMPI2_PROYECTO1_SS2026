@@ -14,10 +14,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 import java.util.List;
 
 /**
- * {@code inicializadorArreglo} (#inicializadorArregloDef): {@code { expr, expr, ... }}.
- *
- * <p>Cuando se usa como inicializador, reserva el arreglo (un solo {@code newarr}
- * flat) y escribe cada elemento en su posición con {@code []=}.
+ * inicializadorArreglo (#inicializadorArregloDef): { expr, expr, ... }.
  */
 public final class InicializadorArreglo extends NodoPigLatin implements ExpresionPigLatin {
 
@@ -51,13 +48,10 @@ public final class InicializadorArreglo extends NodoPigLatin implements Expresio
 
     /**
      * Emite:
-     * <ol>
-     *   <li>{@code (newarr, descriptorBase, [N], t)}: un solo malloc del bloque
-     *       contiguo. {@code descriptorBase} es el tipo C del ELEMENTO, no del
-     *       arreglo (p. ej. {@code "int"} para un arreglo de enteros).</li>
-     *   <li>Por cada elemento en orden: {@code ([]=, t, i, v)} con índice constante.</li>
-     * </ol>
-     * Devuelve {@code temporal(t, tipoArreglo)}.
+     *   (newarr, descriptorBase, [N], t): un solo malloc del bloque
+     *       contiguo. descriptorBase es el tipo C del ELEMENTO, no del
+     *       arreglo (p. ej. "int" para un arreglo de enteros).
+     *   Por cada elemento en orden: ([]=, t, i, v) con índice constante.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
@@ -79,7 +73,7 @@ public final class InicializadorArreglo extends NodoPigLatin implements Expresio
 
     /**
      * Descriptor C del tipo de un elemento (no del arreglo). Igual que el mapeo de
-     * {@code TraductorTipos.aC}, pero local para no acoplar el AST al paquete del
+     * {TraductorTipos.aC}, pero local para no acoplar el AST al paquete del
      * traductor C.
      */
     private static String descriptorBase(Tipo t) {

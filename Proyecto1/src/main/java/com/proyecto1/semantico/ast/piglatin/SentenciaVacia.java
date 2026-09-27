@@ -8,9 +8,9 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 /**
- * {@code ;} (#sentenciaVaciaDef): una instrucción vacía (un {@code ;} suelto, sin
+ * una instrucción vacía (un ; suelto, sin
  * ningún contenido). No tiene equivalente en Y; se incluye porque la gramática de
- * PigLatin la admite explícitamente como alternativa de {@code sentencia}. Sin datos
+ * PigLatin la admite explícitamente como alternativa de sentencia. Sin datos
  * propios más que la posición.
  */
 public final class SentenciaVacia extends NodoPigLatin implements InstruccionPigLatin {

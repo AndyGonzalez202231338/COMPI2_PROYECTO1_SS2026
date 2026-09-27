@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
 import java.util.List;
 
-/** Un {@code block} (#blockDef): "{ statement* }". */
+/** Un (#blockDef): "{ statement* }". */
 public final class Bloque extends NodoZ implements InstruccionZ {
 
     private final List<InstruccionZ> instrucciones;
@@ -32,7 +32,6 @@ public final class Bloque extends NodoZ implements InstruccionZ {
     /**
      * Emite: nada propio; recorre las instrucciones en orden del código fuente y
      * cada una emite sus cuádruplas en la tabla del generador.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

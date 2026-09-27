@@ -11,7 +11,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 /**
  * {@code ifStatement} (#ifStatementDef): "if (cond) entonces (else contrario)?".
- * El "else if" se resuelve por anidamiento: "contrario" puede ser otro {@link Si}.
+ * El "else if" se resuelve por anidamiento: "contrario" puede ser otro Si.
  */
 public final class Si extends NodoZ implements InstruccionZ {
 
@@ -49,14 +49,11 @@ public final class Si extends NodoZ implements InstruccionZ {
 
     /**
      * Sin "else":
-     * <pre>
      *   [cond]
      *   if_false c goto L_fin
      *   [entonces]
      *   L_fin:
-     * </pre>
      * Con "else":
-     * <pre>
      *   [cond]
      *   if_false c goto L_sino
      *   [entonces]
@@ -64,10 +61,8 @@ public final class Si extends NodoZ implements InstruccionZ {
      *   L_sino:
      *   [contrario]
      *   L_fin:
-     * </pre>
-     * El else-if se cubre solo: cuando "contrario" es otro {@link Si}, su propio
+     * El else-if se cubre solo: cuando "contrario" es otro Si, su propio
      * generarC3D emite su estructura completa anidada dentro de "L_sino:".
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

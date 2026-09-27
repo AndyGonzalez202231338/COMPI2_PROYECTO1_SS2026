@@ -8,8 +8,8 @@ import com.proyecto1.semantico.tipos.Tipo;
 
 /**
  * Una expresión usada como instrucción suelta (#expressionStatementDef -> #stmtExpresion),
- * p. ej. "x = 5;", "obj.metodo();" o "contador++;" — cualquier {@link ExpresionZ}
- * (incluida una {@link Asignacion}, que en Z es una expresión) terminada en ';'.
+ * p. ej. "x = 5;", "obj.metodo();" o "contador++;" — cualquier ExpresionZ
+ * (incluida una Asignacion, que en Z es una expresión) terminada en ';'.
  */
 public final class ExpresionStmt extends NodoZ implements InstruccionZ {
 

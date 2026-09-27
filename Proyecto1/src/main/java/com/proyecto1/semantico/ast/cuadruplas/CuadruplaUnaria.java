@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code t = op a} (p. ej. "neg", "not"). */
+/** t = op a (p. ej. "neg", "not"). */
 public record CuadruplaUnaria(String operador, String a, String t) implements Cuadrupla {
     @Override
     public String toStringLegible() { return t + " = " + operador + " " + a; }

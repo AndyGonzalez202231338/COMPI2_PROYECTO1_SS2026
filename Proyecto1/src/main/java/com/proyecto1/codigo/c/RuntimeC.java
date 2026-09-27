@@ -4,32 +4,28 @@ package com.proyecto1.codigo.c;
  * Runtime C mínimo del compilador. Se inyecta al principio del archivo .c generado
  * (típicamente por el OrquestadorC3DaC) para cubrir operaciones que el C3D expone
  * pero C puro no tiene:
+ * t_read_string()}: lee una línea completa de stdin (incluidos espacios)
+ *       y devuelve un char* nuevo en heap. Es lo que usa Z para readln()
+ *       y lo que usa Y/PigLatin para read sobre char*.
+ * rt_concat(a, b): concatena dos strings en un buffer nuevo. Es lo que
+ *       usa el traductor cuando traduce a + b sobre char* (en C puro + no concatena cadenas).
+ * rt_strcmp(a, b): compara dos strings con manejo de NULL
+ *       (nuestro lenguaje admite null, strcmp de la libc no).
+ *       Es lo que usa el traductor cuando traduce == / != sobre
+ *       char*.
+ * rt_int_to_string(n) y rt_double_to_string(d): convierten un
+ *       valor numérico a un char* nuevo en heap. Se usan cuando una
+ *       concatenación a + b mezcla un string con un número: en vez de pasarle
+ *       el número crudo a rt_concat (que espera const char*), el
+ *       traductor envuelve el operando numérico en su conversión.
+ * rt_print_int, rt_print_double, rt_print_string y sus
+ *       variantes rt_println_*: impresión tipada sin formato. El orquestador
+ *       las usa para traducir las llamadas rt_print / rt_println
+ *       que emite Z (que no llevan formato explícito).
  *
- * <ul>
- *   <li>{@code rt_read_string()}: lee una línea completa de stdin (incluidos espacios)
- *       y devuelve un {@code char*} nuevo en heap. Es lo que usa Z para {@code readln()}
- *       y lo que usa Y/PigLatin para {@code read} sobre {@code char*}.</li>
- *   <li>{@code rt_concat(a, b)}: concatena dos strings en un buffer nuevo. Es lo que
- *       usa el traductor cuando traduce {@code a + b} sobre {@code char*} (en C puro
- *       {@code +} no concatena cadenas).</li>
- *   <li>{@code rt_strcmp(a, b)}: compara dos strings con manejo de {@code NULL}
- *       (nuestro lenguaje admite {@code null}, {@code strcmp} de la libc no).
- *       Es lo que usa el traductor cuando traduce {@code ==} / {@code !=} sobre
- *       {@code char*}.</li>
- *   <li>{@code rt_int_to_string(n)} y {@code rt_double_to_string(d)}: convierten un
- *       valor numérico a un {@code char*} nuevo en heap. Se usan cuando una
- *       concatenación {@code a + b} mezcla un string con un número: en vez de pasarle
- *       el número crudo a {@code rt_concat} (que espera {@code const char*}), el
- *       traductor envuelve el operando numérico en su conversión.</li>
- *   <li>{@code rt_print_int}, {@code rt_print_double}, {@code rt_print_string} y sus
- *       variantes {@code rt_println_*}: impresión tipada sin formato. El orquestador
- *       las usa para traducir las llamadas {@code rt_print} / {@code rt_println}
- *       que emite Z (que no llevan formato explícito).</li>
- * </ul>
- *
- * <p>Todas las funciones del runtime son {@code static} para no ensuciar el namespace
+ *Todas las funciones del runtime son static para no ensuciar el namespace
  * global del C generado. Si el programa del usuario declara una función con el mismo
- * nombre (poco probable dado el prefijo {@code rt_}), el linker se queja, lo cual es
+ * nombre (poco probable dado el prefijo rt_}, el linker se queja, lo cual es
  * deseable.
  */
 public final class RuntimeC {
@@ -38,8 +34,7 @@ public final class RuntimeC {
 
     /**
      * Devuelve el código C completo del runtime, listo para inyectarse tras los
-     * {@code #include} estándar. Incluye {@code <stdio.h>}, {@code <stdlib.h>} y
-     * {@code <string.h>} por seguridad (por si el orquestador se olvida).
+     * #include estándar. Incluye <stdio.h>, <stdlib.h> y <string.h> por seguridad (por si el orquestador se olvida).
      */
     public static String codigo() {
         return """

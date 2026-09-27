@@ -14,7 +14,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 import java.util.ArrayList;
 import java.util.List;
 
-/** {@code NEW ID LPAREN argumentList? RPAREN} (#primarioInstanciaClase): "new Persona(args)". */
+/** NEW ID LPAREN argumentList? RPAREN (#primarioInstanciaClase): "new Persona(args)". */
 public final class NuevoObjeto extends NodoZ implements ExpresionZ {
 
     private final String nombreClase;
@@ -71,25 +71,22 @@ public final class NuevoObjeto extends NodoZ implements ExpresionZ {
 
     /**
      * Emite, en este orden:
-     * <ol>
-     *   <li>{@code (new, NombreClase, null, t)}: reserva la celda en heap; {@code t} es
-     *       la referencia al objeto recién creado.</li>
-     *   <li>C3D de cada argumento, en orden, guardando sus lugares (puede haber
+     *   new, NombreClase, null, t): reserva la celda en heap; t es
+     *       la referencia al objeto recién creado.
+     *   C3D de cada argumento, en orden, guardando sus lugares (puede haber
      *       llamadas anidadas dentro de un argumento: sus propias cuádruplas se emiten
-     *       aquí).</li>
-     *   <li>Bloque de {@code param}: primero {@code t} (el objeto actúa como
-     *       {@code this} implícito del constructor), luego cada argumento.</li>
-     *   <li>{@code (call, etiquetaConstructor(nombreClase, nArgs), nArgs+1, null)}:
-     *       el {@code +1} es el {@code this}; el resultado va a {@code null} porque un
-     *       constructor no devuelve nada y la referencia ya está en {@code t}.</li>
-     * </ol>
-     * Devuelve {@code temporal(t, TipoClase)}.
+     *       aquí).
+     *   Bloque de param: primero t (el objeto actúa como
+     *       this implícito del constructor), luego cada argumento.
+     *   (call, etiquetaConstructor(nombreClase, nArgs), nArgs+1, null):
+     *       el +1 es el this; el resultado va a null porque un
+     *       constructor no devuelve nada y la referencia ya está en t.
      *
-     * <p><b>Por qué los params se agrupan al final y no intercalados con los args:</b>
-     * así los {@code nArgs+1} {@code param} contiguos anteriores al {@code call} son
+     * Por qué los params se agrupan al final y no intercalados con los args:
+     * así los nArgs+1 param contiguos anteriores al call son
      * exactamente sus argumentos (this + args en orden). Si un argumento contiene una
-     * llamada anidada ({@code new Foo(new Bar(1))}), la llamada interna queda completa
-     * antes de que se empiecen a emitir los params del {@code new Foo}.
+     * llamada anidada (new Foo(new Bar(1))), la llamada interna queda completa
+     * antes de que se empiecen a emitir los params del new Foo.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

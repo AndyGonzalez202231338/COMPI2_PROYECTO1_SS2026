@@ -12,16 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code NEW tipoBase (CORIZQ expression CORDER)+} (#primarioArregloConTamano):
+ * NEW tipoBase (CORIZQ expression CORDER)+ (#primarioArregloConTamano):
  * "new int[5]" o "new int[3][3]". Los tamaños son expresiones en runtime.
- *
- * <p>Estrategia elegida en compile-time según {@link TipoArreglo#esAplanable()}:
- * <ul>
- *   <li>FLAT: un solo {@code newarr} con el producto de tamaños, siempre que
- *       todas las dimensiones internas (d2..dn) sean literales.</li>
- *   <li>JAGGED: un {@code newarr} por nivel, con bucles anidados que rellenan los
- *       sub-arreglos. Se usa cuando alguna dimensión interna es runtime.</li>
- * </ul>
  */
 public final class NuevoArregloConTamano extends NodoZ implements ExpresionZ {
 
@@ -92,16 +84,12 @@ public final class NuevoArregloConTamano extends NodoZ implements ExpresionZ {
     }
 
     /**
-     * Asigna recursivamente el arreglo del nivel {@code nivel} con los tamaños
-     * {@code tamRes}. Devuelve el temporal con la referencia al arreglo creado.
-     *
-     * <ul>
-     *   <li>Última dimensión: {@code newarr} directo (sin bucle), con el tipo
-     *       escalar como descriptor.</li>
-     *   <li>Niveles anteriores: {@code newarr} del tipo puntero correspondiente
+     * Asigna recursivamente el arreglo del nivel con los tamaños. Devuelve el temporal con la referencia al arreglo creado.
+     *   Última dimensión: newarr directo (sin bucle), con el tipo
+     *       escalar como descriptor.
+     *   Niveles anteriores: newarr del tipo puntero correspondiente
      *       ("int*" para 2D, "int**" para 3D, ...) y un bucle que rellena cada
-     *       slot llamándose recursivamente.</li>
-     * </ul>
+     *       slot llamándose recursivamente.
      */
     private String allocArregloJagged(GeneradorC3D g, List<ResultadoC3D> tamRes,
                                       int nivel, String tipoBaseEscalar) {

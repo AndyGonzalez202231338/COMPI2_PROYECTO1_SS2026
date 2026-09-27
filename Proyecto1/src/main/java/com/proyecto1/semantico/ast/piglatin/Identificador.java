@@ -32,14 +32,6 @@ public final class Identificador extends NodoPigLatin implements ExpresionPigLat
 
     /**
      * Emite: NADA (leer una variable no necesita cuádruplas).
-     * Devuelve: {@code ResultadoC3D.valor(nombre, tipo)}, donde el tipo se resuelve
-     * consultando el Ámbito del generador. Cae a {@link TipoPrimitivo#DESCONOCIDO} si
-     * el generador no tiene ámbito, si el símbolo no se encuentra o si el símbolo no
-     * tiene tipo.
-     *
-     * <p>Sin rama de categoría ATRIBUTO: a diferencia de Z, PigLatin no tiene "this"
-     * ni métodos con self implícito — todo símbolo resuelto es una variable normal
-     * (local, parámetro o global), así que se devuelve el nombre tal cual.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

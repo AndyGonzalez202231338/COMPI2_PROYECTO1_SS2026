@@ -15,8 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code sentenciaSi} (#sentenciaSiDef): {@code si (cond) bloque (aliter (cond) bloque)*
- * (aliter bloque)? finis;}. La rama "si" más cero o más "aliter" con su propia
+ * (#sentenciaSiDef: si (cond) bloque (aliter (cond) bloque)*
+ * (aliter bloque)? finis;. La rama "si" más cero o más "aliter" con su propia
  * condición, y opcionalmente un "aliter" final sin condición (equivalente al
  * "contrario" de Y).
  */
@@ -53,17 +53,14 @@ public final class Si extends NodoPigLatin implements InstruccionPigLatin {
 
     /**
      * Emite, con backpatching múltiple, por cada rama:
-     * <pre>
      *   [cond]
      *   if_false c goto ?          <- destino pendiente
      *   [cuerpo de la rama]
      *   goto ?                     <- pendiente hacia L_fin (omitido en la última rama sin contrario)
      *   L_siguiente:               <- aquí se rellena el if_false de esta rama
-     * </pre>
-     * Al terminar todas las ramas: el cuerpo de "contrario" (si existe), {@code L_fin:}
+     * Al terminar todas las ramas: el cuerpo de "contrario" (si existe), L_fin:
      * y se rellenan con L_fin todos los saltos pendientes. Si la última rama no tiene
      * "contrario", su if_false salta directo a L_fin (sin goto ni etiqueta intermedia).
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

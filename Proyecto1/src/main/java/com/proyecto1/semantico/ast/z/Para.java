@@ -12,7 +12,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 import java.util.List;
 
 /**
- * {@code forStatement} (#forStatementDef): "for(init? ; cond? ; act?) cuerpo".
+ * (#forStatementDef): "for(init? ; cond? ; act?) cuerpo".
  * El "init" es declaración única o lista de expresiones; el "act" es lista de
  * expresiones; la "cond" puede omitirse.
  */
@@ -65,7 +65,6 @@ public final class Para extends NodoZ implements InstruccionZ {
     }
 
     /**
-     * <pre>
      *   [init]                (declaración o lista de expresiones, una sola vez)
      *   L_inicio:
      *   [cond?]
@@ -75,12 +74,10 @@ public final class Para extends NodoZ implements InstruccionZ {
      *   [act]                 (lista de expresiones, en orden)
      *   goto L_inicio
      *   L_fin:
-     * </pre>
-     * El ciclo se registra como {@code entrarCiclo(L_act, L_fin)}: "continue" salta a
+     * El ciclo se registra como entrarCiclo(L_act, L_fin): "continue" salta a
      * L_act (así se ejecuta la actualización, evitando ciclos infinitos) y "break" a
      * L_fin sin pasar por L_act. Sin condición no se emite if_false (solo termina con
      * "break"). Init y act quedan FUERA de entrarCiclo/salirCiclo.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

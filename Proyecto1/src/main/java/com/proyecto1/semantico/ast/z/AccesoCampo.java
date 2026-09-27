@@ -10,7 +10,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoClase;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code primaryExpression PUNTO ID} (#primarioCampo): "objeto.campo". */
+/**  primaryExpression PUNTO ID (#primarioCampo): "objeto.campo". */
 public final class AccesoCampo extends NodoZ implements ExpresionZ {
 
     private final ExpresionZ objeto;
@@ -54,11 +54,7 @@ public final class AccesoCampo extends NodoZ implements ExpresionZ {
 
     /**
      * Emite: C3D del objeto (queda su referencia en un temporal o variable), luego
-     * {@code (=., base, campo, t)}. Devuelve {@code temporal(t, tipoCampo)}.
-     *
-     * <p>La misma cuádrupla {@code =.} se usa para acceder a campos de objetos de Z
-     * que para campos de estructuras de Y. Fase 4 decide {@code obj->campo} vs.
-     * {@code obj.campo} mirando si {@code base} es referencia (Z) o valor (Y).
+     * (=., base, campo, t). Devuelve temporal(t, tipoCampo).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

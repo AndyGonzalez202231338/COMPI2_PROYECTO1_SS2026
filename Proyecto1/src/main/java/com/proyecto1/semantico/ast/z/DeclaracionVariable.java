@@ -67,16 +67,7 @@ public final class DeclaracionVariable extends NodoZ implements InstruccionZ {
     /**
      * Emite: NADA si no hay inicializador (la reserva de la variable vive en la
      * tabla de símbolos, que Fase 4 usa para declararla en C). Con inicializador,
-     * primero el C3D del inicializador y luego {@code (=, v, -, nombre)}.
-     *
-     * <p>Para {@code int[] x = new int[5]}: el inicializador es un
-     * {@link NuevoArregloConTamano} que emite {@code t0 = (int*) malloc(...)} y
-     * devuelve {@code t0}; luego {@code x = t0}. Fase 4 verá una asignación de
-     * puntero a la variable {@code x} (que ya declarará como {@code int*}).
-     *
-     * <p>Devuelve {@code ResultadoC3D.vacio()}: la declaración no produce valor
-     * reutilizable (a diferencia de la asignación de Z, que es expresión y devuelve
-     * el valor asignado).
+     * primero el C3D del inicializador y luego (=, v, -, nombre).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

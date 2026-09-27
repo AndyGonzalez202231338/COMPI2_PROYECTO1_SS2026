@@ -6,12 +6,8 @@ import com.proyecto1.semantico.ast.ResultadoC3D;
 import java.util.List;
 
 /**
- * Nodo raíz del AST de PigLatin: {@code programa} ({@code importaciones? seccionVariables?
- * funcionPrincipal EOF}). {@code seccionVariables} no tiene su propio nodo (no aporta
- * nada por sí sola, es solo "una lista de declaraciones"): sus declaraciones
- * ({@link DeclaracionVariable} / {@link DeclaracionArreglo}) se guardan directamente
- * aquí en {@link #getVariablesGlobales()}, igual que {@code Programa} de Y guarda
- * directamente las listas de sus secciones.
+ * Nodo raíz del AST de PigLatin: programa importaciones? seccionVariables?
+ * funcionPrincipal EOF).
  */
 public final class Programa extends NodoPigLatin {
 
@@ -33,15 +29,12 @@ public final class Programa extends NodoPigLatin {
 
     /**
      * Punto de entrada de la generación de C3D (es la raíz del AST). Delega todo en
-     * {@link FuncionPrincipal#generarC3D(GeneradorC3D, List)}, pasándole las variables
-     * globales para que las declare dentro del {@code main} — mismo patrón que
-     * {@code Clase(Z)} pasando los atributos a cada constructor.
+     * FuncionPrincipal#generarC3D(GeneradorC3D, List), pasándole las variables
+     * globales para que las declare dentro del main
      *
      * <p>Las importaciones NO generan C3D propio: son metadata de compilación, ya
-     * resueltas por {@code CargadorImports} antes de esta fase. Aquí se ignoran.
-     *
-     * <p>Devuelve {@code ResultadoC3D.vacio()}.
-     */
+     * resueltas por CargadorImports
+     * */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
         principal.generarC3D(generador, variablesGlobales);

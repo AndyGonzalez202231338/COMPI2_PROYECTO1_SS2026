@@ -1,11 +1,7 @@
 package com.proyecto1.semantico.ast.piglatin;
 
 /**
- * Una rama "si (cond) bloque" o "aliter (cond) bloque" dentro de un {@link Si}. No
- * implementa {@link com.proyecto1.semantico.ast.NodoAST} por sí sola (no es una
- * instrucción ni una expresión independiente, solo tiene sentido colgada de un
- * {@link Si}); no necesita línea/columna propias porque el nodo {@link Si} que la
- * contiene ya sabe su posición.
+ * Una rama "si (cond) bloque" o "aliter (cond) bloque" dentro de un Si.
  */
 public final class RamaSi {
 

@@ -10,7 +10,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import java.util.List;
 
 /**
- * Un {@code bloque} o {@code bloqueSimple} (#bloqueDef / #bloqueSimpleDef). Se
+ * Un bloque o bloqueSimple  (#bloqueDef / #bloqueSimpleDef). Se
  * unifican en una sola clase: la diferencia entre ambos en la gramática es puramente
  * de puntuación (si llevan ':' antes o no), no de contenido. las dos son, ya dentro
  * del AST, "una lista de instrucciones".
@@ -37,7 +37,6 @@ public final class Bloque extends NodoY {
     /**
      * Emite: nada propio; recorre las instrucciones en el orden del código fuente y
      * cada una emite sus cuádrupulas en la tabla del generador.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoEstructura;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 
-/** {@code primaria PUNTO ID} (#primariaCampo): "objeto.campo". */
+/** primaria PUNTO ID (#primariaCampo): "objeto.campo". */
 public final class AccesoCampo extends NodoY implements ExpresionY {
 
     private final ExpresionY objeto;
@@ -49,8 +49,8 @@ public final class AccesoCampo extends NodoY implements ExpresionY {
 
     /**
      * Emite: primero el C3D del objeto (queda su "base" en un temporal o nombre de
-     * variable), luego {@code (=., base, campo, t)} con un temporal nuevo.
-     * Devuelve {@code temporal(t, tipoCampo)} — si el campo es a su vez una estructura,
+     * variable), luego (=., base, campo, t) con un temporal nuevo.
+     * Devuelve temporal(t, tipoCampo) — si el campo es a su vez una estructura,
      * el temporal es una referencia a estructura (Fase 4 lo declara como tal).
      *
      * El nombre del campo viaja tal cual en la cuádrupla (no como offset): el cálculo

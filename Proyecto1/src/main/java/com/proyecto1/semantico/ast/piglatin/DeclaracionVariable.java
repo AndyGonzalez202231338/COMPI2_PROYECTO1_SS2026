@@ -11,17 +11,6 @@ import com.proyecto1.semantico.tipos.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Una {@code declaracionVariableSinPuntoYComa}, usada tanto como instrucción completa
- * ({@code declaracionVariable}, #declaracionVariableDef, con {@code ;}) como
- * "init" desnudo de un {@code per (...)} (#initForDeclaracion, sin {@code ;}). Las
- * tres alternativas de la gramática (#declaracionVarConTipo, #declaracionVarEstructura,
- * #declaracionVarSoloValor) se representan con esta única clase + su
- * {@link CategoriaDeclaracionVariable}, construida siempre a través de una de las tres
- * fábricas estáticas de abajo (así queda imposible construir, por ejemplo, una
- * declaración ESTRUCTURA sin su {@code inicializadorEstructura}) — mismo patrón que
- * {@code Parametro} en Y.
- */
 public final class DeclaracionVariable extends NodoPigLatin implements InstruccionPigLatin {
 
     private final CategoriaDeclaracionVariable categoria;
@@ -53,14 +42,14 @@ public final class DeclaracionVariable extends NodoPigLatin implements Instrucci
         this.inicializadorEstructura = inicializadorEstructura;
     }
 
-    /** {@code esto ID : tipo (= expresion)?} (#declaracionVarConTipo). {@code inicializador} puede ser null. */
+    /** esto ID : tipo (= expresion)? (#declaracionVarConTipo). inicializador puede ser null. */
     public static DeclaracionVariable conTipo(String nombre, NodoTipoRef tipo, ExpresionPigLatin inicializador,
                                               int linea, int columna) {
         return new DeclaracionVariable(CategoriaDeclaracionVariable.CON_TIPO, nombre, tipo, inicializador,
                 null, null, linea, columna);
     }
 
-    /** {@code esto ID : ID inicializadorArreglo} (#declaracionVarEstructura). */
+    /** esto ID : ID inicializadorArreglo (#declaracionVarEstructura). */
     public static DeclaracionVariable estructura(String nombre, String nombreTipoEstructura,
                                                  InicializadorArreglo inicializadorEstructura,
                                                  int linea, int columna) {
@@ -68,7 +57,7 @@ public final class DeclaracionVariable extends NodoPigLatin implements Instrucci
                 nombreTipoEstructura, inicializadorEstructura, linea, columna);
     }
 
-    /** {@code esto ID : expresion} (#declaracionVarSoloValor). El tipo se infiere del valor. */
+    /** esto ID : expresion (#declaracionVarSoloValor). El tipo se infiere del valor. */
     public static DeclaracionVariable soloValor(String nombre, ExpresionPigLatin inicializador,
                                                 int linea, int columna) {
         return new DeclaracionVariable(CategoriaDeclaracionVariable.SOLO_VALOR, nombre, null, inicializador,

@@ -13,7 +13,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 import java.util.ArrayList;
 import java.util.List;
 
-/** {@code primaryExpression CORIZQ expression CORDER} (#primarioIndice): "arreglo[indice]". */
+/** primaryExpression CORIZQ expression CORDER (#primarioIndice): "arreglo[indice]". */
 public final class Indice extends NodoZ implements ExpresionZ {
 
     private final ExpresionZ arreglo;
@@ -69,22 +69,6 @@ public final class Indice extends NodoZ implements ExpresionZ {
         return tipoElemento;
     }
 
-    /**
-     * Emite el acceso al arreglo. Dos estrategias según {@code tipoArregloBase}:
-     *
-     * <ul>
-     *   <li><b>1D o JAGGED</b>: composicional. Se genera el C3D de la base y, por
-     *       cada índice de la cadena, una cuádrupla {@code =[]} sobre el temporal
-     *       del nivel anterior.</li>
-     *   <li><b>FLAT</b>: se aplanan todos los índices a uno solo con la fórmula
-     *       {@code flat = i1·(d2·…·dn) + i2·(d3·…·dn) + … + i(n-1)·dn + in}, y se
-     *       emite UNA SOLA cuádrupla {@code =[]} con ese índice aplanado.</li>
-     * </ul>
-     *
-     * <p>La estrategia la decide {@link TipoArreglo#esAplanable()}: SÍ si todas las
-     * dimensiones internas (d2..dn) son conocidas en compile-time. La dimensión
-     * externa (d1) no cuenta para la decisión — solo se usa en el {@code malloc}.
-     */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
         // 1) Detectar la cadena de índices: arr[i][j][k] es Indice(Indice(Indice(arr,i),j),k).

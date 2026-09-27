@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * {@code conditionalExpression} (#conditionalExpressionDef) cuando trae el '?:':
+ * conditionalExpression (#conditionalExpressionDef) cuando trae el '?:':
  * "condicion ? siVerdadero : siFalso". No existe equivalente en Y? — es exclusivo
  * de Zetariano.
  */
@@ -57,8 +57,7 @@ public final class Ternario extends NodoZ implements ExpresionZ {
 
     /**
      * Emite el ternario con el mismo esquema de backpatching que un if/else de
-     * expresión, usando UN SOLO temporal {@code t} compartido por ambas ramas:
-     * <pre>
+     * expresión, usando UN SOLO temporal T compartido por ambas ramas:
      *   [cond]
      *   if_false c goto L_falso
      *   [siVerdadero]              -> t = v1
@@ -66,14 +65,10 @@ public final class Ternario extends NodoZ implements ExpresionZ {
      *   L_falso:
      *   [siFalso]                  -> t = v2
      *   L_fin:
-     * </pre>
-     * La razón de reutilizar {@code t} en ambas ramas: como solo una se ejecuta en
+     * La razón de reutilizar t en ambas ramas: como solo una se ejecuta en
      * runtime, el mismo temporal es válido para las dos. Al final del ternario,
-     * {@code t} contiene el valor de la rama que se tomó. Devuelve
-     * {@code ResultadoC3D.temporal(t, tipoResultado)}.
-     *
-     * <p>Los temporales internos de cada rama se numeran por separado (cada
-     * {@code generarC3D} de rama pide los suyos), así que no hay colisión con {@code t}.
+     * t contiene el valor de la rama que se tomó. Devuelve
+     * ResultadoC3D.temporal(t, tipoResultado).
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

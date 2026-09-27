@@ -13,7 +13,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 import java.util.List;
 
-/** {@code LLAVEIZQ initializerList? LLAVEDER} (#primarioListaLiteral): "{1, 2, 3}". */
+/** LLAVEIZQ initializerList? LLAVEDER (#primarioListaLiteral): "{1, 2, 3}". */
 public final class ListaLiteral extends NodoZ implements ExpresionZ {
 
     private final List<ExpresionZ> elementos;
@@ -47,18 +47,13 @@ public final class ListaLiteral extends NodoZ implements ExpresionZ {
     /**
      * Emite el arreglo en construcción en FLAT (los literales tienen dimensiones
      * conocidas en compile-time):
-     * <ol>
-     *   <li>{@code (newarr, tipoElementoBase, [N], t)}: un solo malloc del bloque
-     *       completo.</li>
-     *   <li>Por cada elemento en orden: {@code ([]=, t, i, v)} con índice constante.</li>
-     * </ol>
-     * Devuelve {@code temporal(t, tipoArreglo)}.
+     *   (newarr, tipoElementoBase, [N], t): un solo malloc del bloque
+     *       completo.
+     *   Por cada elemento en orden: ([]=, t, i, v)}con índice constante.
+     * Devuelve temporal(t, tipoArreglo)
      *
-     * <p>En Z siempre es 1D (los literales multidimensionales se escriben como
-     * literales anidados, que el parser resuelve como
-     * {@link NuevoArregloConInicializador}). Si en algún momento se permite
-     * {@code {{1,2},{3,4}}} como {@code ListaLiteral}, habría que detectarlo aquí
-     * y aplanar recursivamente, como hace {@code NuevoArregloConInicializador}.
+     * En Z siempre es 1D (los literales multidimensionales se escriben como
+     * literales anidados)
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

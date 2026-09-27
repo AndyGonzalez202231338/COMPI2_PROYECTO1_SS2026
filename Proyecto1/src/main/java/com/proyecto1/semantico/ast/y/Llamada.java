@@ -12,7 +12,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 import java.util.List;
 
-/** {@code primaria LPAREN argumentos? RPAREN} (#primariaLlamada): llamada a función. */
+/** primaria LPAREN argumentos? RPAREN (#primariaLlamada): llamada a función. */
 public final class Llamada extends NodoY implements ExpresionY {
 
     private final ExpresionY objetivo; // normalmente un Identificador con el nombre de la función

@@ -10,9 +10,9 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
 /**
- * {@code sentenciaPer} (#sentenciaPerDef): {@code per (init; cond?; act?) bloque}.
- * Equivale al {@code Para} de Y. Init puede ser {@link DeclaracionVariable} o
- * {@link ListaExpresiones}; act siempre es {@link ListaExpresiones}. Ambos, más la
+ * (#sentenciaPerDef): per (init; cond?; act?) bloque.
+ * Equivale al Para de Y. Init puede ser DeclaracionVariable o
+ * ListaExpresiones; act siempre es ListaExpresiones. Ambos, más la
  * condición, son opcionales.
  */
 public final class Per extends NodoPigLatin implements InstruccionPigLatin {
@@ -54,7 +54,6 @@ public final class Per extends NodoPigLatin implements InstruccionPigLatin {
     }
 
     /**
-     * <pre>
      *   [init]                (una sola vez, fuera del ciclo)
      *   L_inicio:
      *   [cond?]
@@ -64,13 +63,12 @@ public final class Per extends NodoPigLatin implements InstruccionPigLatin {
      *   [act?]
      *   goto L_inicio
      *   L_fin:
-     * </pre>
-     * Se registra el ciclo como {@code entrarCiclo(L_act, L_fin)}: "perge" salta a
+     *
+     * Se registra el ciclo como entrarCiclo(L_act, L_fin): "perge" salta a
      * L_act (así la actualización SÍ se ejecuta, evitando ciclos infinitos si el cuerpo
      * hace "perge" antes del incremento) e "interrumpe" a L_fin sin pasar por L_act.
      * Sin condición no se emite if_false (el ciclo solo termina con "interrumpe").
      * Init y act quedan FUERA de entrarCiclo/salirCiclo. Devuelve
-     * {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

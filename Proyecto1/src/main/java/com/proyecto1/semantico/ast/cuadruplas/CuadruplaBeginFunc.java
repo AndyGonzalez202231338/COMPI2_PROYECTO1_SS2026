@@ -1,7 +1,7 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
 /**
- * {@code begin_func nombre, nArgs}. nArgs es SIEMPRE conocido al generar C3D
+ * begin_func nombre, nArgs. nArgs es SIEMPRE conocido al generar C3D
  * (parametros.size(), +1 si hay "this" implícito en Z), por eso es int.
  */
 public record CuadruplaBeginFunc(String nombre, int nArgs) implements Cuadrupla {

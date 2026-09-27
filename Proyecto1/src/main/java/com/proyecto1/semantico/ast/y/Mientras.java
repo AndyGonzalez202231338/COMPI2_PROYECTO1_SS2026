@@ -36,20 +36,16 @@ public final class Mientras extends NodoY implements InstruccionY {
     }
 
     /**
-     * Emite, en este orden:
-     * <pre>
      *   L_inicio:
      *   [cuádruplas de la condición]
      *   if_false c goto L_fin
      *   [cuerpo]                 (entre entrarCiclo y salirCiclo)
      *   goto L_inicio
      *   L_fin:
-     * </pre>
      * Las dos etiquetas se piden por adelantado porque L_fin ya se necesita en el
      * if_false, antes de emitirla. "continuar" salta a L_inicio (se vuelve a evaluar la
      * condición) y "romper" a L_fin; ambas se registran en las pilas del generador solo
      * mientras se genera el cuerpo.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

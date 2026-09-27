@@ -13,7 +13,7 @@ import com.proyecto1.semantico.tipos.Tipos;
 
 import java.util.List;
 
-/** {@code declaracionVariable} (#declVarDef) usada como instrucción (#instDeclaracion). */
+/** (#declVarDef) usada como instrucción (#instDeclaracion). */
 public final class DeclaracionVariable extends NodoY implements InstruccionY {
 
     private final NodoTipoRef tipo;
@@ -66,19 +66,13 @@ public final class DeclaracionVariable extends NodoY implements InstruccionY {
 
     /**
      * Tres casos, en este orden:
-     * <ol>
-     *   <li><b>Variable escalar</b> (tamanosArreglo vacío): igual que antes — sin
-     *       inicializador no emite nada; con inicializador emite {@code nombre = v}.</li>
-     *   <li><b>Arreglo sin inicializador</b>: no emite NADA. La reserva de celdas la
-     *       hará Fase 4 leyendo la longitud del {@link TipoArreglo} del símbolo (o de
-     *       {@code Simbolo.getTamanosArreglo()}). Emitir cuádruplas aquí sería ruido.</li>
-     *   <li><b>Arreglo con inicializador {@link ListaLiteral}</b>: emite
-     *       {@code arr[i] = v_i} por cada elemento del literal, USANDO EL NOMBRE DEL
-     *       ARREGLO como base (no un temporal intermedio). Eso deja el C3D en la forma
-     *       canónica que Fase 4 espera para un array init: N escrituras indexadas sobre
-     *       la misma variable.</li>
-     * </ol>
-     * Un inicializador de arreglo que NO sea {@link ListaLiteral} (una variable de
+     *   Variable escalar (tamanosArreglo vacío): igual que antes — sin
+     *       inicializador no emite nada; con inicializador emite nombre = v.
+     *   Arreglo sin inicializador: no emite NADA.  Emitir cuádruplas aquí sería ruido.
+     *   Arreglo con inicializador: ListaLiteral: emite
+     *       arr[i] = v_i por cada elemento del literal, USANDO EL NOMBRE DEL
+     *       ARREGLO como base (no un temporal intermedio).
+     * Un inicializador de arreglo que NO sea ListaLiteral (una variable de
      * arreglo, una llamada que devuelve arreglo, etc.) sigue siendo deuda explícita:
      * C no permite asignar arreglos y Y? tampoco lo contempla hoy.
      */

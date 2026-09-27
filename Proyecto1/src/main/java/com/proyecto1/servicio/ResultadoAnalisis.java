@@ -14,16 +14,10 @@ import java.util.List;
  * imprima (Fase 3, en MainController) decide el formato exacto (colores, prefijos
  * "[OK]"/"[ERROR]", etc.).
  *
- * Reutiliza {@link ErrorSemantico} (línea, columna, mensaje) para las tres
+ * Reutiliza ErrorSemantico (línea, columna, mensaje) para las tres
  * categorías en vez de inventar ErrorLexico/ErrorSintactico casi idénticas: lo que
  * distingue a un error léxico de uno semántico aquí es en QUÉ LISTA cae, no la
  * forma de la clase que lo representa.
- *
- * <p><b>Fase 4:</b> cuando el análisis semántico termina sin errores, el servicio
- * genera además el C3D del programa y lo guarda en {@link #getGeneradorC3D()}. Es
- * {@code null} cuando NO se generó C3D (hubo errores, o el análisis no llegó hasta
- * semántico, o la propia generación de C3D lanzó una excepción — ver
- * {@link ServicioAnalisis}).
  */
 public final class ResultadoAnalisis {
 
@@ -81,15 +75,15 @@ public final class ResultadoAnalisis {
     }
 
     /**
-     * Devuelve una copia de {@code base} con el {@link GeneradorC3D} seteado. Se usa
-     * desde {@link ServicioAnalisis} cuando el análisis semántico terminó limpio y la
+     * Devuelve una copia de base con el GeneradorC3D seteado. Se usa
+     * desde ServicioAnalisis cuando el análisis semántico terminó limpio y la
      * generación de C3D también: en ese caso el resultado base ya tiene todos los
      * errores/advertencias y el ámbito, y solo le falta el generador.
      *
-     * <p>Este factory evita duplicar la lista de parámetros de los otros factories
+     * Este factory evita duplicar la lista de parámetros de los otros factories
      * (que son muchos y no queremos que se desincronicen): cualquier cambio futuro a
      * los campos del DTO se hace en el constructor privado y los factories existentes
-     * siguen funcionando porque pasan {@code null} para el generador.
+     * siguen funcionando porque pasan null para el generador.
      */
     public static ResultadoAnalisis conC3D(ResultadoAnalisis base, GeneradorC3D generadorC3D) {
         return new ResultadoAnalisis(
@@ -137,13 +131,11 @@ public final class ResultadoAnalisis {
     /**
      * Generador de C3D del programa, ya ejecutado sobre el AST verificado. Es null
      * cuando NO se generó C3D:
-     * <ul>
-     *   <li>Hubo errores (léxicos, sintácticos o semánticos).</li>
-     *   <li>El análisis no llegó hasta la fase semántica (p. ej. errores de sintaxis).</li>
-     *   <li>La generación de C3D lanzó una excepción (ver {@link ServicioAnalisis}).</li>
-     * </ul>
+     *
+     *   Hubo errores (léxicos, sintácticos o semánticos).
+     *   El análisis no llegó hasta la fase semántica (p. ej. errores de sintaxis).
+     *   La generación de C3D lanzó una excepción (ver {@link ServicioAnalisis}).
      * Si no es null, el generador ya tiene todas las cuádruplas y firmas del
-     * programa, listas para que la Fase 4 (C3D -> C) las consuma.
      */
     public GeneradorC3D getGeneradorC3D() { return generadorC3D; }
 

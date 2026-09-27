@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
-/** {@code whileStatement} (#whileStatementDef): "while(cond) cuerpo". */
+/** (#whileStatementDef): "while(cond) cuerpo". */
 public final class Mientras extends NodoZ implements InstruccionZ {
 
     private final ExpresionZ condicion;
@@ -37,16 +37,13 @@ public final class Mientras extends NodoZ implements InstruccionZ {
     }
 
     /**
-     * <pre>
      *   L_inicio:
      *   [cond]
      *   if_false c goto L_fin
      *   [cuerpo]              (dentro de entrarCiclo/salirCiclo)
      *   goto L_inicio
      *   L_fin:
-     * </pre>
      * "continue" salta a L_inicio (reevalúa la condición); "break" a L_fin.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

@@ -28,14 +28,13 @@ public final class Romper extends NodoY implements InstruccionY {
     }
 
     /**
-     * Emite: {@code (goto, null, null, L)}, donde L es {@code generador.etiquetaFinCiclo()}:
+     * Emite: (goto, null, null, L), donde L es generador.etiquetaFinCiclo():
      * el destino de "romper" más cercano, ya sea el L_fin de un ciclo (empujado con
      * entrarCiclo) o el L_fin de un elegir (empujado con entrarBloqueRompible). No
      * genera código propio adicional; solo consulta la pila.
-     * Si la pila está vacía lanza {@link IllegalStateException}: verificar() ya reporta
+     * Si la pila está vacía lanza error: verificar() ya reporta
      * "romper fuera de ciclo o elegir", así que esto solo ocurre si se generó C3D sin
      * haber pasado el análisis semántico.
-     * Devuelve {@code ResultadoC3D.vacio()}.
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {

@@ -42,30 +42,6 @@ import java.nio.file.Path;
  * que ya existen (patrón Strategy por extensión: un método privado por lenguaje,
  * todos con la misma forma).
  *
- * <p>Si el lexer o el parser ya reportaron errores (vía {@link ListenerErroresANTLR}),
- * NO se construye el AST ni se corre el análisis semántico sobre ese archivo.
- *
- * <p><b>Fase 4:</b> si el análisis semántico terminó SIN errores, se genera también
- * el C3D del AST verificado y se guarda en {@link ResultadoAnalisis#getGeneradorC3D()}.
- * Además se escribe el archivo .c al lado del fuente y se acumulan las cuádruplas
- * para el archivo consolidado del proyecto.
- *
- * <p><b>Prototipos de funciones importadas / hermanas:</b> cuando un `.pig` importa
- * funciones de `.y` o métodos/clases de `.z`, o cuando un `.z` referencia a otra
- * clase `.z` (por ejemplo `Pila.z` usa `Nodo.z`), el orquestador necesita los
- * PROTOTIPOS de esas funciones para no fallar con "implicit declaration" al
- * compilar. Esos prototipos se construyen desde el ámbito correspondiente como un
- * {@code Map<String, Firma>}: la clave es la etiqueta MANGLADA y el valor la
- * {@link GeneradorC3D.Firma} ya armada. No se pasan {@link Simbolo}s directos
- * porque el símbolo de un método/constructor de Z guarda el nombre plano, no la
- * etiqueta manglada que usa el C3D.
- *
- * <p><b>C3D consolidado:</b> cuando el análisis arranca desde un `.pig`, el
- * acumulador se resetea y se van acumulando las cuádruplas de todos los archivos
- * (incluidos los .y/.z importados que el {@code CargadorImports} analiza
- * recursivamente). Al terminar el `.pig`, se vuelca todo a un único
- * {@code <nombrePig>_C3D.txt} al lado del fuente. Si se analiza un .y o .z suelto,
- * no se genera consolidado (no tiene sentido: solo tendría sus propias cuádruplas).
  */
 public class ServicioAnalisis {
 
@@ -351,7 +327,7 @@ public class ServicioAnalisis {
      * Escribe el C3D acumulado de TODO el proyecto (los .y/.z importados + el .pig)
      * en un único archivo {@code <nombrePig>_C3D.txt} al lado del .pig.
      *
-     * <p>Se invoca desde {@link #analizar(File, String)} cuando el archivo analizado
+     * Se invoca desde #analizar(File, String) cuando el archivo analizado
      * es un .pig (el punto de entrada del proyecto) — es el único que tiene la
      * visión completa de los imports.
      */
@@ -414,17 +390,15 @@ public class ServicioAnalisis {
     // ---------- Recolección de firmas importadas / hermanas ----------
 
     /**
-     * Construye el mapa {@code etiqueta -> Firma} de todas las funciones, métodos y
+     * Construye el mapa etiqueta -> Firma de todas las funciones, métodos y
      * constructores declarados en un ámbito (típicamente el de imports de PigLatin,
      * o el de clases hermanas de Z).
      *
-     * <p>Cada firma trae la etiqueta YA MANGLADA porque el símbolo individual guarda
+     * Cada firma trae la etiqueta YA MANGLADA porque el símbolo individual guarda
      * el nombre plano, no la etiqueta que usa el C3D:
-     * <ul>
-     *   <li>Función de Y: la etiqueta es {@code s.getNombre()} (sin sufijos {@code #}).</li>
-     *   <li>Método de Z: {@code Clase_metodo}.</li>
-     *   <li>Constructor de Z: {@code Clase_init_aN} (usa {@link GeneradorC3D#etiquetaConstructor}).</li>
-     * </ul>
+     *   Función de Y: la etiqueta es s.getNombre() (sin sufijos {@code #}).
+     *   Método de Z: {@code Clase_metodo}.
+     *   Constructor de Z: {@code Clase_init_aN} (usa {@link GeneradorC3D#etiquetaConstructor}).
      *
      * @param nombreClaseExcluir si no es null, se omite la clase con ese nombre.
      *                           Se usa al generar el .c de una clase Z: sus propias

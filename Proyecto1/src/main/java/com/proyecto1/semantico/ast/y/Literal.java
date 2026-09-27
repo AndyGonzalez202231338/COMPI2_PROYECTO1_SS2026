@@ -10,7 +10,7 @@ import com.proyecto1.semantico.tipos.TipoPrimitivo;
 /**
  * Un literal (#primariaEntero, #primariaFlotante, #primariaCaracter, #primariaCadena,
  * #primariaVerdadero, #primariaFalso; también usado por la regla independiente
- * {@code literal} dentro de los "caso" de un elegir: #litEntero, #litCaracter,
+ * literal dentro de los "caso" de un elegir: #litEntero, #litCaracter,
  * #litCadena). El valor ya viene "parseado" a su tipo Java correspondiente
  * (Long/Double/Character/String/Boolean), no como texto crudo así los nodos de más
  * arriba no tienen que volver a parsear números ni desescapar cadenas.
@@ -47,7 +47,7 @@ public final class Literal extends NodoY implements ExpresionY {
 
     /**
      * Emite: NADA (un literal no necesita cuádruplas, se usa directamente como operando).
-     * Devuelve: {@code ResultadoC3D.valor(texto, tipo)}, donde "texto" es la forma
+     * Devuelve: ResultadoC3D.valor(texto, tipo), donde "texto" es la forma
      * literal lista para usarse como operando: enteros/flotantes tal cual ("5", "3.14"),
      * caracteres entre comillas simples ('a'), cadenas entre comillas dobles ("hola",
      * re-escapadas porque el AST guarda el valor ya desescapado) y booleanos como

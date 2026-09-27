@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code param valor} — empuja valor como argumento de la próxima call, en orden fuente. */
+/** param valor empuja valor como argumento de la próxima call, en orden fuente. */
 public record CuadruplaParam(String valor) implements Cuadrupla {
     @Override
     public String toStringLegible() { return "param " + valor; }

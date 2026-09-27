@@ -3,9 +3,9 @@ package com.proyecto1.semantico.ast.z;
 import java.util.List;
 
 /**
- * Un {@code defaultCase} (#defaultCaseDef): "default: statement* break?", dentro de un
- * {@link Elegir}. Misma forma que {@link CasoElegir} pero sin "valor" (no compara
- * contra nada). Tampoco es un nodo independiente, igual que {@link CasoElegir}.
+ * Un defaultCase (#defaultCaseDef): "default: statement* break?", dentro de un
+ * Elegir. Misma forma que CasoElegir pero sin "valor" (no compara
+ * contra nada). Tampoco es un nodo independiente, igual que CasoElegir.
  */
 public final class CasoDefecto {
 

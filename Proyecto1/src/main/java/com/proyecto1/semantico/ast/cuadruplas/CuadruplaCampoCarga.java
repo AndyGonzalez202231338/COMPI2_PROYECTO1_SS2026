@@ -1,6 +1,6 @@
 package com.proyecto1.semantico.ast.cuadruplas;
 
-/** {@code destino = objeto.campo}. El campo va por NOMBRE, no por offset numérico. */
+/** destino = objeto.campo. El campo va por NOMBRE, no por offset numérico. */
 public record CuadruplaCampoCarga(String objeto, String campo, String destino) implements Cuadrupla {
     @Override
     public String toStringLegible() { return destino + " = " + objeto + "." + campo; }

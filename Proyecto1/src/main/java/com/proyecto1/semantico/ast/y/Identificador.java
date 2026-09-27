@@ -38,9 +38,9 @@ public final class Identificador extends NodoY implements ExpresionY {
 
     /**
      * Emite: NADA (leer una variable no necesita cuádruplas).
-     * Devuelve: {@code ResultadoC3D.valor(nombre, tipo)}, donde el tipo se resuelve
-     * consultando el Ámbito del generador: {@code generador.getAmbito().resolver(nombre)}.
-     * Cae a {@link TipoPrimitivo#DESCONOCIDO} si el generador no tiene ámbito, si el
+     * Devuelve: ResultadoC3D.valor(nombre, tipo), donde el tipo se resuelve
+     * consultando el Ámbito del generador: generador.getAmbito().resolver(nombre).
+     * Cae a TipoPrimitivo#DESCONOCIDO si el generador no tiene ámbito, si el
      * símbolo no se encuentra o si el símbolo no tiene tipo.
      */
     @Override

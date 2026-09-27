@@ -9,7 +9,7 @@ import com.proyecto1.semantico.tipos.Tipo;
 import com.proyecto1.semantico.tipos.TipoPrimitivo;
 import com.proyecto1.semantico.tipos.Tipos;
 
-/** {@code RETORNAR expresion? NEWLINE} (#instRetorno). */
+
 public final class Retorno extends NodoY implements InstruccionY {
 
     private final ExpresionY valor; // null == "retornar" sin valor
@@ -49,9 +49,7 @@ public final class Retorno extends NodoY implements InstruccionY {
 
     /**
      * Emite: primero el C3D de la expresión (si hay) y luego
-     * {@code (return, v, null, null)}, es decir {@code return v}; sin valor emite
-     * {@code return} con arg1 en null.
-     * Devuelve {@code ResultadoC3D.vacio()}.
+     * (return, v, null, null)
      */
     @Override
     public ResultadoC3D generarC3D(GeneradorC3D generador) {
